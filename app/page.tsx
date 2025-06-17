@@ -1,47 +1,24 @@
 "use client";
-import { useState } from "react";
-import Summary from "@/components/UI/Screens/Summary/Summary";
-import Measurements from "@/components/UI/Screens/Measurements/Measurements";
-import Profile from "@/components/UI/Screens/Profile/Profile";
-import Navigation from "@/components/UI/Screens/Navigation/Navigation";
-import AgentAI from "@/components/UI/Screens/AgentAI/AgentAI";
-import Statistics from "@/components/UI/Screens/Statistics/Statistics";
+
+import { useSession } from "next-auth/react";
 
 export default function App() {
-  const [activeScreen, setActiveScreen] = useState("Podsumowanie"); // Domyślny ekran
+  const { data: session, status } = useSession();
 
-  // Funkcja do zmiany aktywnego ekranu
-  const handleScreenChange = (screen: string) => {
-    setActiveScreen(screen);
-  };
-
-  // Wybór komponentu do wyświetlenia
-  const renderScreen = () => {
-    switch (activeScreen) {
-      case "Podsumowanie":
-        return <Summary />;
-      case "Pomiary":
-        return <Measurements />;
-      case "Profil":
-        return <Profile />;
-      case "Statystyki":
-        return <Statistics />;
-      case "Agent AI":
-        return <AgentAI />;
-      default:
-        return <Summary />;
-    }
-  };
+  console.log("session:", session);
+  console.log("status:", status);
 
   return (
-    <div className="flex">
-      {/* Nawigacja po lewej */}
-      <Navigation
-        onScreenChange={handleScreenChange}
-        activeScreen={activeScreen}
-      />
-      {/* Zawartość po prawej */}
-      {renderScreen()}
+    <div className="p-6">
+      <h1 className="text-xl font-bold">Status: {status}</h1>
+      {session?.user ? (
+        <div>
+          <p>Email: {session.user.email}</p>
+          <p>Imię: {session.user.name}</p>
+        </div>
+      ) : (
+        <p>Nie jesteś zalogowany.</p>
+      )}
     </div>
   );
 }

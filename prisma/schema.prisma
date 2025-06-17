@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  name          String?
+  image         String?
+  gender        String?   // np. "M" lub "K"
+  height        Int?      // wzrost w cm
+  weight        Float?    // waga w kg
+  age           Int?
+  systolicMin   Int?
+  systolicMax   Int?
+  diastolicMin  Int?
+  diastolicMax  Int?
+  glucoseMin    Float?
+  glucoseMax    Float?
+  weightMin     Float?
+  weightMax     Float?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  measurements  Measurement[]
+}
+
+
+model Measurement {
+  id         Int      @id @default(autoincrement())
+  amount     String
+  type       String
+  unit       String
+  systolic   Int?
+  diastolic  Int?
+  timing     String?     // np. przed posiłkiem, po posiłku
+  context    String?     // np. owsianka
+  note       String?     // np. stres
+  createdAt  DateTime    @default(now())
+  userId     Int
+  user       User        @relation(fields: [userId], references: [id])
+}
+
+
