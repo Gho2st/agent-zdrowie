@@ -1,97 +1,252 @@
 "use client";
 
-import Header from "@/components/UI/Headers/Header";
-import Container from "@/components/UI/Container/Container";
-import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { Line } from "react-chartjs-2";
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
+  Chart as ChartJS,
+  LineElement,
+  PointElement,
+  LinearScale,
+  TimeScale,
   Tooltip,
   Legend,
-  ResponsiveContainer,
-} from "recharts";
+  Filler,
+  CategoryScale,
+} from "chart.js";
+import annotationPlugin from "chartjs-plugin-annotation";
+import "chartjs-adapter-date-fns";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import Container from "@/components/UI/Container/Container";
+import Header from "@/components/UI/Headers/Header";
+
+ChartJS.register(
+  LineElement,
+  PointElement,
+  LinearScale,
+  TimeScale,
+  Tooltip,
+  Legend,
+  Filler,
+  CategoryScale,
+  annotationPlugin
+);
 
 export default function Statistics() {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const [measurements, setMeasurements] = useState([]);
+  const [norms, setNorms] = useState<any>(null);
   const [filterType, setFilterType] = useState("ciśnienie");
 
   useEffect(() => {
     if (session?.user?.id) {
-      const fetchMeasurements = async () => {
-        try {
-          const res = await fetch("/api/measurement");
-          if (res.ok) {
-            const data = await res.json();
-            console.log("Pobrane pomiary:", data);
-            setMeasurements(data);
-          } else {
-            console.error("Błąd pobierania pomiarów: ", res.status);
-          }
-        } catch (error) {
-          console.error("Błąd sieci: ", error);
-        }
+      const fetchData = async () => {
+        const [mRes, nRes] = await Promise.all([
+          fetch("/api/measurement"),
+          fetch("/api/user/norms"),
+        ]);
+        const measurements = await mRes.json();
+        const norms = await nRes.json();
+        setMeasurements(measurements);
+        setNorms(norms);
       };
-      fetchMeasurements();
+      fetchData();
     }
   }, [session]);
 
-  const filteredMeasurements = measurements
+  const filtered = measurements
     .filter((m: any) => m.type === filterType)
-    .map((m: any) => {
-      return {
-        date: new Date(m.createdAt).toISOString().split("T")[0], // YYYY-MM-DD
-        systolic:
-          m.type === "ciśnienie" && m.systolic != null
-            ? Number(m.systolic)
-            : null,
-        diastolic:
-          m.type === "ciśnienie" && m.diastolic != null
-            ? Number(m.diastolic)
-            : null,
-        amount:
-          m.type !== "ciśnienie" && m.amount != null ? Number(m.amount) : null,
-      };
-    })
-    .filter((m: any) => {
-      return filterType === "ciśnienie"
-        ? m.systolic != null || m.diastolic != null
-        : m.amount != null;
-    });
+    .map((m: any) => ({
+      date: new Date(m.createdAt),
+      systolic: m.systolic ? Number(m.systolic) : null,
+      diastolic: m.diastolic ? Number(m.diastolic) : null,
+      amount: m.amount ? Number(m.amount) : null,
+    }))
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  if (status === "loading") {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-green-600"></div>
-      </div>
-    );
-  }
+  const labels = filtered.map((m) => m.date.toISOString().split("T")[0]);
+
+  const getDataset = () => {
+    if (filterType === "ciśnienie") {
+      return [
+        {
+          label: "Skurczowe (mmHg)",
+          data: filtered.map((m) => m.systolic),
+          borderColor: "#4bc0c0",
+          backgroundColor: "rgba(75, 192, 192, 0.1)",
+          fill: false,
+          tension: 0.3,
+        },
+        {
+          label: "Rozkurczowe (mmHg)",
+          data: filtered.map((m) => m.diastolic),
+          borderColor: "#ff6384",
+          backgroundColor: "rgba(255, 99, 132, 0.1)",
+          fill: false,
+          tension: 0.3,
+        },
+      ];
+    }
+
+    return [
+      {
+        label: filterType === "cukier" ? "Cukier (mg/dL)" : "Waga (kg)",
+        data: filtered.map((m) => m.amount),
+        borderColor: "#4bc0c0",
+        backgroundColor: "rgba(75, 192, 192, 0.2)",
+        tension: 0.3,
+        fill: true,
+      },
+    ];
+  };
+
+  const chartData = {
+    labels,
+    datasets: getDataset(),
+  };
+
+  const getAnnotations = () => {
+    if (!norms) return {};
+
+    const lines: any = {};
+
+    if (filterType === "ciśnienie") {
+      lines.systolicMin = {
+        type: "line",
+        yMin: norms.systolicMin,
+        yMax: norms.systolicMin,
+        borderColor: "#4bc0c0",
+        borderDash: [6, 4],
+        label: {
+          content: "Skurczowe min",
+          enabled: true,
+          position: "start",
+        },
+      };
+      lines.systolicMax = {
+        type: "line",
+        yMin: norms.systolicMax,
+        yMax: norms.systolicMax,
+        borderColor: "#4bc0c0",
+        borderDash: [6, 4],
+        label: {
+          content: "Skurczowe max",
+          enabled: true,
+          position: "start",
+        },
+      };
+      lines.diastolicMin = {
+        type: "line",
+        yMin: norms.diastolicMin,
+        yMax: norms.diastolicMin,
+        borderColor: "#ff6384",
+        borderDash: [6, 4],
+        label: {
+          content: "Rozkurczowe min",
+          enabled: true,
+          position: "start",
+        },
+      };
+      lines.diastolicMax = {
+        type: "line",
+        yMin: norms.diastolicMax,
+        yMax: norms.diastolicMax,
+        borderColor: "#ff6384",
+        borderDash: [6, 4],
+        label: {
+          content: "Rozkurczowe max",
+          enabled: true,
+          position: "start",
+        },
+      };
+    }
+
+    if (filterType === "cukier") {
+      lines.glucoseMin = {
+        type: "line",
+        yMin: norms.glucoseMin,
+        yMax: norms.glucoseMin,
+        borderColor: "#999",
+        borderDash: [6, 4],
+        label: {
+          content: "Glukoza min",
+          enabled: true,
+          position: "start",
+        },
+      };
+      lines.glucoseMax = {
+        type: "line",
+        yMin: norms.glucoseMax,
+        yMax: norms.glucoseMax,
+        borderColor: "#999",
+        borderDash: [6, 4],
+        label: {
+          content: "Glukoza max",
+          enabled: true,
+          position: "start",
+        },
+      };
+    }
+
+    if (filterType === "waga") {
+      lines.weightMin = {
+        type: "line",
+        yMin: norms.weightMin,
+        yMax: norms.weightMin,
+        borderColor: "#999",
+        borderDash: [6, 4],
+        label: {
+          content: "Waga min",
+          enabled: true,
+          position: "start",
+        },
+      };
+      lines.weightMax = {
+        type: "line",
+        yMin: norms.weightMax,
+        yMax: norms.weightMax,
+        borderColor: "#999",
+        borderDash: [6, 4],
+        label: {
+          content: "Waga max",
+          enabled: true,
+          position: "start",
+        },
+      };
+    }
+
+    return lines;
+  };
+
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "top" as const,
+      },
+      tooltip: {
+        mode: "index" as const,
+        intersect: false,
+      },
+      annotation: {
+        annotations: getAnnotations(),
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: false,
+      },
+    },
+  };
 
   return (
     <Container>
-      <Header text="Statystyki" />
-      <p className="text-gray-600 mb-8 text-center max-w-md mx-auto">
-        Przeglądaj trendy swoich pomiarów na przejrzystych wykresach
-      </p>
-
-      {status === "unauthenticated" && (
-        <p className="text-red-500 text-center font-medium mb-6">
-          Zaloguj się, aby zobaczyć statystyki
-        </p>
-      )}
-
-      <div className="max-w-md mx-auto mb-8">
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Wybierz typ pomiaru
-        </label>
+      <Header text="Statystyki zdrowia" />
+      <div className="my-6 max-w-md mx-auto">
+        <label className="block mb-2 font-medium">Typ pomiaru</label>
         <select
+          className="w-full border rounded p-2"
           value={filterType}
           onChange={(e) => setFilterType(e.target.value)}
-          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
         >
           <option value="ciśnienie">Ciśnienie</option>
           <option value="cukier">Cukier</option>
@@ -99,86 +254,8 @@ export default function Statistics() {
         </select>
       </div>
 
-      <div className="max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow-xl">
-        {filteredMeasurements.length === 0 ? (
-          <p className="text-gray-500 text-center">
-            Brak danych dla wybranego typu pomiaru
-          </p>
-        ) : (
-          <ResponsiveContainer width="100%" height={400}>
-            <LineChart
-              data={filteredMeasurements}
-              margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-              <XAxis
-                dataKey="date"
-                stroke="#333"
-                tickFormatter={(value) =>
-                  new Date(value).toLocaleDateString("pl-PL", {
-                    day: "2-digit",
-                    month: "2-digit",
-                  })
-                }
-              />
-              <YAxis
-                stroke="#333"
-                label={{
-                  value:
-                    filterType === "ciśnienie"
-                      ? "mmHg"
-                      : filterType === "cukier"
-                      ? "mg/dL"
-                      : "kg",
-                  angle: -90,
-                  position: "insideLeft",
-                  offset: 10,
-                }}
-              />
-              <Tooltip
-                formatter={(value, name) =>
-                  `${value} ${
-                    filterType === "ciśnienie"
-                      ? "mmHg"
-                      : filterType === "cukier"
-                      ? "mg/dL"
-                      : "kg"
-                  }`
-                }
-              />
-              <Legend wrapperStyle={{ paddingTop: 10 }} />
-              {filterType === "ciśnienie" ? (
-                <>
-                  <Line
-                    type="monotone"
-                    dataKey="systolic"
-                    name="Ciśnienie skurczowe"
-                    stroke="#4bc0c0"
-                    strokeWidth={2}
-                    dot={{ r: 4 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="diastolic"
-                    name="Ciśnienie rozkurczowe"
-                    stroke="#ff6384"
-                    strokeWidth={2}
-                    dot={{ r: 4 }}
-                  />
-                </>
-              ) : (
-                <Line
-                  type="monotone"
-                  dataKey="amount"
-                  name={filterType === "cukier" ? "Cukier" : "Waga"}
-                  stroke="#4bc0c0"
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                />
-              )}
-            </LineChart>
-          </ResponsiveContainer>
-        )}
+      <div className="bg-white p-6 rounded-xl shadow-xl">
+        <Line data={chartData} options={chartOptions} />
       </div>
     </Container>
   );

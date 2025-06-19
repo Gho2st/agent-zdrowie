@@ -1,13 +1,30 @@
-'use client'
+"use client";
 import Link from "next/link";
-import { signOut } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import Image from "next/image";
 
 export default function Navigation() {
+  const { data: session } = useSession();
+
   return (
-    <aside className="flex flex-col justify-between w-3/12 px-8 py-10 h-screen">
-      <div className="text-4xl font-bold">Agent Zdrowie</div>
+    <aside className="fixed top-0 left-0 h-screen w-72 px-8 py-10 z-50 flex flex-col justify-between">
+      <Link href="/" className="w-fit">
+        <Image
+          src="/logo.png"
+          alt="Logo Agent Zdrowie"
+          width={0}
+          height={0}
+          sizes="100vw"
+          className="w-auto h-40 object-contain"
+          priority
+        />
+      </Link>
       <nav>
-        <ul className="flex flex-col gap-6">
+        <ul className="flex flex-col gap-6 text-xl font-bold">
+          <li>
+            <Link href={"/centrum-zdrowia"}>Centrum Zdrowia</Link>
+          </li>
           <li>
             <Link href={"/profil"}>Profil</Link>
           </li>
@@ -17,14 +34,25 @@ export default function Navigation() {
           <li>
             <Link href={"/statystyki"}>Statystyki</Link>
           </li>
-          <li>
-            <button
-              onClick={() => signOut()}
-              className="text-red-500 underline"
-            >
-              Wyloguj się
-            </button>
-          </li>
+          {session?.user ? (
+            <li>
+              <button
+                onClick={() => signOut()}
+                className="text-red-500 underline"
+              >
+                Wyloguj się
+              </button>
+            </li>
+          ) : (
+            <li>
+              <button
+                onClick={() => signIn()}
+                className="text-green-500 underline"
+              >
+                Zaloguj się
+              </button>
+            </li>
+          )}
         </ul>
       </nav>
       <div>

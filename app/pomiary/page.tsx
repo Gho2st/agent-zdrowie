@@ -20,6 +20,17 @@ export default function Pomiary() {
 
   const [norms, setNorms] = useState<Partial<User> | null>(null);
 
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetch("/api/measurement")
+        .then((res) => res.json())
+        .then(setMeasurements);
+      fetch("/api/user/norms")
+        .then((res) => res.json())
+        .then(setNorms);
+    }
+  }, [status]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (status !== "authenticated") {
@@ -42,10 +53,10 @@ export default function Pomiary() {
       body.note = pressureNote;
 
       if (
-        norms?.systolicMin !== undefined &&
-        norms?.systolicMax !== undefined &&
-        norms?.diastolicMin !== undefined &&
-        norms?.diastolicMax !== undefined &&
+        norms?.systolicMin != null &&
+        norms?.systolicMax != null &&
+        norms?.diastolicMin != null &&
+        norms?.diastolicMax != null &&
         (body.systolic < norms.systolicMin ||
           body.systolic > norms.systolicMax ||
           body.diastolic < norms.diastolicMin ||
@@ -67,8 +78,8 @@ export default function Pomiary() {
         body.timing = glucoseTime;
 
         if (
-          norms?.glucoseMin !== undefined &&
-          norms?.glucoseMax !== undefined &&
+          norms?.glucoseMin != null &&
+          norms?.glucoseMax != null &&
           (numeric < norms.glucoseMin || numeric > norms.glucoseMax)
         ) {
           isOutOfNorm = true;
@@ -78,8 +89,8 @@ export default function Pomiary() {
 
       if (
         type === "waga" &&
-        norms?.weightMin !== undefined &&
-        norms?.weightMax !== undefined &&
+        norms?.weightMin != null &&
+        norms?.weightMax != null &&
         (numeric < norms.weightMin || numeric > norms.weightMax)
       ) {
         isOutOfNorm = true;
