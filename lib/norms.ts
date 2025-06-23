@@ -1,4 +1,3 @@
-// lib/norms.ts
 export function getHealthNorms(
   age: number,
   gender: "M" | "K",
@@ -8,24 +7,30 @@ export function getHealthNorms(
   const heightMeters = height / 100;
   const bmi = weight / (heightMeters * heightMeters);
 
-  let systolicMin = 110;
-  let systolicMax = 120;
-  let diastolicMin = 70;
-  let diastolicMax = 80;
+  // Domyślne zakresy ciśnienia krwi
+  let systolicMin = gender === "K" ? 90 : 100;
+  let systolicMax = gender === "K" ? 120 : 129;
 
-  if (age >= 40 && age < 60) {
-    systolicMax = 130;
-    diastolicMax = 85;
-  } else if (age >= 60) {
-    systolicMax = 140;
-    diastolicMax = 90;
+  let diastolicMin = gender === "K" ? 60 : 65;
+  let diastolicMax = gender === "K" ? 80 : 84;
+
+  // Starsze osoby mają często wyższe ciśnienie akceptowalne
+  if (age >= 60) {
+    systolicMax += 5;
+    diastolicMax += 5;
   }
 
-  const glucoseMin = 70;
-  const glucoseMax = 99;
+  // Glukoza (na czczo i po posiłku) – niezależna od płci
+  const glucoseFastingMin = 70;
+  const glucoseFastingMax = 99;
+  const glucosePrediabetesFastingMin = 100;
+  const glucosePrediabetesFastingMax = 125;
+  const glucosePostMealMax = 139; // po 2h
 
+  // Waga na podstawie BMI (również bez różnicy, ale można subtelnie różnicować)
   const bmiMin = 18.5;
   const bmiMax = 24.9;
+
   const weightMin = parseFloat((bmiMin * heightMeters ** 2).toFixed(1));
   const weightMax = parseFloat((bmiMax * heightMeters ** 2).toFixed(1));
 
@@ -34,9 +39,13 @@ export function getHealthNorms(
     systolicMax,
     diastolicMin,
     diastolicMax,
-    glucoseMin,
-    glucoseMax,
+    glucoseFastingMin,
+    glucoseFastingMax,
+    glucosePrediabetesFastingMin,
+    glucosePrediabetesFastingMax,
+    glucosePostMealMax,
     weightMin,
     weightMax,
+    bmi: parseFloat(bmi.toFixed(1)),
   };
 }

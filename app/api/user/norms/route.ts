@@ -16,14 +16,19 @@ export async function GET() {
       gender: true,
       height: true,
       weight: true,
+      medications: true,
       systolicMin: true,
       systolicMax: true,
       diastolicMin: true,
       diastolicMax: true,
-      glucoseMin: true,
-      glucoseMax: true,
+      glucoseFastingMin: true,
+      glucoseFastingMax: true,
+      glucosePrediabetesFastingMin: true,
+      glucosePrediabetesFastingMax: true,
+      glucosePostMealMax: true,
       weightMin: true,
       weightMax: true,
+      bmi: true,
     },
   });
 
@@ -39,41 +44,77 @@ export async function PATCH(req: NextRequest) {
   if (!session?.user?.email)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { age } = await req.json();
+  const body = await req.json();
 
-  if (!age)
-    return NextResponse.json({ error: "Brakuje wieku" }, { status: 400 });
+  const allowedFields = [
+    "age",
+    "systolicMin",
+    "systolicMax",
+    "diastolicMin",
+    "diastolicMax",
+    "glucoseFastingMin",
+    "glucoseFastingMax",
+    "glucosePostMealMax",
+    "weightMin",
+    "weightMax",
+    "medications"
+  ];
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: {
-      gender: true,
-      height: true,
-      weight: true,
-    },
-  });
-
-  if (!user || !user.gender || !user.height || !user.weight) {
-    return NextResponse.json(
-      { error: "Brakuje danych do przeliczenia norm" },
-      { status: 400 }
-    );
+  const updateData: Record<string, number> = {};
+  for (const key of allowedFields) {
+    if (key in body) {
+      updateData[key] = body[key];
+    }
   }
 
-  const norms = getHealthNorms(
-    age,
-    user.gender as "M" | "K", // 👈 rzutowanie tutaj
-    user.height,
-    user.weight
+  // 🔹 Jeśli przysłano tylko wiek → przelicz automatycznie normy
+  if (Object.keys(updateData).length === 1 && "age" in updateData) {
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: {
+        gender: true,
+        height: true,
+        weight: true,
+      },
+    });
+
+    if (!user || !user.gender || !user.height || !user.weight) {
+      return NextResponse.json(
+        { error: "Brakuje danych do przeliczenia norm" },
+        { status: 400 }
+      );
+    }
+
+    const norms = getHealthNorms(
+      updateData.age,
+      user.gender as "M" | "K",
+      user.height,
+      user.weight
+    );
+
+    await prisma.user.update({
+      where: { email: session.user.email },
+      data: {
+        age: updateData.age,
+        ...norms,
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  }
+
+  // 🔹 reczna aktualizacja danych (np normy, leki)
+  if (Object.keys(updateData).length > 0) {
+    await prisma.user.update({
+      where: { email: session.user.email },
+      data: updateData,
+    });
+
+    return NextResponse.json({ success: true });
+  }
+
+  return NextResponse.json(
+    { error: "Brak danych do aktualizacji" },
+    { status: 400 }
   );
-
-  await prisma.user.update({
-    where: { email: session.user.email },
-    data: {
-      age,
-      ...norms,
-    },
-  });
-
-  return NextResponse.json({ success: true });
 }

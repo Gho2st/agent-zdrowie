@@ -5,6 +5,7 @@ import Header from "@/components/UI/Headers/Header";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { User, Measurement } from "@prisma/client";
+import toast from "react-hot-toast";
 
 export default function Pomiary() {
   const { data: session, status } = useSession();
@@ -34,7 +35,7 @@ export default function Pomiary() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (status !== "authenticated") {
-      alert("Zaloguj się, aby dodać pomiar");
+      toast.error("Zaloguj się, aby dodać pomiar");
       return;
     }
 
@@ -45,7 +46,7 @@ export default function Pomiary() {
     if (type === "ciśnienie") {
       const parts = value.split("/").map(Number);
       if (parts.length !== 2 || parts.some(isNaN)) {
-        alert("Niepoprawny format ciśnienia (np. 120/80)");
+        toast.error("Niepoprawny format ciśnienia (np. 120/80)");
         return;
       }
       body.systolic = parts[0];
@@ -63,12 +64,12 @@ export default function Pomiary() {
           body.diastolic > norms.diastolicMax)
       ) {
         isOutOfNorm = true;
-        alertDetails = `Twoje ciśnienie ${body.systolic}/${body.diastolic} mmHg wykracza poza normę.\nSkurczowe: ${norms.systolicMin}–${norms.systolicMax}, Rozkurczowe: ${norms.diastolicMin}–${norms.diastolicMax}`;
+        alertDetails = `Zapisano pomiar ale Twoje ciśnienie ${body.systolic}/${body.diastolic} mmHg wykracza poza normę.\nSkurczowe: ${norms.systolicMin}–${norms.systolicMax}, Rozkurczowe: ${norms.diastolicMin}–${norms.diastolicMax}`;
       }
     } else {
       const numeric = parseFloat(value);
       if (isNaN(numeric)) {
-        alert("Niepoprawna wartość");
+        toast.error("Niepoprawna wartość");
         return;
       }
       body.amount = numeric;
@@ -77,13 +78,24 @@ export default function Pomiary() {
         body.context = glucoseContext;
         body.timing = glucoseTime;
 
-        if (
-          norms?.glucoseMin != null &&
-          norms?.glucoseMax != null &&
-          (numeric < norms.glucoseMin || numeric > norms.glucoseMax)
-        ) {
-          isOutOfNorm = true;
-          alertDetails = `Twój cukier ${numeric} ${unit} wykracza poza normę.\nNorma: ${norms.glucoseMin}–${norms.glucoseMax} ${unit}`;
+        if (glucoseTime === "przed posiłkiem") {
+          if (
+            norms?.glucoseFastingMin != null &&
+            norms?.glucoseFastingMax != null &&
+            (numeric < norms.glucoseFastingMin ||
+              numeric > norms.glucoseFastingMax)
+          ) {
+            isOutOfNorm = true;
+            alertDetails = `Twój cukier ${numeric} ${unit} wykracza poza normę na czczo.\nNorma: ${norms.glucoseFastingMin}–${norms.glucoseFastingMax} ${unit}`;
+          }
+        } else if (glucoseTime === "po posiłku") {
+          if (
+            norms?.glucosePostMealMax != null &&
+            numeric > norms.glucosePostMealMax
+          ) {
+            isOutOfNorm = true;
+            alertDetails = `Twój cukier ${numeric} ${unit} wykracza poza normę po posiłku.\nNorma: < ${norms.glucosePostMealMax} ${unit}`;
+          }
         }
       }
 
@@ -116,13 +128,13 @@ export default function Pomiary() {
       }
 
       if (isOutOfNorm) {
-        alert(`❗ ${alertDetails}`);
+        toast.error(`${alertDetails}`);
       } else {
-        alert("✅ Pomyślnie dodano pomiar w normie!");
+        toast.success("Pomyślnie dodano pomiar w normie!");
       }
     } else {
       const data = await res.json();
-      alert(data.error || "Błąd dodawania pomiaru");
+      toast.error(data.error || "Błąd dodawania pomiaru");
     }
   };
 
@@ -137,16 +149,9 @@ export default function Pomiary() {
   return (
     <Container>
       <Header text="Pomiary" />
-
       <p className="text-gray-600 mb-8 text-center max-w-md mx-auto">
         Zarządzaj swoimi pomiarami w prosty i przejrzysty sposób
       </p>
-
-      {status === "unauthenticated" && (
-        <p className="text-red-500 text-center font-medium mb-6">
-          Zaloguj się, aby zarządzać pomiarami
-        </p>
-      )}
 
       <form
         onSubmit={handleSubmit}
@@ -251,7 +256,6 @@ export default function Pomiary() {
           </div>
         )}
 
-        {/* Przycisk */}
         <button
           type="submit"
           className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200"
@@ -261,7 +265,7 @@ export default function Pomiary() {
         </button>
       </form>
 
-      {/* Filtr */}
+      {/* Filtr i lista */}
       <div className="mt-10 max-w-md mx-auto">
         <h2 className="text-xl font-bold text-gray-800 mb-4">
           Filtruj pomiary
@@ -278,7 +282,6 @@ export default function Pomiary() {
         </select>
       </div>
 
-      {/* Lista pomiarów */}
       <div className="mt-6 max-w-md mx-auto">
         <h2 className="text-xl font-bold text-gray-800 mb-4">Twoje pomiary</h2>
         {filteredMeasurements.length === 0 ? (

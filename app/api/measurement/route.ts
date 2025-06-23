@@ -50,6 +50,30 @@ export async function POST(req: NextRequest) {
       );
     }
     finalAmount = parsedAmount.toString();
+
+    // 🔄 Jeśli typ to "waga", zaktualizuj wagę i BMI w tabeli User
+    if (type === "waga") {
+      const numericWeight = parsedAmount;
+      const user = await prisma.user.findUnique({
+        where: { id: parseInt(session.user.id) },
+        select: { height: true },
+      });
+
+      let bmi: number | null = null;
+
+      if (user?.height && user.height > 0) {
+        const heightInMeters = user.height / 100;
+        bmi = parseFloat((numericWeight / heightInMeters ** 2).toFixed(2));
+      }
+
+      await prisma.user.update({
+        where: { id: parseInt(session.user.id) },
+        data: {
+          weight: numericWeight,
+          ...(bmi !== null && { bmi }),
+        },
+      });
+    }
   }
 
   try {
@@ -76,7 +100,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

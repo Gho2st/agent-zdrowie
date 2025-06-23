@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import toast from "react-hot-toast";
 
 export default function RejestracjaDodatkowa() {
   const [age, setAge] = useState(30);
@@ -51,7 +52,7 @@ export default function RejestracjaDodatkowa() {
     if (res.ok) {
       router.push("/");
     } else {
-      alert("Błąd zapisu");
+      toast.error("Błąd zapisu");
     }
   };
 

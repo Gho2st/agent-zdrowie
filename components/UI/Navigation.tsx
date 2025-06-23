@@ -26,6 +26,9 @@ export default function Navigation() {
             <Link href={"/centrum-zdrowia"}>Centrum Zdrowia</Link>
           </li>
           <li>
+            <Link href={"/agent"}>Agent</Link>
+          </li>
+          <li>
             <Link href={"/profil"}>Profil</Link>
           </li>
           <li>
@@ -45,12 +48,7 @@ export default function Navigation() {
             </li>
           ) : (
             <li>
-              <button
-                onClick={() => signIn()}
-                className="text-green-500 underline"
-              >
-                Zaloguj się
-              </button>
+              <Link className="text-green-500 underline" href={"/logowanie"}>Zaloguj się</Link>
             </li>
           )}
         </ul>

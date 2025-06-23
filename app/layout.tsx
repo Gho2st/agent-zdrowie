@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import Navigation from "@/components/UI/Navigation";
+import { Toaster } from "react-hot-toast";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,7 +33,10 @@ export default function RootLayout({
         <SessionProvider>
           <div className="flex">
             <Navigation />
-            {children}
+            <div className="xl:pl-72 2xl:pl-100 w-full">
+              {children}
+              <Toaster position="top-right" reverseOrder={false} />
+            </div>
           </div>
         </SessionProvider>
       </body>

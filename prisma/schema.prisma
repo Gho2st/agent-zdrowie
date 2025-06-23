@@ -17,12 +17,17 @@ model User {
   height        Int?      // wzrost w cm
   weight        Float?    // waga w kg
   age           Int?
+  medications String? // leki
   systolicMin   Int?
   systolicMax   Int?
   diastolicMin  Int?
   diastolicMax  Int?
-  glucoseMin    Float?
-  glucoseMax    Float?
+  glucoseFastingMin Int?
+  glucoseFastingMax Int?
+  glucosePrediabetesFastingMin Int?
+  glucosePrediabetesFastingMax Int?
+  glucosePostMealMax Int?
+  bmi Float?
   weightMin     Float?
   weightMax     Float?
   createdAt     DateTime  @default(now())

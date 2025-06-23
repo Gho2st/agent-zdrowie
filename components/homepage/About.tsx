@@ -11,8 +11,8 @@ export default function About() {
         je rozumie. Dzięki sztucznej inteligencji analizuje Twoje dane i wspiera
         Cię w dbaniu o zdrowie każdego dnia.
       </p>
-      <div className="flex gap-16 flex-col md:flex-row">
-        <div className="grid md:grid-cols-2 gap-6 w-full md:w-1/2">
+      <div className="flex 2xl:gap-8">
+        <div className="grid md:grid-cols-2 gap-6 w-full md:w-2/3">
           {[
             {
               emoji: "🤖",
@@ -47,7 +47,7 @@ export default function About() {
           ))}
         </div>
 
-        <div className="w-1/3 ml-24">
+        <div className="w-1/4 ml-24">
           <Image
             className=""
             src={"/agent2.png"}
