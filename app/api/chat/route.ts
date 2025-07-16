@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { Prisma } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,18 +18,19 @@ export async function POST(req: NextRequest) {
 
     let contextData = "Brak danych użytkownika.";
 
-    const user = await prisma.user.findUnique({
+    const user = (await prisma.user.findUnique({
       where: { email: userEmail },
       include: {
         measurements: {
-          orderBy: [
-            { createdAt: "desc" },
-            { id: "desc" }, // lub updatedAt
-          ],
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           take: 10,
         },
       },
-    });
+    })) as Prisma.UserGetPayload<{
+      include: {
+        measurements: true;
+      };
+    }>;
 
     if (user) {
       const {
@@ -51,7 +53,9 @@ export async function POST(req: NextRequest) {
       } = user;
 
       const healthInfo = [
-        birthdate ? `Data urodzenia: ${birthdate}` : null,
+        birthdate
+          ? `Data urodzenia: ${birthdate.toISOString().split("T")[0]}`
+          : null,
         gender ? `Płeć: ${gender === "M" ? "mężczyzna" : "kobieta"}` : null,
         height ? `Wzrost: ${height} cm` : null,
         weight ? `Waga: ${weight} kg` : null,
