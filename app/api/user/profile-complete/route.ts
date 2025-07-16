@@ -12,7 +12,7 @@ export async function GET() {
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
     select: {
-      age: true,
+      birthdate: true,
       gender: true,
       height: true,
       weight: true,
@@ -20,7 +20,7 @@ export async function GET() {
   });
 
   const complete =
-    !!user?.age && !!user?.gender && !!user?.height && !!user?.weight;
+    !!user?.birthdate && !!user?.gender && !!user?.height && !!user?.weight;
 
   return NextResponse.json({ complete });
 }

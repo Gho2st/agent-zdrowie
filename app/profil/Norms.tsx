@@ -17,7 +17,7 @@ export default function Norms({ norms, handleChange }: NormsProps) {
 
       {!editingNorms ? (
         <button
-          className="bg-green-600 text-white px-4 py-2 rounded-lg"
+          className="bg-green-600 text-white px-4 py-2 rounded-lg cursor-pointer"
           onClick={() => setEditingNorms(true)}
         >
           Edytuj normy
@@ -78,13 +78,13 @@ export default function Norms({ norms, handleChange }: NormsProps) {
                   setEditingNorms(false);
                 }
               }}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer"
             >
               Zapisz
             </button>
             <button
               onClick={() => setEditingNorms(false)}
-              className="text-gray-500 underline"
+              className="text-gray-500 underline cursor-pointer"
             >
               Anuluj
             </button>

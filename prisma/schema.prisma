@@ -16,8 +16,9 @@ model User {
   gender        String?   // np. "M" lub "K"
   height        Int?      // wzrost w cm
   weight        Float?    // waga w kg
-  age           Int?
+  birthdate     DateTime? // wiek jako data urodzenia zeby potem dynamicznie obliczac wiek uzytkownika
   medications String? // leki
+  conditions String? // choroby
   systolicMin   Int?
   systolicMax   Int?
   diastolicMin  Int?

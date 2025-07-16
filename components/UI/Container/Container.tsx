@@ -6,10 +6,8 @@ interface ContainerProps {
 
 export default function Container({ children }: ContainerProps) {
   return (
-    <main className="p-10">
-      <div className="rounded-2xl bg-gradient-to-br from-white via-blue-50 to-green-100 shadow-2xl p-8 h-full">
-        {children}
-      </div>
+    <main className="m-10 p-10 min-h-[90vh] rounded-2xl bg-gradient-to-br from-white via-blue-50 to-green-100 shadow-2xl ">
+      <div>{children}</div>
     </main>
   );
 }

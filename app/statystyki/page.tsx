@@ -35,18 +35,22 @@ export default function Statistics() {
   const { data: session } = useSession();
   const [measurements, setMeasurements] = useState([]);
   const [norms, setNorms] = useState<any>(null);
+  const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
     if (session?.user?.id) {
       const fetchData = async () => {
-        const [mRes, nRes] = await Promise.all([
+        const [mRes, nRes, sRes] = await Promise.all([
           fetch("/api/measurement"),
           fetch("/api/user/norms"),
+          fetch("/api/statistics"),
         ]);
         const measurements = await mRes.json();
         const norms = await nRes.json();
+        const stats = await sRes.json();
         setMeasurements(measurements);
         setNorms(norms);
+        setStats(stats);
       };
       fetchData();
     }
@@ -205,16 +209,45 @@ export default function Statistics() {
       <Header text="Statystyki zdrowia" />
       <div className="grid md:grid-cols-2 gap-6 my-8 mt-10">
         {["ciśnienie", "cukier", "waga"].map((type) => (
-          <div
-            key={type}
-            className="bg-white p-4 rounded-xl shadow-2xl h-full"
-          >
+          <div key={type} className="bg-white p-4 rounded-xl shadow-2xl h-full">
             <h3 className="font-bold text-lg mb-4 capitalize">{type}</h3>
             <Line
               data={prepareChartData(type)}
               options={baseOptions(type)}
               height={300}
             />
+            <div className="mt-4 space-y-1 text-sm text-gray-700">
+              {type === "waga" &&
+                stats?.waga?.map((item: any) => (
+                  <p key={item.month}>
+                    📅 {item.month} — Średnia:{" "}
+                    <strong>{item.avg.toFixed(1)}</strong> kg, Min: {item.min},
+                    Max: {item.max}
+                  </p>
+                ))}
+
+              {type === "cukier" &&
+                stats?.cukier?.map((item: any) => (
+                  <p key={item.month}>
+                    📅 {item.month} — Średnia:{" "}
+                    <strong>{item.avg.toFixed(1)}</strong> mg/dL, Min:{" "}
+                    {item.min}, Max: {item.max}
+                  </p>
+                ))}
+
+              {type === "ciśnienie" &&
+                stats?.cisnienie?.map((item: any) => (
+                  <p key={item.month}>
+                    📅 {item.month} — Śr.:{" "}
+                    <strong>
+                      {item.avgSystolic?.toFixed(0)}/
+                      {item.avgDiastolic?.toFixed(0)}
+                    </strong>{" "}
+                    mmHg, Min: {item.minSystolic}/{item.minDiastolic}, Max:{" "}
+                    {item.maxSystolic}/{item.maxDiastolic}
+                  </p>
+                ))}
+            </div>
           </div>
         ))}
       </div>

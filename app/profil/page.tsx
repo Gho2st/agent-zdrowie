@@ -14,7 +14,8 @@ import toast from "react-hot-toast";
 export default function Profil() {
   const { data: session } = useSession();
   const router = useRouter();
-  const [editingAge, setEditingAge] = useState(false);
+  const [editingHeight, setEditingHeight] = useState(false);
+  const [editingWeight, setEditingWeight] = useState(false);
   const [norms, setNorms] = useState<any>({});
 
   useEffect(() => {
@@ -38,24 +39,44 @@ export default function Profil() {
     const { name, value } = e.target;
     setNorms((prev: any) => ({
       ...prev,
-      [name]: name === "age" ? parseInt(value) : parseFloat(value),
+      [name]:
+        name === "weight" || name === "height"
+          ? parseInt(value)
+          : parseFloat(value),
     }));
   };
 
-  const saveAge = async () => {
+  const saveHeight = async (newHeight: number) => {
     const res = await fetch("/api/user/norms", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ age: norms.age }),
+      body: JSON.stringify({ height: newHeight }),
     });
     if (res.ok) {
       const refreshed = await fetch("/api/user/norms");
       if (refreshed.ok) {
         const updatedData = await refreshed.json();
         setNorms(updatedData);
+        toast.success("Zaktualizowano wzrost");
+        setEditingHeight(false);
       }
-      toast.success("Zaktualizowano wiek i przeliczono normy");
-      setEditingAge(false);
+    }
+  };
+
+  const saveWeight = async (newWeight: number) => {
+    const res = await fetch("/api/user/norms", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ weight: newWeight }),
+    });
+    if (res.ok) {
+      const refreshed = await fetch("/api/user/norms");
+      if (refreshed.ok) {
+        const updatedData = await refreshed.json();
+        setNorms(updatedData);
+        toast.success("Zaktualizowano wagę");
+        setEditingWeight(false);
+      }
     }
   };
 
@@ -80,16 +101,19 @@ export default function Profil() {
             height={500}
             className="w-16 h-16 rounded-full my-3"
           />
+
+          {/* 🔹 Sekcja: Wiek, wzrost, waga */}
+          <Age
+            norms={norms}
+            saveHeight={saveHeight}
+            saveWeight={saveWeight}
+            editingWeight={editingWeight}
+            setEditingWeight={setEditingWeight}
+            editingHeight={editingHeight}
+            setEditingHeight={setEditingHeight}
+          />
         </div>
 
-        {/* 🔹 Sekcja: Wiek */}
-        <Age
-          norms={norms}
-          handleChange={handleChange}
-          saveAge={saveAge}
-          editingAge={editingAge}
-          setEditingAge={setEditingAge}
-        />
         {/* 🔹 Sekcja: Leki */}
         <Medications norms={norms} setNorms={setNorms} />
 

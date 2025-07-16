@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 
 export default function RejestracjaDodatkowa() {
-  const [age, setAge] = useState(30);
+  const [birthdate, setBirthdate] = useState("");
   const [gender, setGender] = useState("M");
   const [height, setHeight] = useState(170);
   const [weight, setWeight] = useState(70);
@@ -46,7 +46,7 @@ export default function RejestracjaDodatkowa() {
     const res = await fetch("/api/user/setup", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ age, gender, height, weight }),
+      body: JSON.stringify({ birthdate, gender, height, weight }),
     });
 
     if (res.ok) {
@@ -62,11 +62,11 @@ export default function RejestracjaDodatkowa() {
     <div className="max-w-md mx-auto mt-12 p-6 bg-white rounded-xl shadow-md">
       <h1 className="text-xl font-bold mb-4">Uzupełnij dane zdrowotne</h1>
 
-      <label className="block mb-2">Wiek</label>
+      <label className="block mb-2">Data urodzenia</label>
       <input
-        type="number"
-        value={isNaN(age) ? "" : age}
-        onChange={(e) => setAge(parseInt(e.target.value))}
+        type="date"
+        value={birthdate}
+        onChange={(e) => setBirthdate(e.target.value)}
         className="w-full p-2 border rounded mb-4"
       />
 

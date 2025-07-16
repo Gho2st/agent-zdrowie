@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
-import { signIn, signOut } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
+import RaportDownloadButton from "./RaportDownloadButton";
 
 export default function Navigation() {
   const { data: session } = useSession();
@@ -48,16 +49,16 @@ export default function Navigation() {
             </li>
           ) : (
             <li>
-              <Link className="text-green-500 underline" href={"/logowanie"}>Zaloguj się</Link>
+              <Link className="text-green-500 underline" href={"/logowanie"}>
+                Zaloguj się
+              </Link>
             </li>
           )}
         </ul>
       </nav>
       <div>
-        <p className="mb-10 text-2xl font-bold">Raport PDF</p>
-        <button className="bg-green-500 w-full py-5 rounded-3xl text-2xl font-bold">
-          Pobierz
-        </button>
+        <p className="mb-6 text-xl font-bold">Raport PDF</p>
+        <RaportDownloadButton />
       </div>
     </aside>
   );

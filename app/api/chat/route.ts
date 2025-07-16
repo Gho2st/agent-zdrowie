@@ -32,11 +32,12 @@ export async function POST(req: NextRequest) {
 
     if (user) {
       const {
-        age,
+        birthdate,
         gender,
         height,
         weight,
         medications,
+        conditions,
         systolicMin,
         systolicMax,
         diastolicMin,
@@ -50,11 +51,12 @@ export async function POST(req: NextRequest) {
       } = user;
 
       const healthInfo = [
-        age ? `Wiek: ${age} lat` : null,
+        birthdate ? `Data urodzenia: ${birthdate}` : null,
         gender ? `Płeć: ${gender === "M" ? "mężczyzna" : "kobieta"}` : null,
         height ? `Wzrost: ${height} cm` : null,
         weight ? `Waga: ${weight} kg` : null,
-        medications ? `Leki: ${medications}` : null, // 🔹 dodane
+        medications ? `Leki: ${medications}` : null,
+        conditions ? `Choroby: ${conditions}` : null,
         bmi ? `BMI: ${bmi}` : null,
         systolicMin && systolicMax
           ? `Normy ciśnienia skurczowego: ${systolicMin}–${systolicMax} mmHg`
