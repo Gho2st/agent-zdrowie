@@ -16,7 +16,7 @@ export default function ChatPage() {
   }, [messages]);
 
   return (
-    <div className="max-w-2xl mx-auto py-10 px-4">
+    <div className="">
       <h1 className="text-3xl font-bold mb-6">💬 Agent Zdrowie</h1>
 
       <div className="space-y-4 mb-6">

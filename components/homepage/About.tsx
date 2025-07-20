@@ -2,17 +2,28 @@ import Image from "next/image";
 
 export default function About() {
   return (
-    <section>
+    <section className="">
       <h1 className="text-4xl leading-snug font-bold">
         Agent Zdrowie – Twój cyfrowy asystent zdrowia
       </h1>
-      <p className="my-16 text-xl w-3/4">
+      <p className="my-16 text-xl sm:w-3/4">
         Nowoczesna aplikacja zdrowotna, która nie tylko zapisuje pomiary – ona
         je rozumie. Dzięki sztucznej inteligencji analizuje Twoje dane i wspiera
         Cię w dbaniu o zdrowie każdego dnia.
       </p>
-      <div className="flex 2xl:gap-8">
+      <div className="sm:flex 2xl:gap-8">
         <div className="grid md:grid-cols-2 gap-6 w-full md:w-2/3">
+          <div className="sm:w-1/4 ml-24">
+            <Image
+              className=""
+              src={"/agent2.png"}
+              width={700}
+              height={700}
+              layout="responsive"
+              alt="agent ai"
+              priority
+            />
+          </div>
           {[
             {
               emoji: "🤖",
@@ -45,18 +56,6 @@ export default function About() {
               <p className="text-gray-700">{item.text}</p>
             </div>
           ))}
-        </div>
-
-        <div className="w-1/4 ml-24">
-          <Image
-            className=""
-            src={"/agent2.png"}
-            width={700}
-            height={700}
-            layout="responsive"
-            alt="agent ai"
-            priority
-          />
         </div>
       </div>
     </section>
