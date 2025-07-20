@@ -28,7 +28,7 @@ export default function Navigation() {
         } md:translate-x-0 md:static md:flex`}
       >
         {/* Logo */}
-        <Link href="/" className="w-fit">
+        <Link href="/" className="w-fit" onClick={() => setOpen(false)}>
           <Image
             src="/logo.png"
             alt="Logo Agent Zdrowie"
@@ -44,8 +44,13 @@ export default function Navigation() {
         <nav>
           <ul className="flex flex-col gap-6 text-xl font-bold mt-6">
             <li>
+              <Link href="/" onClick={() => setOpen(false)}>
+                Strona Główna
+              </Link>
+            </li>
+            <li>
               <Link href="/centrum-zdrowia" onClick={() => setOpen(false)}>
-                Centrum Zdrowia
+                Panel Zdrowia
               </Link>
             </li>
             <li>
