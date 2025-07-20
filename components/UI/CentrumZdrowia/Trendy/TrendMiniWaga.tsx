@@ -23,10 +23,8 @@ ChartJS.register(
 export default function TrendMiniWaga() {
   const { prepared } = useHealthChartData("waga");
 
-  const labels = prepared.map(
-    (m: any) => m.date.toISOString().slice(5, 10) // MM-DD
-  );
-  const data = prepared.map((m: any) => m.value);
+  const labels = prepared.map((m) => m.date.toISOString().slice(5, 10)); // MM-DD
+  const data = prepared.map((m) => m.value);
 
   return (
     <div className="bg-white rounded-xl shadow p-4">

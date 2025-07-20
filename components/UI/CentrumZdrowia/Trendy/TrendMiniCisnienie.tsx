@@ -19,21 +19,29 @@ ChartJS.register(
   Tooltip
 );
 
+interface CisnienieData {
+  date: string;
+  systolic: number;
+  diastolic: number;
+}
+
 export default function TrendMiniCisnienie() {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<CisnienieData[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       const res = await fetch("/api/measurement");
       const measurements = await res.json();
       const cisnienieData = measurements
-        .filter((m: any) => m.type === "ciśnienie")
+        .filter((m: { type: string }) => m.type === "ciśnienie")
         .slice(-7)
-        .map((m: any) => ({
-          date: new Date(m.createdAt).toISOString().slice(5, 10),
-          systolic: m.systolic,
-          diastolic: m.diastolic,
-        }));
+        .map(
+          (m: { createdAt: string; systolic: number; diastolic: number }) => ({
+            date: new Date(m.createdAt).toISOString().slice(5, 10),
+            systolic: m.systolic,
+            diastolic: m.diastolic,
+          })
+        );
       setData(cisnienieData);
     };
     fetchData();
@@ -45,8 +53,6 @@ export default function TrendMiniCisnienie() {
         💓 Ciśnienie – ostatnie 7 dni
       </h4>
       <div className="h-40">
-        {" "}
-        {/* ustalona wysokość */}
         <Line
           data={{
             labels: data.map((m) => m.date),

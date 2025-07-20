@@ -28,26 +28,26 @@ export default function About() {
             {
               emoji: "🤖",
               title: "Indywidualna analiza",
-              text: "Agent Zdrowie dostosowuje normy i oceny do Twojego wieku, płci, wagi i historii zdrowia. Każdy użytkownik ma unikalny profil – tak jak w prawdziwej opiece zdrowotnej.",
+              text: "Agent Zdrowie dostosowuje normy i oceny do Twojego wieku, płci, wagi i historii zdrowia...",
             },
             {
               emoji: "📏",
               title: "Automatyczne normy",
-              text: "Normy nie są sztywne – są przeliczane na podstawie Twoich danych i aktualnych wytycznych. Zmieniłeś wagę? System sam przeliczy zakresy bez pytania.",
+              text: "Normy nie są sztywne – są przeliczane na podstawie Twoich danych i aktualnych wytycznych...",
             },
             {
               emoji: "⚠️",
               title: "Inteligentne alerty",
-              text: "Agent wykrywa przekroczenia norm i od razu Cię informuje. Nie musisz znać wartości na pamięć – wystarczy spojrzeć, a system powie, czy jest OK.",
+              text: "Agent wykrywa przekroczenia norm i od razu Cię informuje...",
             },
             {
               emoji: "💬",
               title: "Proaktywne podpowiedzi",
-              text: "„Wysokie ciśnienie – stresujący dzień?” albo „Waga rośnie – wróć do aktywności” – nasza AI nie ocenia, tylko wspiera i sugeruje działania.",
+              text: "„Wysokie ciśnienie – stresujący dzień?” albo „Waga rośnie – wróć do aktywności”...",
             },
-          ].map((item, i) => (
+          ].map((item) => (
             <div
-              key={item.title} // 🔑 Dodajemy key tutaj
+              key={item.title}
               className="bg-white/60 backdrop-blur-sm border border-white/40 p-6 rounded-2xl shadow-md hover:shadow-lg transition"
             >
               <h2 className="text-2xl font-semibold mb-2">

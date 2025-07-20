@@ -7,8 +7,19 @@ import { useSession } from "next-auth/react";
 import { User, Measurement } from "@prisma/client";
 import toast from "react-hot-toast";
 
+type MeasurementInput = {
+  type: string;
+  unit: string;
+  systolic?: number;
+  diastolic?: number;
+  note?: string;
+  amount?: number;
+  context?: string;
+  timing?: string;
+};
+
 export default function Pomiary() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [type, setType] = useState("ciśnienie");
   const [value, setValue] = useState("");
   const [unit, setUnit] = useState("mmHg");
@@ -39,7 +50,7 @@ export default function Pomiary() {
       return;
     }
 
-    const body: any = { type, unit };
+    const body: MeasurementInput = { type, unit };
     let isOutOfNorm = false;
     let alertDetails = "";
 
@@ -138,7 +149,7 @@ export default function Pomiary() {
     }
   };
 
-  const filteredMeasurements = measurements.filter((m: any) =>
+  const filteredMeasurements = measurements.filter((m: Measurement) =>
     filterType === "all" ? true : m.type === filterType
   );
 
@@ -290,7 +301,7 @@ export default function Pomiary() {
           </p>
         ) : (
           <ul className="space-y-3">
-            {filteredMeasurements.map((m: any) => (
+            {filteredMeasurements.map((m: Measurement) => (
               <li
                 key={m.id}
                 className="bg-white p-4 rounded-lg shadow-md text-gray-700"

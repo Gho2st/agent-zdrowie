@@ -1,9 +1,9 @@
 import { useState, ChangeEvent } from "react";
 import toast from "react-hot-toast";
+
 interface NormsProps {
   norms: Record<string, number>;
   handleChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  setNorms: React.Dispatch<React.SetStateAction<any>>;
 }
 
 export default function Norms({ norms, handleChange }: NormsProps) {

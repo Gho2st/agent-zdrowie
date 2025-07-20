@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
+import { Measurement } from "@prisma/client";
 
 export async function GET() {
   const session = await auth();
@@ -16,16 +17,21 @@ export async function GET() {
       orderBy: { createdAt: "asc" },
     });
 
-    const groupByMonth = (data: any[], field: string) => {
+    // ✅ Typowanie poprawne
+    const groupByMonth = (
+      data: Measurement[],
+      field: keyof Measurement
+    ): Record<string, number[]> => {
       const result: Record<string, number[]> = {};
       data.forEach((m) => {
-        if (!m[field]) return;
+        const value = m[field];
+        if (value === undefined || value === null) return;
         const date = new Date(m.createdAt);
         const key = `${date.getFullYear()}-${String(
           date.getMonth() + 1
         ).padStart(2, "0")}`;
         if (!result[key]) result[key] = [];
-        result[key].push(Number(m[field]));
+        result[key].push(Number(value));
       });
       return result;
     };
@@ -44,6 +50,7 @@ export async function GET() {
         "amount"
       )
     );
+
     const cukier = calculateStats(
       groupByMonth(
         measurements.filter((m) => m.type === "cukier"),
@@ -52,6 +59,7 @@ export async function GET() {
     );
 
     const cisnienieData = measurements.filter((m) => m.type === "ciśnienie");
+
     const cisnienie = Object.entries(
       groupByMonth(cisnienieData, "systolic")
     ).map(([month, systolicVals]) => {
@@ -70,6 +78,7 @@ export async function GET() {
       const maxDiastolic = diastolicVals.length
         ? Math.max(...diastolicVals)
         : null;
+
       return {
         month,
         avgSystolic,

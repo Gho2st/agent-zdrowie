@@ -33,7 +33,7 @@ export default function RootLayout({
         <SessionProvider>
           <div className="flex">
             <Navigation />
-            <div className="xl:pl-72 2xl:pl-100 w-full">
+            <div className="xl:pl-72 2xl:pl-100  w-full">
               {children}
               <Toaster position="top-right" reverseOrder={false} />
             </div>

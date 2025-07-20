@@ -3,16 +3,18 @@
 import toast from "react-hot-toast";
 import { Dispatch, SetStateAction } from "react";
 
+interface NormsState {
+  medications?: string;
+  conditions?: string;
+}
+
 interface Props {
-  norms: {
-    medications?: string;
-    conditions?: string;
-  };
-  setNorms: Dispatch<SetStateAction<any>>;
+  norms: NormsState;
+  setNorms: Dispatch<SetStateAction<NormsState>>;
 }
 
 export default function MedicationsAndConditions({ norms, setNorms }: Props) {
-  const handleSave = async (field: "medications" | "conditions") => {
+  const handleSave = async (field: keyof NormsState) => {
     const value = norms[field]?.trim();
     if (!value) {
       toast.error(`Wprowadź dane zanim zapiszesz.`);
@@ -32,7 +34,7 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
     }
   };
 
-  const handleClear = async (field: "medications" | "conditions") => {
+  const handleClear = async (field: keyof NormsState) => {
     if (!norms[field]) {
       toast("Brak danych do usunięcia.");
       return;
@@ -45,7 +47,7 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
     });
 
     if (res.ok) {
-      setNorms((prev: any) => ({ ...prev, [field]: "" }));
+      setNorms((prev) => ({ ...prev, [field]: "" }));
       toast.success("Usunięto dane.");
     } else {
       toast.error("Błąd przy usuwaniu.");
@@ -64,7 +66,7 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
           placeholder="np. Metformina, Bisoprolol"
           value={norms.medications || ""}
           onChange={(e) =>
-            setNorms((prev: any) => ({
+            setNorms((prev) => ({
               ...prev,
               medications: e.target.value,
             }))
@@ -97,7 +99,7 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
           placeholder="np. cukrzyca typu 2, nadciśnienie"
           value={norms.conditions || ""}
           onChange={(e) =>
-            setNorms((prev: any) => ({
+            setNorms((prev) => ({
               ...prev,
               conditions: e.target.value,
             }))

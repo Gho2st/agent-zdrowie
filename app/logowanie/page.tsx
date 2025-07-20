@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 
 export default function Logowanie() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -32,7 +32,7 @@ export default function Logowanie() {
     };
 
     checkProfile();
-  }, [status]);
+  }, [status, pathname, router]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">

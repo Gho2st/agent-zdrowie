@@ -12,6 +12,7 @@ import {
   CategoryScale,
 } from "chart.js";
 import annotationPlugin from "chartjs-plugin-annotation";
+import type { AnnotationOptions } from "chartjs-plugin-annotation";
 import { Line } from "react-chartjs-2";
 import "chartjs-adapter-date-fns";
 import { useEffect, useState } from "react";
@@ -31,11 +32,55 @@ ChartJS.register(
   annotationPlugin
 );
 
+// 🔸 Typy
+type Measurement = {
+  id: number;
+  type: "ciśnienie" | "cukier" | "waga";
+  createdAt: string;
+  systolic?: number;
+  diastolic?: number;
+  amount?: number;
+};
+
+type Norms = {
+  systolicMin?: number;
+  systolicMax?: number;
+  diastolicMin?: number;
+  diastolicMax?: number;
+  glucoseFastingMin?: number;
+  glucoseFastingMax?: number;
+  weightMin?: number;
+  weightMax?: number;
+};
+
+type StatItem = {
+  month: string;
+  avg: number;
+  min: number;
+  max: number;
+};
+
+type PressureStatItem = {
+  month: string;
+  avgSystolic: number;
+  avgDiastolic: number;
+  minSystolic: number;
+  maxSystolic: number;
+  minDiastolic: number;
+  maxDiastolic: number;
+};
+
+type Stats = {
+  waga?: StatItem[];
+  cukier?: StatItem[];
+  cisnienie?: PressureStatItem[];
+};
+
 export default function Statistics() {
   const { data: session } = useSession();
-  const [measurements, setMeasurements] = useState([]);
-  const [norms, setNorms] = useState<any>(null);
-  const [stats, setStats] = useState<any>(null);
+  const [measurements, setMeasurements] = useState<Measurement[]>([]);
+  const [norms, setNorms] = useState<Norms | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -45,9 +90,9 @@ export default function Statistics() {
           fetch("/api/user/norms"),
           fetch("/api/statistics"),
         ]);
-        const measurements = await mRes.json();
-        const norms = await nRes.json();
-        const stats = await sRes.json();
+        const measurements: Measurement[] = await mRes.json();
+        const norms: Norms = await nRes.json();
+        const stats: Stats = await sRes.json();
         setMeasurements(measurements);
         setNorms(norms);
         setStats(stats);
@@ -56,20 +101,20 @@ export default function Statistics() {
     }
   }, [session]);
 
-  const prepareChartData = (type: string) => {
+  const prepareChartData = (type: Measurement["type"]) => {
     const filtered = measurements
-      .filter((m: any) => m.type === type)
-      .map((m: any) => ({
+      .filter((m) => m.type === type)
+      .map((m) => ({
         date: new Date(m.createdAt),
-        systolic: m.systolic ? Number(m.systolic) : null,
-        diastolic: m.diastolic ? Number(m.diastolic) : null,
-        amount: m.amount ? Number(m.amount) : null,
+        systolic: m.systolic ?? null,
+        diastolic: m.diastolic ?? null,
+        amount: m.amount ?? null,
       }))
       .sort((a, b) => a.date.getTime() - b.date.getTime());
 
     const labels = filtered.map((m) => m.date.toISOString().split("T")[0]);
 
-    let datasets: any = [];
+    let datasets;
 
     if (type === "ciśnienie") {
       datasets = [
@@ -103,16 +148,13 @@ export default function Statistics() {
       ];
     }
 
-    return {
-      labels,
-      datasets,
-    };
+    return { labels, datasets };
   };
 
-  const getAnnotations = (type: string) => {
+  const getAnnotations = (type: Measurement["type"]) => {
     if (!norms) return {};
 
-    const lines: any = {};
+    const lines: Record<string, AnnotationOptions> = {};
 
     if (type === "ciśnienie") {
       lines.systolicMin = {
@@ -121,7 +163,7 @@ export default function Statistics() {
         yMax: norms.systolicMin,
         borderColor: "#4bc0c0",
         borderDash: [6, 4],
-        label: { content: "Skurczowe min", enabled: true, position: "start" },
+        label: { content: "Skurczowe min", position: "start" },
       };
       lines.systolicMax = {
         type: "line",
@@ -129,7 +171,7 @@ export default function Statistics() {
         yMax: norms.systolicMax,
         borderColor: "#4bc0c0",
         borderDash: [6, 4],
-        label: { content: "Skurczowe max", enabled: true, position: "start" },
+        label: { content: "Skurczowe max", position: "start" },
       };
       lines.diastolicMin = {
         type: "line",
@@ -137,7 +179,7 @@ export default function Statistics() {
         yMax: norms.diastolicMin,
         borderColor: "#ff6384",
         borderDash: [6, 4],
-        label: { content: "Rozkurczowe min", enabled: true, position: "start" },
+        label: { content: "Rozkurczowe min", position: "start" },
       };
       lines.diastolicMax = {
         type: "line",
@@ -145,7 +187,7 @@ export default function Statistics() {
         yMax: norms.diastolicMax,
         borderColor: "#ff6384",
         borderDash: [6, 4],
-        label: { content: "Rozkurczowe max", enabled: true, position: "start" },
+        label: { content: "Rozkurczowe max", position: "start" },
       };
     }
 
@@ -156,7 +198,7 @@ export default function Statistics() {
         yMax: norms.glucoseFastingMin,
         borderColor: "#999",
         borderDash: [6, 4],
-        label: { content: "Glukoza min", enabled: true, position: "start" },
+        label: { content: "Glukoza min", position: "start" },
       };
       lines.glucoseMax = {
         type: "line",
@@ -164,7 +206,7 @@ export default function Statistics() {
         yMax: norms.glucoseFastingMax,
         borderColor: "#999",
         borderDash: [6, 4],
-        label: { content: "Glukoza max", enabled: true, position: "start" },
+        label: { content: "Glukoza max", position: "start" },
       };
     }
 
@@ -175,7 +217,7 @@ export default function Statistics() {
         yMax: norms.weightMin,
         borderColor: "#999",
         borderDash: [6, 4],
-        label: { content: "Waga min", enabled: true, position: "start" },
+        label: { content: "Waga min", position: "start" },
       };
       lines.weightMax = {
         type: "line",
@@ -183,14 +225,14 @@ export default function Statistics() {
         yMax: norms.weightMax,
         borderColor: "#999",
         borderDash: [6, 4],
-        label: { content: "Waga max", enabled: true, position: "start" },
+        label: { content: "Waga max", position: "start" },
       };
     }
 
     return lines;
   };
 
-  const baseOptions = (type: string) => ({
+  const baseOptions = (type: Measurement["type"]) => ({
     responsive: true,
     plugins: {
       legend: { position: "top" as const },
@@ -198,9 +240,7 @@ export default function Statistics() {
       annotation: { annotations: getAnnotations(type) },
     },
     scales: {
-      y: {
-        beginAtZero: false,
-      },
+      y: { beginAtZero: false },
     },
   });
 
@@ -212,36 +252,34 @@ export default function Statistics() {
           <div key={type} className="bg-white p-4 rounded-xl shadow-2xl h-full">
             <h3 className="font-bold text-lg mb-4 capitalize">{type}</h3>
             <Line
-              data={prepareChartData(type)}
-              options={baseOptions(type)}
+              data={prepareChartData(type as Measurement["type"])}
+              options={baseOptions(type as Measurement["type"])}
               height={300}
             />
             <div className="mt-4 space-y-1 text-sm text-gray-700">
               {type === "waga" &&
-                stats?.waga?.map((item: any) => (
+                stats?.waga?.map((item) => (
                   <p key={item.month}>
                     📅 {item.month} — Średnia:{" "}
                     <strong>{item.avg.toFixed(1)}</strong> kg, Min: {item.min},
                     Max: {item.max}
                   </p>
                 ))}
-
               {type === "cukier" &&
-                stats?.cukier?.map((item: any) => (
+                stats?.cukier?.map((item) => (
                   <p key={item.month}>
                     📅 {item.month} — Średnia:{" "}
                     <strong>{item.avg.toFixed(1)}</strong> mg/dL, Min:{" "}
                     {item.min}, Max: {item.max}
                   </p>
                 ))}
-
               {type === "ciśnienie" &&
-                stats?.cisnienie?.map((item: any) => (
+                stats?.cisnienie?.map((item) => (
                   <p key={item.month}>
                     📅 {item.month} — Śr.:{" "}
                     <strong>
-                      {item.avgSystolic?.toFixed(0)}/
-                      {item.avgDiastolic?.toFixed(0)}
+                      {item.avgSystolic.toFixed(0)}/
+                      {item.avgDiastolic.toFixed(0)}
                     </strong>{" "}
                     mmHg, Min: {item.minSystolic}/{item.minDiastolic}, Max:{" "}
                     {item.maxSystolic}/{item.maxDiastolic}

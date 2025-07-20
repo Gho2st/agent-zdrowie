@@ -14,7 +14,24 @@ function calculateAge(birthdate: string | Date): number {
   return age;
 }
 
-// ✅ GET: pobierz dane użytkownika + normy
+type UpdateUserData = {
+  birthdate?: string | Date;
+  height?: number;
+  weight?: number;
+  systolicMin?: number;
+  systolicMax?: number;
+  diastolicMin?: number;
+  diastolicMax?: number;
+  glucoseFastingMin?: number;
+  glucoseFastingMax?: number;
+  glucosePostMealMax?: number;
+  weightMin?: number;
+  weightMax?: number;
+  medications?: string[];
+  conditions?: string[];
+  bmi?: number;
+};
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.email)
@@ -50,40 +67,33 @@ export async function GET() {
   return NextResponse.json(user);
 }
 
-// ✅ PATCH: zaktualizuj dane lub przelicz normy
 export async function PATCH(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.email)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
+  const body: Partial<UpdateUserData> = await req.json();
 
-  const allowedFields = [
-    "birthdate",
-    "height",
-    "weight",
-    "systolicMin",
-    "systolicMax",
-    "diastolicMin",
-    "diastolicMax",
-    "glucoseFastingMin",
-    "glucoseFastingMax",
-    "glucosePostMealMax",
-    "weightMin",
-    "weightMax",
-    "medications",
-    "conditions",
-  ];
+  // Jawna i bezpieczna budowa obiektu aktualizacji
+  const updateData: Partial<UpdateUserData> = {
+    birthdate: body.birthdate,
+    height: body.height,
+    weight: body.weight,
+    systolicMin: body.systolicMin,
+    systolicMax: body.systolicMax,
+    diastolicMin: body.diastolicMin,
+    diastolicMax: body.diastolicMax,
+    glucoseFastingMin: body.glucoseFastingMin,
+    glucoseFastingMax: body.glucoseFastingMax,
+    glucosePostMealMax: body.glucosePostMealMax,
+    weightMin: body.weightMin,
+    weightMax: body.weightMax,
+    medications: body.medications,
+    conditions: body.conditions,
+  };
 
-  const updateData: Record<string, any> = {};
-  for (const key of allowedFields) {
-    if (key in body) {
-      updateData[key] = body[key];
-    }
-  }
-
-  // 🔹 Jeśli birthdate – przelicz normy
-  if (Object.keys(updateData).length === 1 && "birthdate" in updateData) {
+  // Obsługa tylko aktualizacji daty urodzenia i przeliczenia norm
+  if (Object.keys(updateData).length === 1 && updateData.birthdate) {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: {
@@ -144,7 +154,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json(updated);
   }
 
-  // 🔹 Jeśli height lub weight – przelicz BMI
+  // Przeliczanie BMI jeśli zmieniono wagę lub wzrost
   if ("height" in updateData || "weight" in updateData) {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
@@ -162,15 +172,26 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
-  // 🔹 Ręczna aktualizacja różnych danych
   if (Object.keys(updateData).length > 0) {
+    // Konwersja birthdate do Date
     if (updateData.birthdate) {
       updateData.birthdate = new Date(updateData.birthdate);
     }
 
+    // Jeśli medications/conditions są tablicami, zamień na JSON.stringified
+    const serializedUpdateData = {
+      ...updateData,
+      medications: updateData.medications
+        ? JSON.stringify(updateData.medications)
+        : undefined,
+      conditions: updateData.conditions
+        ? JSON.stringify(updateData.conditions)
+        : undefined,
+    };
+
     await prisma.user.update({
       where: { email: session.user.email },
-      data: updateData,
+      data: serializedUpdateData,
     });
 
     const updated = await prisma.user.findUnique({

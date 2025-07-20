@@ -13,7 +13,7 @@ export default function RejestracjaDodatkowa() {
   const [checking, setChecking] = useState(true);
   const router = useRouter();
 
-  const { data: session, status } = useSession();
+  const { status } = useSession();
 
   useEffect(() => {
     const verify = async () => {
@@ -40,7 +40,7 @@ export default function RejestracjaDodatkowa() {
     };
 
     verify();
-  }, [status]);
+  }, [status, router]);
 
   const handleSubmit = async () => {
     const res = await fetch("/api/user/setup", {

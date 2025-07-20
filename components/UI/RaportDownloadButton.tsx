@@ -31,8 +31,12 @@ export default function RaportDownloadButton() {
       link.remove();
 
       window.URL.revokeObjectURL(url);
-    } catch (err: any) {
-      setError(err.message || "Błąd pobierania raportu.");
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Błąd pobierania raportu.");
+      }
     } finally {
       setIsLoading(false);
     }

@@ -11,12 +11,58 @@ import Norms from "./Norms";
 import Age from "./Age";
 import toast from "react-hot-toast";
 
+// 🔹 Typ łączony dla wszystkich komponentów
+type CombinedNorms = {
+  birthdate: string | Date;
+  height: number;
+  weight: number;
+  bmi?: number;
+  medications?: string;
+  conditions?: string;
+  systolicMin?: number;
+  systolicMax?: number;
+  diastolicMin?: number;
+  diastolicMax?: number;
+  glucoseFastingMin?: number;
+  glucoseFastingMax?: number;
+  glucosePostMealMax?: number;
+  weightMin?: number;
+  weightMax?: number;
+  [key: string]: string | number | Date | undefined;
+};
+
+// 🔹 Typ do Medications
+type NormsState = {
+  medications?: string;
+  conditions?: string;
+};
+
 export default function Profil() {
   const { data: session } = useSession();
   const router = useRouter();
   const [editingHeight, setEditingHeight] = useState(false);
   const [editingWeight, setEditingWeight] = useState(false);
-  const [norms, setNorms] = useState<any>({});
+  const [norms, setNorms] = useState<CombinedNorms>({
+    birthdate: new Date().toISOString(),
+    height: 0,
+    weight: 0,
+    medications: "",
+    conditions: "",
+  });
+
+  // 🔧 Lokalne dostosowanie setNorms dla Medications
+  const setMedicationNorms: React.Dispatch<React.SetStateAction<NormsState>> = (
+    action
+  ) => {
+    setNorms((prev) => {
+      const result = typeof action === "function" ? action(prev) : action;
+      return {
+        ...prev,
+        medications: result.medications ?? "",
+        conditions: result.conditions ?? "",
+      };
+    });
+  };
 
   useEffect(() => {
     if (!session) {
@@ -27,7 +73,7 @@ export default function Profil() {
     const fetchUserNorms = async () => {
       const res = await fetch("/api/user/norms");
       if (res.ok) {
-        const data = await res.json();
+        const data: CombinedNorms = await res.json();
         setNorms(data);
       }
     };
@@ -37,7 +83,7 @@ export default function Profil() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setNorms((prev: any) => ({
+    setNorms((prev) => ({
       ...prev,
       [name]:
         name === "weight" || name === "height"
@@ -55,7 +101,7 @@ export default function Profil() {
     if (res.ok) {
       const refreshed = await fetch("/api/user/norms");
       if (refreshed.ok) {
-        const updatedData = await refreshed.json();
+        const updatedData: CombinedNorms = await refreshed.json();
         setNorms(updatedData);
         toast.success("Zaktualizowano wzrost");
         setEditingHeight(false);
@@ -72,7 +118,7 @@ export default function Profil() {
     if (res.ok) {
       const refreshed = await fetch("/api/user/norms");
       if (refreshed.ok) {
-        const updatedData = await refreshed.json();
+        const updatedData: CombinedNorms = await refreshed.json();
         setNorms(updatedData);
         toast.success("Zaktualizowano wagę");
         setEditingWeight(false);
@@ -104,7 +150,12 @@ export default function Profil() {
 
           {/* 🔹 Sekcja: Wiek, wzrost, waga */}
           <Age
-            norms={norms}
+            norms={{
+              birthdate: norms.birthdate,
+              height: norms.height,
+              weight: norms.weight,
+              bmi: norms.bmi,
+            }}
             saveHeight={saveHeight}
             saveWeight={saveWeight}
             editingWeight={editingWeight}
@@ -114,11 +165,24 @@ export default function Profil() {
           />
         </div>
 
-        {/* 🔹 Sekcja: Leki */}
-        <Medications norms={norms} setNorms={setNorms} />
+        {/* 🔹 Sekcja: Leki i choroby */}
+        <Medications
+          norms={{
+            medications: norms.medications,
+            conditions: norms.conditions,
+          }}
+          setNorms={setMedicationNorms}
+        />
 
-        {/* 🔹 Sekcja: Normy */}
-        <Norms norms={norms} handleChange={handleChange} setNorms={setNorms} />
+        {/* 🔹 Sekcja: Normy liczbowo */}
+        <Norms
+          norms={
+            Object.fromEntries(
+              Object.entries(norms).filter(([, val]) => typeof val === "number")
+            ) as Record<string, number>
+          }
+          handleChange={handleChange}
+        />
       </div>
     </Container>
   );

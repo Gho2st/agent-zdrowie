@@ -21,18 +21,23 @@ ChartJS.register(
   Filler
 );
 
+interface CukierData {
+  date: string;
+  value: number;
+}
+
 export default function TrendMiniCukier() {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<CukierData[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       const res = await fetch("/api/measurement");
       const measurements = await res.json();
       const cukierData = measurements
-        .filter((m: any) => m.type === "cukier")
+        .filter((m: { type: string }) => m.type === "cukier")
         .slice(-7)
-        .map((m: any) => ({
-          date: new Date(m.createdAt).toISOString().slice(5, 10), // MM-DD
+        .map((m: { createdAt: string; amount: number }) => ({
+          date: new Date(m.createdAt).toISOString().slice(5, 10),
           value: Number(m.amount),
         }));
       setData(cukierData);

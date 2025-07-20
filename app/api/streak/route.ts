@@ -30,7 +30,6 @@ export async function GET() {
     ).sort((a, b) => (a < b ? 1 : -1)); // malejąco
 
     let streak = 0;
-    const today = new Date().toISOString().slice(0, 10);
 
     for (let i = 0; i < uniqueDates.length; i++) {
       const expectedDate = new Date();
