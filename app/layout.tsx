@@ -4,6 +4,7 @@ import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import Navigation from "@/components/UI/Navigation";
 import { Toaster } from "react-hot-toast";
+import ClientLayoutGuard from "@/components/UI/ClientLayoutGuard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,9 +34,11 @@ export default function RootLayout({
         <SessionProvider>
           <div className="flex">
             <Navigation />
-            <div className="xl:pl-72 2xl:pl-100  w-full">
-              {children}
-              <Toaster position="top-right" reverseOrder={false} />
+            <div className="xl:pl-72 2xl:pl-100 w-full">
+              <ClientLayoutGuard>
+                {children}
+                <Toaster position="top-right" reverseOrder={false} />
+              </ClientLayoutGuard>
             </div>
           </div>
         </SessionProvider>
