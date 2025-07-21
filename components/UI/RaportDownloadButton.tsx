@@ -6,7 +6,7 @@ import { Loader2, FileDown } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function RaportDownloadButton() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
