@@ -27,19 +27,29 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pl">
+    <html lang="pl" className="h-full">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-100`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-100 h-full`}
       >
         <SessionProvider>
-          <div className="flex">
-            <Navigation />
-            <div className="xl:pl-72 2xl:pl-100 w-full">
+          <div className="flex h-screen overflow-hidden">
+            {/* Lewa kolumna – desktop */}
+            <div className="hidden md:block fixed top-0 left-0 w-72 h-screen z-40">
+              <Navigation /> {/* desktop only */}
+            </div>
+
+            {/* Nawigacja mobilna – niezależna */}
+            <div className="md:hidden">
+              <Navigation /> {/* mobile only */}
+            </div>
+
+            {/* Treść */}
+            <main className="flex-1 ml-0 md:ml-72 overflow-y-auto h-full">
               <ClientLayoutGuard>
                 {children}
                 <Toaster position="top-right" reverseOrder={false} />
               </ClientLayoutGuard>
-            </div>
+            </main>
           </div>
         </SessionProvider>
       </body>

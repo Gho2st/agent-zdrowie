@@ -6,7 +6,7 @@ interface ContainerProps {
 
 export default function Container({ children }: ContainerProps) {
   return (
-    <main className="px-[9%] py-24  min-h-[90vh] rounded-2xl bg-gradient-to-br from-white via-blue-50 to-green-100 shadow-2xl ">
+    <main className="px-[9%] py-24  min-h-[100vh] rounded-2xl bg-gradient-to-br from-white via-blue-50 to-green-100 shadow-2xl ">
       <div>{children}</div>
     </main>
   );

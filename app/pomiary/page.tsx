@@ -160,17 +160,17 @@ export default function Pomiary() {
   return (
     <Container>
       <Header text="Pomiary" />
-      <p className="text-gray-600 mb-8 text-center max-w-md mx-auto">
+      <p className="text-gray-600 mt-4 mb-8">
         Zarządzaj swoimi pomiarami w prosty i przejrzysty sposób
       </p>
 
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col gap-5 bg-white p-8 rounded-2xl shadow-xl w-full max-w-md mx-auto transition-all duration-300"
+        className="bg-white p-6 md:p-8 rounded-2xl shadow-xl w-full mx-auto space-y-5 transition-all duration-300"
       >
         {/* Typ pomiaru */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="text-sm font-medium text-gray-700 block mb-1">
             Typ pomiaru
           </label>
           <select
@@ -182,17 +182,17 @@ export default function Pomiary() {
               else if (e.target.value === "waga") setUnit("kg");
               setValue("");
             }}
-            className="w-full p-3 border border-gray-300 rounded-lg"
+            className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
           >
-            <option value="ciśnienie">Ciśnienie</option>
-            <option value="cukier">Cukier</option>
-            <option value="waga">Waga</option>
+            <option value="ciśnienie">💓 Ciśnienie</option>
+            <option value="cukier">🍭 Cukier</option>
+            <option value="waga">⚖️ Waga</option>
           </select>
         </div>
 
         {/* Wartość */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="text-sm font-medium text-gray-700 block mb-1">
             {type === "ciśnienie" ? "Ciśnienie (np. 120/80)" : "Wartość"}
           </label>
           <input
@@ -200,76 +200,55 @@ export default function Pomiary() {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             required
-            placeholder={type === "ciśnienie" ? "120/80" : "Wpisz wartość"}
-            className="w-full p-3 border border-gray-300 rounded-lg"
+            placeholder={type === "ciśnienie" ? "120/80" : "np. 5.6"}
+            className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
           />
         </div>
 
         {/* Jednostka */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Jednostka
-          </label>
-          <input
-            type="text"
-            value={unit}
-            readOnly
-            className="w-full p-3 border border-gray-200 rounded-lg bg-gray-100 text-gray-600"
-          />
-        </div>
+        <input
+          type="text"
+          value={unit}
+          readOnly
+          className="w-full p-3 border border-gray-200 rounded-lg bg-gray-100 text-gray-600"
+        />
 
-        {/* Pola dodatkowe */}
+        {/* Pola kontekstowe dla cukru i ciśnienia */}
         {type === "cukier" && (
           <>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Co jadłeś przed pomiarem?
-              </label>
-              <input
-                type="text"
-                value={glucoseContext}
-                onChange={(e) => setGlucoseContext(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg"
-                placeholder="np. owsianka z bananem"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Czas pomiaru
-              </label>
-              <select
-                value={glucoseTime}
-                onChange={(e) => setGlucoseTime(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg"
-              >
-                <option value="przed posiłkiem">Przed posiłkiem</option>
-                <option value="po posiłku">Po posiłku</option>
-                <option value="rano">Rano</option>
-                <option value="wieczorem">Wieczorem</option>
-              </select>
-            </div>
+            <input
+              type="text"
+              value={glucoseContext}
+              onChange={(e) => setGlucoseContext(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg"
+              placeholder="Co jadłeś przed pomiarem?"
+            />
+            <select
+              value={glucoseTime}
+              onChange={(e) => setGlucoseTime(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg"
+            >
+              <option value="przed posiłkiem">Przed posiłkiem</option>
+              <option value="po posiłku">Po posiłku</option>
+              <option value="rano">Rano</option>
+              <option value="wieczorem">Wieczorem</option>
+            </select>
           </>
         )}
 
         {type === "ciśnienie" && (
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Notatka (np. stres, kawa, wysiłek)
-            </label>
-            <input
-              type="text"
-              value={pressureNote}
-              onChange={(e) => setPressureNote(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg"
-              placeholder="np. stresujący dzień"
-            />
-          </div>
+          <input
+            type="text"
+            value={pressureNote}
+            onChange={(e) => setPressureNote(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-lg"
+            placeholder="Notatka (np. stres, wysiłek)"
+          />
         )}
 
         <button
           type="submit"
-          className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200"
+          className="bg-green-600 hover:bg-green-700 text-white w-full font-semibold py-3 rounded-lg transition"
           disabled={status !== "authenticated"}
         >
           Zapisz pomiar
@@ -277,7 +256,7 @@ export default function Pomiary() {
       </form>
 
       {/* Filtr i lista */}
-      <div className="mt-10 max-w-md mx-auto">
+      <div className="mt-10  mx-auto">
         <h2 className="text-xl font-bold text-gray-800 mb-4">
           Filtruj pomiary
         </h2>
@@ -293,7 +272,7 @@ export default function Pomiary() {
         </select>
       </div>
 
-      <div className="mt-6 max-w-md mx-auto">
+      <div className="mt-6  mx-auto">
         <h2 className="text-xl font-bold text-gray-800 mb-4">Twoje pomiary</h2>
         {filteredMeasurements.length === 0 ? (
           <p className="text-gray-500 text-center">

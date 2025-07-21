@@ -1,13 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Loader2, FileDown } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function RaportDownloadButton() {
+  const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleDownload = async () => {
+    if (status !== "authenticated") {
+      toast.error("Musisz być zalogowany, aby pobrać raport.");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -46,7 +54,7 @@ export default function RaportDownloadButton() {
     <div className="flex flex-col gap-2">
       <button
         onClick={handleDownload}
-        disabled={isLoading}
+        disabled={isLoading || status === "loading"}
         className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50"
       >
         {isLoading ? (

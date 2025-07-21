@@ -15,7 +15,7 @@ export default function Navigation() {
     <>
       {/* 🔧 TO: Przycisk HAMBURGERA – zawsze widoczny na mobile */}
       <button
-        className="md:hidden fixed top-4 left-4 z-50 bg-white  p-2 rounded shadow"
+        className="md:hidden fixed top-4 left-4 z-50  p-2 rounded"
         onClick={() => setOpen(!open)}
       >
         {open ? <X /> : <Menu />}
@@ -80,7 +80,7 @@ export default function Navigation() {
                     signOut();
                     setOpen(false);
                   }}
-                  className="text-red-500 underline"
+                  className="text-red-500 cursor-pointer underline"
                 >
                   Wyloguj się
                 </button>
@@ -89,7 +89,7 @@ export default function Navigation() {
               <li>
                 <Link
                   href="/logowanie"
-                  className="text-green-500 underline"
+                  className="text-green-500 cursor-pointer underline"
                   onClick={() => setOpen(false)}
                 >
                   Zaloguj się

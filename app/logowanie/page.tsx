@@ -3,15 +3,13 @@
 import { signIn, useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { FcGoogle } from "react-icons/fc";
+import { Loader2 } from "lucide-react";
 
 export default function Logowanie() {
   const { status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-
-  const handleLogin = async () => {
-    await signIn("google");
-  };
 
   useEffect(() => {
     const checkProfile = async () => {
@@ -34,15 +32,37 @@ export default function Logowanie() {
     checkProfile();
   }, [status, pathname, router]);
 
+  const handleLogin = async () => {
+    await signIn("google");
+  };
+
+  // 🔄 Pokaż loader zanim załadujemy sesję
+  if (status === "loading" || status === "authenticated") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-blue-200 to-purple-200">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen">
-      <h1 className="text-2xl font-bold mb-6">Zaloguj się</h1>
-      <button
-        onClick={handleLogin}
-        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
-      >
-        Zaloguj się przez Google
-      </button>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-blue-200 to-purple-200 px-4">
+      <div className="bg-white shadow-xl rounded-3xl p-10 max-w-md w-full text-center animate-fade-in">
+        <h1 className="text-3xl font-bold text-gray-800 mb-4">
+          👋 Witamy w Agent Zdrowie
+        </h1>
+        <p className="text-gray-600 mb-8 text-sm">
+          Zaloguj się przez Google, aby rozpocząć zarządzanie swoim zdrowiem
+        </p>
+
+        <button
+          onClick={handleLogin}
+          className="w-full flex cursor-pointer items-center justify-center gap-3 bg-white text-gray-800 font-semibold border border-gray-300 px-6 py-3 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 transition-all"
+        >
+          <FcGoogle size={22} />
+          Zaloguj się przez Google
+        </button>
+      </div>
     </div>
   );
 }
