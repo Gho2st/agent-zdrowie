@@ -44,7 +44,7 @@ export default function RootLayout({
             </div>
 
             {/* Treść */}
-            <main className="flex-1 ml-0 md:ml-72 overflow-y-auto h-full">
+            <main id="scrollable" className="flex-1 ml-0 md:ml-72 overflow-y-auto h-full">
               <ClientLayoutGuard>
                 {children}
                 <Toaster position="top-right" reverseOrder={false} />

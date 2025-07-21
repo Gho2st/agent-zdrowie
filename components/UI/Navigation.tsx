@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
@@ -11,11 +11,29 @@ export default function Navigation() {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
 
+  const [showBar, setShowBar] = useState(false);
+
+  useEffect(() => {
+    const scrollable = document.getElementById("scrollable");
+    if (!scrollable) return;
+
+    const handleScroll = () => {
+      setShowBar(scrollable.scrollTop > 10);
+    };
+
+    scrollable.addEventListener("scroll", handleScroll);
+    return () => scrollable.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
     <>
       {/* 🔧 TO: Przycisk HAMBURGERA – zawsze widoczny na mobile */}
       <button
-        className="md:hidden fixed top-4 left-4 z-50  p-2 rounded"
+        className={`md:hidden fixed top-4 left-4 z-50 p-2 rounded transition-all ${
+          showBar
+            ? "bg-white/80 backdrop-blur shadow-md border border-gray-300"
+            : ""
+        }`}
         onClick={() => setOpen(!open)}
       >
         {open ? <X /> : <Menu />}
