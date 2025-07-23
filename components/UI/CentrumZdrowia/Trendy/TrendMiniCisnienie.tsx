@@ -34,6 +34,10 @@ export default function TrendMiniCisnienie() {
       const measurements = await res.json();
       const cisnienieData = measurements
         .filter((m: { type: string }) => m.type === "ciśnienie")
+        .sort(
+          (a: any, b: any) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        )
         .slice(-7)
         .map(
           (m: { createdAt: string; systolic: number; diastolic: number }) => ({

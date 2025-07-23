@@ -60,7 +60,7 @@ export default function Navigation() {
 
         {/* Menu */}
         <nav>
-          <ul className="flex flex-col gap-6 text-xl font-bold mt-6">
+          <ul className="flex flex-col gap-4 sm:gap-6 sm:text-xl font-bold mt-6">
             <li>
               <Link href="/" onClick={() => setOpen(false)}>
                 Strona Główna
@@ -119,7 +119,7 @@ export default function Navigation() {
 
         {/* Raport */}
         <div className="mt-10">
-          <p className="mb-3 text-xl font-bold">Raport PDF</p>
+          <p className="mb-3 sm:text-xl font-bold">Raport PDF</p>
           <RaportDownloadButton />
         </div>
       </div>

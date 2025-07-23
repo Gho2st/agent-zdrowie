@@ -19,28 +19,28 @@ export default function About() {
           {[
             {
               emoji: "🤖",
-              title: "Indywidualna analiza",
-              text: "Agent Zdrowie dostosowuje normy i oceny do Twojego wieku, płci, wagi i historii zdrowia...",
+              title: "Spersonalizowana analiza",
+              text: "Dzięki integracji z Twoim profilem zdrowotnym, Agent interpretuje wyniki pomiarów w kontekście wieku, płci, historii chorób i leków.",
             },
             {
-              emoji: "📏",
-              title: "Automatyczne normy",
-              text: "Normy nie są sztywne – są przeliczane na podstawie Twoich danych i aktualnych wytycznych...",
+              emoji: "📊",
+              title: "Połączenie z bazą danych",
+              text: "Wszystkie pomiary są zapisywane i analizowane – aplikacja pamięta Twoje ostatnie wartości i wykrywa zmiany na przestrzeni czasu.",
             },
             {
-              emoji: "⚠️",
-              title: "Inteligentne alerty",
-              text: "Agent wykrywa przekroczenia norm i od razu Cię informuje...",
+              emoji: "🚨",
+              title: "Inteligentne ostrzeżenia",
+              text: "Przekroczyłeś normę ciśnienia? Glukoza za wysoka? Agent nie tylko Ci to powie, ale też wyjaśni dlaczego to ważne.",
             },
             {
-              emoji: "💬",
-              title: "Proaktywne podpowiedzi",
-              text: "„Wysokie ciśnienie – stresujący dzień?” albo „Waga rośnie – wróć do aktywności”...",
+              emoji: "💡",
+              title: "Rozmowy z AI",
+              text: "Zadaj pytanie, opisz objawy lub poproś o interpretację wyników – Agent odpowie, jak empatyczny doradca zdrowia.",
             },
           ].map((item) => (
             <div
               key={item.title}
-              className="bg-white/60 backdrop-blur-sm border border-white/40 p-6 rounded-2xl shadow-md hover:shadow-lg transition"
+              className="bg-white/60 backdrop-blur-sm border border-white/40 p-6 rounded-2xl shadow-2xl hover:shadow-lg transition"
             >
               <h2 className="text-xl font-semibold mb-2">
                 {item.emoji} {item.title}
@@ -53,7 +53,7 @@ export default function About() {
         {/* Image */}
         <div className="w-full max-w-sm md:max-w-md lg:max-w-lg">
           <Image
-            src="/agent2.png"
+            src="/agent.png"
             alt="agent ai"
             width={700}
             height={700}

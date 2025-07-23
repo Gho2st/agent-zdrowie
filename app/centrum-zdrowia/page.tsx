@@ -13,7 +13,8 @@ import TrendMiniCukier from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniCuki
 
 export default function CentrumZdrowia() {
   const { data: session } = useSession();
-  const userName = session?.user?.name || "Użytkowniku";
+  const fullName = session?.user?.name || "Użytkowniku";
+  const userName = fullName.split(" ")[0];
 
   return (
     <Container>
@@ -26,15 +27,11 @@ export default function CentrumZdrowia() {
             <TrendMiniCukier />
             <TrendMiniCisnienie />
           </div>
-          <div className="flex justify-center mt-6">
-            <Link href="/pomiary">
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl transition">
-                ➕ Dodaj pomiar
-              </button>
-            </Link>
+
+          <div className="grid md:grid-cols-2 md:gap-8">
+            <OstatniePomiary />
+            <CeleZdrowotne />
           </div>
-          <OstatniePomiary />
-          <CeleZdrowotne />
           <div className="text-center mt-6">
             <Link href="/statystyki">
               <span className="text-blue-600 underline text-sm hover:text-blue-800">

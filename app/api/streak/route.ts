@@ -30,13 +30,24 @@ export async function GET() {
     ).sort((a, b) => (a < b ? 1 : -1)); // malejąco
 
     let streak = 0;
+    const today = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
 
-    for (let i = 0; i < uniqueDates.length; i++) {
+    // Jeśli ostatni pomiar był dzisiaj — sprawdzamy od dzisiaj
+    // Jeśli nie — ale był wczoraj, nadal liczmy streak
+    let startIndex = 0;
+    if (!uniqueDates.includes(today) && uniqueDates.includes(yesterdayStr)) {
+      startIndex = 1;
+    }
+
+    for (let i = startIndex; i < uniqueDates.length; i++) {
       const expectedDate = new Date();
       expectedDate.setDate(expectedDate.getDate() - i);
       const expectedStr = expectedDate.toISOString().slice(0, 10);
 
-      if (uniqueDates[i] === expectedStr) {
+      if (uniqueDates.includes(expectedStr)) {
         streak++;
       } else {
         break;

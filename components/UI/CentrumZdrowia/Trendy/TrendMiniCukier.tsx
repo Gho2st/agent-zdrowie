@@ -1,5 +1,5 @@
 "use client";
-
+import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   LineElement,
@@ -9,8 +9,7 @@ import {
   Tooltip,
   Filler,
 } from "chart.js";
-import { Line } from "react-chartjs-2";
-import { useEffect, useState } from "react";
+import useHealthChartData from "@/app/hooks/useHealthChartData";
 
 ChartJS.register(
   LineElement,
@@ -21,29 +20,18 @@ ChartJS.register(
   Filler
 );
 
-interface CukierData {
-  date: string;
-  value: number;
-}
-
 export default function TrendMiniCukier() {
-  const [data, setData] = useState<CukierData[]>([]);
+  const { prepared } = useHealthChartData("cukier");
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const res = await fetch("/api/measurement");
-      const measurements = await res.json();
-      const cukierData = measurements
-        .filter((m: { type: string }) => m.type === "cukier")
-        .slice(-7)
-        .map((m: { createdAt: string; amount: number }) => ({
-          date: new Date(m.createdAt).toISOString().slice(5, 10),
-          value: Number(m.amount),
-        }));
-      setData(cukierData);
-    };
-    fetchData();
-  }, []);
+  const labels = prepared
+    .slice()
+    .reverse()
+    .map((m) => m.date.toISOString().slice(5, 10));
+
+  const data = prepared
+    .slice()
+    .reverse()
+    .map((m) => m.value);
 
   return (
     <div className="bg-white rounded-xl shadow p-4">
@@ -53,11 +41,11 @@ export default function TrendMiniCukier() {
       <div className="h-40">
         <Line
           data={{
-            labels: data.map((m) => m.date),
+            labels,
             datasets: [
               {
-                data: data.map((m) => m.value),
                 label: "Glukoza",
+                data,
                 fill: true,
                 borderColor: "#f59e0b",
                 backgroundColor: "rgba(245, 158, 11, 0.2)",

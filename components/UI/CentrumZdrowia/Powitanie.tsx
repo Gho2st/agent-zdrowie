@@ -36,8 +36,8 @@ export default function PowitanieMotywacja({
   return (
     <div className="mb-8">
       <h1 className="text-3xl font-bold text-gray-900">Hej, {userName}! 👋</h1>
-      <div className="mt-2 flex items-center gap-2 text-gray-600 text-base min-h-[2rem]">
-        <Sparkles className="w-4 h-4 text-blue-500" />
+      <div className="mt-4 flex items-center gap-2 text-gray-600 text-base min-h-[2rem]">
+        <Sparkles className="w-10 h-10 sm:w-4 sm:h-4 text-blue-500" />
         {isLoading ? (
           <span className="animate-pulse">Generuję motywację…</span>
         ) : (

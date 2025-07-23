@@ -43,7 +43,7 @@ export default function OstatniePomiary() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-6 text-gray-500">
+      <div className="bg-white p-4 rounded-xl shadow mt-6 flex items-center justify-center text-gray-500 h-[120px]">
         <Loader2 className="animate-spin mr-2" size={20} />
         Ładowanie pomiarów...
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 
 type Cele = {
   user: {
@@ -39,7 +40,13 @@ export default function CeleZdrowotne() {
     fetchCele();
   }, []);
 
-  if (loading) return <div className="text-gray-500">Ładowanie celów...</div>;
+  if (loading)
+    return (
+      <div className="bg-white p-4 rounded-xl shadow mt-6 flex items-center justify-center text-gray-500 h-[120px]">
+        <Loader2 className="animate-spin mr-2" size={20} />
+        Ładowanie celów...
+      </div>
+    );
   if (!data) return <div className="text-gray-500">Brak danych o celach.</div>;
 
   const { user, values } = data;
