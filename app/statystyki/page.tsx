@@ -251,40 +251,41 @@ export default function Statistics() {
         {["ciśnienie", "cukier", "waga"].map((type) => (
           <div key={type} className="bg-white p-4 rounded-xl shadow-2xl h-full">
             <h3 className="font-bold text-lg mb-4 capitalize">{type}</h3>
-            <Line
-              data={prepareChartData(type as Measurement["type"])}
-              options={baseOptions(type as Measurement["type"])}
-              height={300}
-            />
-            <div className="mt-4 space-y-1 text-sm text-gray-700">
-              {type === "waga" &&
-                stats?.waga?.map((item) => (
-                  <p key={item.month}>
-                    📅 {item.month} — Średnia:{" "}
-                    <strong>{item.avg.toFixed(1)}</strong> kg, Min: {item.min},
-                    Max: {item.max}
-                  </p>
-                ))}
-              {type === "cukier" &&
-                stats?.cukier?.map((item) => (
-                  <p key={item.month}>
-                    📅 {item.month} — Średnia:{" "}
-                    <strong>{item.avg.toFixed(1)}</strong> mg/dL, Min:{" "}
-                    {item.min}, Max: {item.max}
-                  </p>
-                ))}
-              {type === "ciśnienie" &&
-                stats?.cisnienie?.map((item) => (
-                  <p key={item.month}>
-                    📅 {item.month} — Śr.:{" "}
-                    <strong>
-                      {item.avgSystolic.toFixed(0)}/
-                      {item.avgDiastolic.toFixed(0)}
-                    </strong>{" "}
-                    mmHg, Min: {item.minSystolic}/{item.minDiastolic}, Max:{" "}
-                    {item.maxSystolic}/{item.maxDiastolic}
-                  </p>
-                ))}
+            <div className="h-55">
+              <Line
+                data={prepareChartData(type as Measurement["type"])}
+                options={baseOptions(type as Measurement["type"])}
+              />
+              <div className="mt-4 space-y-1 text-sm text-gray-700">
+                {type === "waga" &&
+                  stats?.waga?.map((item) => (
+                    <p key={item.month}>
+                      📅 {item.month} — Średnia:{" "}
+                      <strong>{item.avg.toFixed(1)}</strong> kg, Min: {item.min}
+                      , Max: {item.max}
+                    </p>
+                  ))}
+                {type === "cukier" &&
+                  stats?.cukier?.map((item) => (
+                    <p key={item.month}>
+                      📅 {item.month} — Średnia:{" "}
+                      <strong>{item.avg.toFixed(1)}</strong> mg/dL, Min:{" "}
+                      {item.min}, Max: {item.max}
+                    </p>
+                  ))}
+                {type === "ciśnienie" &&
+                  stats?.cisnienie?.map((item) => (
+                    <p key={item.month}>
+                      📅 {item.month} — Śr.:{" "}
+                      <strong>
+                        {item.avgSystolic.toFixed(0)}/
+                        {item.avgDiastolic.toFixed(0)}
+                      </strong>{" "}
+                      mmHg, Min: {item.minSystolic}/{item.minDiastolic}, Max:{" "}
+                      {item.maxSystolic}/{item.maxDiastolic}
+                    </p>
+                  ))}
+              </div>
             </div>
           </div>
         ))}
