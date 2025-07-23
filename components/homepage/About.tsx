@@ -40,7 +40,7 @@ export default function About() {
           ].map((item) => (
             <div
               key={item.title}
-              className="bg-white/60 backdrop-blur-sm border border-white/40 p-6 rounded-2xl shadow-2xl hover:shadow-lg transition"
+              className="bg-white/30 backdrop-blur-sm border border-white/40 p-6 rounded-2xl shadow-2xl hover:shadow-lg transition"
             >
               <h2 className="text-xl font-semibold mb-2">
                 {item.emoji} {item.title}

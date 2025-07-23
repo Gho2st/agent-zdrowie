@@ -12,7 +12,7 @@ export default function Safety() {
       </p>
 
       <div className="grid md:grid-cols-4 gap-8  mx-auto">
-        <div className="bg-white/60 backdrop-blur-sm border border-white/40 p-6 rounded-2xl shadow-xl">
+        <div className="bg-white/30  backdrop-blur-sm border border-white/40 p-6 rounded-2xl shadow-xl">
           <h3 className="text-xl font-semibold mb-2">
             🛡️ Logowanie przez Google
           </h3>
@@ -23,7 +23,7 @@ export default function Safety() {
           </p>
         </div>
 
-        <div className="bg-white/60 backdrop-blur-sm border border-white/40 p-6 rounded-2xl shadow-xl">
+        <div className="bg-white/30  backdrop-blur-sm border border-white/40 p-6 rounded-2xl shadow-xl">
           <h3 className="text-xl font-semibold mb-2">📁 Prywatność danych</h3>
           <p className="text-gray-700">
             Twoje dane zdrowotne są przechowywane lokalnie w naszej bazie danych
@@ -32,7 +32,7 @@ export default function Safety() {
           </p>
         </div>
 
-        <div className="bg-white/60 backdrop-blur-sm border border-white/40 p-6 rounded-2xl shadow-xl">
+        <div className="bg-white/30  backdrop-blur-sm border border-white/40 p-6 rounded-2xl shadow-xl">
           <h3 className="text-xl font-semibold mb-2">
             🧠 Sprawdzona technologia AI
           </h3>
@@ -44,7 +44,7 @@ export default function Safety() {
           </p>
         </div>
 
-        <div className="bg-white/60 backdrop-blur-sm border border-white/40 p-6 rounded-2xl shadow-xl">
+        <div className="bg-white/30  backdrop-blur-sm border border-white/40 p-6 rounded-2xl shadow-xl">
           <h3 className="text-xl font-semibold mb-2">
             ⚖️ Transparentność i kontrola
           </h3>
