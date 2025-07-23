@@ -25,29 +25,37 @@ interface CisnienieData {
   diastolic: number;
 }
 
+interface Measurement {
+  type: string;
+  createdAt: string;
+  systolic: number;
+  diastolic: number;
+}
+
 export default function TrendMiniCisnienie() {
   const [data, setData] = useState<CisnienieData[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       const res = await fetch("/api/measurement");
-      const measurements = await res.json();
+      const measurements: Measurement[] = await res.json();
+
       const cisnienieData = measurements
-        .filter((m: { type: string }) => m.type === "ciśnienie")
+        .filter((m) => m.type === "ciśnienie")
         .sort(
-          (a: any, b: any) =>
+          (a, b) =>
             new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         )
         .slice(-7)
-        .map(
-          (m: { createdAt: string; systolic: number; diastolic: number }) => ({
-            date: new Date(m.createdAt).toISOString().slice(5, 10),
-            systolic: m.systolic,
-            diastolic: m.diastolic,
-          })
-        );
+        .map((m) => ({
+          date: new Date(m.createdAt).toISOString().slice(5, 10),
+          systolic: m.systolic,
+          diastolic: m.diastolic,
+        }));
+
       setData(cisnienieData);
     };
+
     fetchData();
   }, []);
 
