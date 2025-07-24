@@ -5,13 +5,18 @@ import prisma from "@/lib/prisma";
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
+    console.log("❌ Brak sesji lub ID użytkownika");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const body = await req.json();
+  console.log("📥 Otrzymane dane JSON:", body);
+
   const { amount, type, unit, systolic, diastolic, timing, context, note } =
-    await req.json();
+    body;
 
   if (!type || !unit || (type !== "ciśnienie" && amount === undefined)) {
+    console.warn("⚠️ Brak wymaganych danych:", { type, unit, amount });
     return NextResponse.json(
       { error: "Brak wymaganych danych" },
       { status: 400 }
@@ -26,6 +31,7 @@ export async function POST(req: NextRequest) {
     if (typeof systolic === "number" && typeof diastolic === "number") {
       finalSystolic = systolic;
       finalDiastolic = diastolic;
+      console.log("🩺 Ciśnienie:", { systolic, diastolic });
 
       if (isNaN(finalSystolic) || isNaN(finalDiastolic)) {
         return NextResponse.json(
@@ -34,21 +40,43 @@ export async function POST(req: NextRequest) {
         );
       }
     } else {
+      console.warn("❌ Brak obu wartości ciśnienia:", { systolic, diastolic });
       return NextResponse.json(
         { error: "Ciśnienie wymaga wartości skurczowej i rozkurczowej" },
         { status: 400 }
       );
     }
   } else {
-    numericAmount = parseFloat(amount);
-    if (isNaN(numericAmount)) {
+    console.log("💡 Przetwarzanie amount:", amount, "typ:", typeof amount);
+
+    if (
+      amount === "" ||
+      amount === null ||
+      amount === undefined ||
+      (typeof amount === "string" && amount.trim() === "")
+    ) {
       return NextResponse.json(
-        { error: `Niepoprawna wartość dla typu ${type}` },
+        { error: "Wartość amount nie może być pusta" },
         { status: 400 }
       );
     }
 
-    // Jeśli typ to "waga", zaktualizuj wagę i BMI
+    numericAmount =
+      typeof amount === "number"
+        ? amount
+        : typeof amount === "string"
+        ? parseFloat(amount)
+        : null;
+
+    console.log("🔢 numericAmount:", numericAmount);
+
+    if (numericAmount === null || isNaN(numericAmount)) {
+      return NextResponse.json(
+        { error: `Niepoprawna liczba: ${amount}` },
+        { status: 400 }
+      );
+    }
+
     if (type === "waga") {
       const user = await prisma.user.findUnique({
         where: { id: parseInt(session.user.id) },
@@ -60,6 +88,7 @@ export async function POST(req: NextRequest) {
       if (user?.height && user.height > 0) {
         const heightInMeters = user.height / 100;
         bmi = parseFloat((numericAmount / heightInMeters ** 2).toFixed(2));
+        console.log("⚖️ BMI obliczone:", bmi);
       }
 
       await prisma.user.update({
@@ -73,6 +102,18 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    console.log("📤 Tworzenie pomiaru z danymi:", {
+      type,
+      unit,
+      amount: numericAmount,
+      userId: parseInt(session.user.id),
+      systolic: finalSystolic,
+      diastolic: finalDiastolic,
+      timing,
+      context,
+      note,
+    });
+
     const measurement = await prisma.measurement.create({
       data: {
         type,
@@ -87,9 +128,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    console.log("✅ Pomiar zapisany:", measurement);
     return NextResponse.json(measurement, { status: 200 });
   } catch (error) {
-    console.error("Błąd podczas zapisywania pomiaru:", error);
+    console.error("❌ Błąd podczas zapisywania pomiaru:", error);
     return NextResponse.json(
       { error: "Błąd podczas zapisywania pomiaru" },
       { status: 500 }
@@ -105,8 +147,12 @@ export async function GET() {
 
   try {
     const measurements = await prisma.measurement.findMany({
-      where: { userId: parseInt(session.user.id) },
-      orderBy: { createdAt: "desc" },
+      where: {
+        userId: parseInt(session.user.id),
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
 
     return NextResponse.json(measurements, { status: 200 });

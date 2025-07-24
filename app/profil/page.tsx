@@ -28,6 +28,8 @@ type CombinedNorms = {
   glucosePostMealMax?: number;
   weightMin?: number;
   weightMax?: number;
+  pulseMin?: number;
+  pulseMax?: number;
   [key: string]: string | number | Date | undefined;
 };
 

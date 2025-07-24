@@ -35,6 +35,8 @@ export default function Norms({ norms, handleChange }: NormsProps) {
               "glucosePostMealMax",
               "weightMin",
               "weightMax",
+              "pulseMin",
+              "pulseMax",
             ].map((field) => (
               <label key={field} className="block">
                 {field}:
@@ -62,6 +64,8 @@ export default function Norms({ norms, handleChange }: NormsProps) {
                   "glucosePostMealMax",
                   "weightMin",
                   "weightMax",
+                  "pulseMin",
+                  "pulseMax",
                 ];
                 const dataToSend = Object.fromEntries(
                   fieldsToSend.map((key) => [key, norms[key]])

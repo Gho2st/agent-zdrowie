@@ -11,12 +11,15 @@ type Cele = {
     systolicMax: number | null;
     glucoseFastingMin: number | null;
     glucoseFastingMax: number | null;
+    pulseMin: number | null;
+    pulseMax: number | null;
   };
   values: {
     weight: number | null;
     systolic: number | null;
     diastolic: number | null;
     glucose: number | null;
+    pulse: number | null;
   };
 };
 
@@ -127,6 +130,25 @@ export default function CeleZdrowotne() {
             {values.glucose !== null
               ? `${values.glucose} mg/dL`
               : "Brak pomiaru"}
+          </p>
+        </div>
+
+        {/* TĘTNO */}
+        <div
+          className={`rounded-lg border px-4 py-3 ${
+            inRange(values.pulse, user.pulseMin, user.pulseMax)
+              ? Zielony
+              : Czerwony
+          }`}
+        >
+          <div className="font-medium flex justify-between items-center">
+            ❤️ Tętno
+            <span className="text-xs opacity-70">
+              Cel: {user.pulseMin}–{user.pulseMax} bpm
+            </span>
+          </div>
+          <p className="mt-1 text-base font-bold">
+            {values.pulse !== null ? `${values.pulse} bpm` : "Brak pomiaru"}
           </p>
         </div>
       </div>

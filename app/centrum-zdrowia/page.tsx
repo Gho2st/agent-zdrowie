@@ -10,6 +10,7 @@ import Link from "next/link";
 import TrendMiniWaga from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniWaga";
 import TrendMiniCisnienie from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniCisnienie";
 import TrendMiniCukier from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniCukier";
+import TrendMiniTetno from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniTetno";
 
 export default function CentrumZdrowia() {
   const { data: session } = useSession();
@@ -22,10 +23,11 @@ export default function CentrumZdrowia() {
         <div className="">
           <PowitanieMotywacja userName={userName} />
           <StreakTracker />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
             <TrendMiniWaga />
             <TrendMiniCukier />
             <TrendMiniCisnienie />
+            <TrendMiniTetno />
           </div>
 
           <div className="grid md:grid-cols-2 md:gap-8">

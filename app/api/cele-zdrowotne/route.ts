@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
-
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -20,6 +19,8 @@ export async function GET() {
         systolicMax: true,
         glucoseFastingMin: true,
         glucoseFastingMax: true,
+        pulseMin: true,
+        pulseMax: true,
       },
     });
 
@@ -32,6 +33,7 @@ export async function GET() {
     const lastWeight = last.find((m) => m.type === "waga")?.amount;
     const lastPressure = last.find((m) => m.type === "ciśnienie");
     const lastGlucose = last.find((m) => m.type === "cukier")?.amount;
+    const lastPulse = last.find((m) => m.type === "tętno")?.amount;
 
     return NextResponse.json({
       user,
@@ -40,6 +42,7 @@ export async function GET() {
         systolic: lastPressure?.systolic ?? null,
         diastolic: lastPressure?.diastolic ?? null,
         glucose: lastGlucose ? Number(lastGlucose.toString()) : null,
+        pulse: lastPulse ? Number(lastPulse.toString()) : null,
       },
     });
   } catch (err) {

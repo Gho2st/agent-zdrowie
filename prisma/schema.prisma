@@ -41,7 +41,7 @@ model User {
 
 model Measurement {
   id         Int      @id @default(autoincrement())
-  amount     Decimal?
+  amount     Float?
   type       String
   unit       String
   systolic   Int?
