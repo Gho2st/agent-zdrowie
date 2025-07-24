@@ -23,7 +23,7 @@ export default function CentrumZdrowia() {
       {session?.user ? (
         <div className="">
           <PowitanieMotywacja userName={userName} />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid xl:grid-cols-2 gap-4">
             <StreakTracker />
             <Feedback />
           </div>

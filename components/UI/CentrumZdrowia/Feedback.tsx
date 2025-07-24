@@ -36,9 +36,9 @@ export default function Feedback() {
     ?.parts.find((p) => p.type === "text")?.text;
 
   return (
-    <div className="bg-white shadow rounded-2xl p-6 my-6">
-      <div className="flex items-center justify-between mb-3 text-gray-800">
-        <div className="flex items-center gap-2">
+    <div className="bg-white shadow rounded-2xl p-6">
+      <div className="flex flex-col md:flex-row items-center justify-between mb-3 text-gray-800">
+        <div className="flex items-center justify-center gap-2">
           <HeartPulse className="w-5 h-5 text-red-500" />
           <h2 className="text-base font-semibold">
             Porada zdrowotna od Agenta
@@ -47,7 +47,7 @@ export default function Feedback() {
         <button
           onClick={askForAdvice}
           disabled={isLoading}
-          className="text-sm flex items-center gap-1 text-blue-600 hover:underline disabled:opacity-50"
+          className="text-sm flex my-3 xl:my-0 items-center gap-1 text-blue-600 hover:underline disabled:opacity-50"
         >
           <RotateCcw className="w-4 cursor-pointers h-4" /> Odśwież
         </button>
