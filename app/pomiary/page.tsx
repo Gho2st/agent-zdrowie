@@ -36,7 +36,15 @@ export default function Pomiary() {
     if (status === "authenticated") {
       fetch("/api/measurement")
         .then((res) => res.json())
-        .then(setMeasurements);
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setMeasurements(data);
+          } else {
+            toast.error("Błąd podczas pobierania pomiarów");
+            console.error("Odpowiedź API nie jest tablicą:", data);
+          }
+        });
+
       fetch("/api/user/norms")
         .then((res) => res.json())
         .then(setNorms);
@@ -75,7 +83,7 @@ export default function Pomiary() {
           body.diastolic > norms.diastolicMax)
       ) {
         isOutOfNorm = true;
-        alertDetails = `Zapisano pomiar ale Twoje ciśnienie ${body.systolic}/${body.diastolic} mmHg wykracza poza normę.\nSkurczowe: ${norms.systolicMin}–${norms.systolicMax}, Rozkurczowe: ${norms.diastolicMin}–${norms.diastolicMax}`;
+        alertDetails = `Zapisano pomiar, ale Twoje ciśnienie ${body.systolic}/${body.diastolic} mmHg wykracza poza normę.\nSkurczowe: ${norms.systolicMin}–${norms.systolicMax}, Rozkurczowe: ${norms.diastolicMin}–${norms.diastolicMax}`;
       }
     } else {
       const numeric = parseFloat(value);
@@ -118,6 +126,16 @@ export default function Pomiary() {
       ) {
         isOutOfNorm = true;
         alertDetails = `Twoja waga ${numeric} ${unit} wykracza poza normę.\nNorma: ${norms.weightMin}–${norms.weightMax} ${unit}`;
+      }
+
+      if (
+        type === "tętno" &&
+        norms?.pulseMin != null &&
+        norms?.pulseMax != null &&
+        (numeric < norms.pulseMin || numeric > norms.pulseMax)
+      ) {
+        isOutOfNorm = true;
+        alertDetails = `Twoje tętno ${numeric} ${unit} wykracza poza normę.\nNorma: ${norms.pulseMin}–${norms.pulseMax} ${unit}`;
       }
     }
 
@@ -186,9 +204,9 @@ export default function Pomiary() {
             className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
           >
             <option value="ciśnienie">💓 Ciśnienie</option>
-            <option value="tętno">❤️ Tętno</option>
             <option value="cukier">🍭 Cukier</option>
             <option value="waga">⚖️ Waga</option>
+            <option value="tętno">❤️ Tętno</option>
           </select>
         </div>
 
@@ -202,7 +220,13 @@ export default function Pomiary() {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             required
-            placeholder={type === "ciśnienie" ? "120/80" : "np. 5.6"}
+            placeholder={
+              type === "ciśnienie"
+                ? "120/80"
+                : type === "tętno"
+                ? "np. 70"
+                : "np. 5.6"
+            }
             className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
           />
         </div>
@@ -258,7 +282,7 @@ export default function Pomiary() {
       </form>
 
       {/* Filtr i lista */}
-      <div className="mt-10  mx-auto">
+      <div className="mt-10 mx-auto">
         <h2 className="text-xl font-bold text-gray-800 mb-4">
           Filtruj pomiary
         </h2>
@@ -271,10 +295,11 @@ export default function Pomiary() {
           <option value="ciśnienie">Ciśnienie</option>
           <option value="cukier">Cukier</option>
           <option value="waga">Waga</option>
+          <option value="tętno">Tętno</option>
         </select>
       </div>
 
-      <div className="mt-6  mx-auto">
+      <div className="mt-6 mx-auto">
         <h2 className="text-xl font-bold text-gray-800 mb-4">Twoje pomiary</h2>
         {filteredMeasurements.length === 0 ? (
           <p className="text-gray-500 text-center">

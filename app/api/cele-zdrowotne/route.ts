@@ -36,10 +36,10 @@ export async function GET() {
     return NextResponse.json({
       user,
       values: {
-        weight: lastWeight ? parseFloat(lastWeight) : null,
+        weight: lastWeight ? Number(lastWeight.toString()) : null,
         systolic: lastPressure?.systolic ?? null,
         diastolic: lastPressure?.diastolic ?? null,
-        glucose: lastGlucose ? parseFloat(lastGlucose) : null,
+        glucose: lastGlucose ? Number(lastGlucose.toString()) : null,
       },
     });
   } catch (err) {
