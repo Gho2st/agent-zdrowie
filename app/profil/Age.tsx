@@ -16,6 +16,18 @@ interface AgeProps {
   setEditingHeight: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
+// Funkcja do aktualizacji danych użytkownika w backendzie
+async function updateUserData(data: { weight?: number; height?: number }) {
+  await fetch("/api/user/norms", {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+}
+
+// Obliczanie wieku z daty urodzenia
 function calculateAge(birthdate: string | Date): number {
   const birth = new Date(birthdate);
   const today = new Date();
@@ -42,7 +54,7 @@ export default function Age({
   const [weightError, setWeightError] = useState("");
   const [heightError, setHeightError] = useState("");
 
-  // Sync local temp values when switching to edit mode
+  // Synchronizuj tymczasowe wartości przy przejściu w tryb edycji
   useEffect(() => {
     if (editingWeight) setTempWeight(norms.weight);
   }, [editingWeight, norms.weight]);
@@ -98,9 +110,10 @@ export default function Age({
               className="w-28 p-2 border rounded"
             />
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (validateHeight()) {
                   saveHeight(tempHeight);
+                  await updateUserData({ height: tempHeight });
                   setEditingHeight(false);
                 }
               }}
@@ -113,7 +126,7 @@ export default function Age({
               onClick={() => {
                 setEditingHeight(false);
                 setHeightError("");
-                setTempHeight(norms.height); // przywracamy oryginał
+                setTempHeight(norms.height);
               }}
               className="text-gray-500 hover:text-gray-700 cursor-pointer"
               title="Anuluj"
@@ -150,9 +163,10 @@ export default function Age({
               className="w-28 p-2 border rounded"
             />
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (validateWeight()) {
                   saveWeight(tempWeight);
+                  await updateUserData({ weight: tempWeight });
                   setEditingWeight(false);
                 }
               }}
@@ -165,7 +179,7 @@ export default function Age({
               onClick={() => {
                 setEditingWeight(false);
                 setWeightError("");
-                setTempWeight(norms.weight); // przywracamy oryginał
+                setTempWeight(norms.weight);
               }}
               className="text-gray-500 hover:text-gray-700 cursor-pointer"
               title="Anuluj"
@@ -177,6 +191,7 @@ export default function Age({
         </div>
       )}
 
+      {/* BMI */}
       {norms.bmi !== undefined && (
         <span className="text-lg">BMI: {norms.bmi.toFixed(1)}</span>
       )}

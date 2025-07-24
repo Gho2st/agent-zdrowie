@@ -15,7 +15,6 @@ function calculateAge(birthdate: string | Date): number {
 }
 
 type UpdateUserData = {
-  birthdate?: string | Date;
   height?: number;
   weight?: number;
   systolicMin?: number;
@@ -79,7 +78,6 @@ export async function PATCH(req: NextRequest) {
   const body: Partial<UpdateUserData> = await req.json();
 
   const updateData: Partial<UpdateUserData> = {
-    birthdate: body.birthdate,
     height: body.height,
     weight: body.weight,
     systolicMin: body.systolicMin,
@@ -97,92 +95,47 @@ export async function PATCH(req: NextRequest) {
     conditions: body.conditions,
   };
 
-  // Aktualizacja na podstawie daty urodzenia (i wyliczenie norm)
-  if (Object.keys(updateData).length === 1 && updateData.birthdate) {
+  const changingWeightOrHeight =
+    typeof updateData.weight === "number" ||
+    typeof updateData.height === "number";
+
+  if (changingWeightOrHeight) {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: {
         gender: true,
+        birthdate: true,
         height: true,
         weight: true,
       },
     });
 
-    if (!user || !user.gender || !user.height || !user.weight) {
+    if (!user || !user.gender || !user.birthdate) {
       return NextResponse.json(
         { error: "Brakuje danych do przeliczenia norm" },
         { status: 400 }
       );
     }
 
-    const age = calculateAge(updateData.birthdate);
-    const norms = getHealthNorms(
-      age,
-      user.gender as "M" | "K",
-      user.height,
-      user.weight
-    );
-
-    await prisma.user.update({
-      where: { email: session.user.email },
-      data: {
-        birthdate: new Date(updateData.birthdate),
-        ...norms,
-      },
-    });
-
-    const updated = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: {
-        birthdate: true,
-        gender: true,
-        height: true,
-        weight: true,
-        bmi: true,
-        systolicMin: true,
-        systolicMax: true,
-        diastolicMin: true,
-        diastolicMax: true,
-        glucoseFastingMin: true,
-        glucoseFastingMax: true,
-        glucosePrediabetesFastingMin: true,
-        glucosePrediabetesFastingMax: true,
-        glucosePostMealMax: true,
-        weightMin: true,
-        weightMax: true,
-        pulseMin: true,
-        pulseMax: true,
-        medications: true,
-        conditions: true,
-      },
-    });
-
-    return NextResponse.json(updated);
-  }
-
-  // Przeliczanie BMI jeśli zmieniono wagę lub wzrost
-  if ("height" in updateData || "weight" in updateData) {
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: {
-        height: true,
-        weight: true,
-      },
-    });
-
-    const newHeight = updateData.height ?? user?.height;
-    const newWeight = updateData.weight ?? user?.weight;
+    const newHeight = updateData.height ?? user.height;
+    const newWeight = updateData.weight ?? user.weight;
 
     if (newHeight && newWeight) {
+      const age = calculateAge(user.birthdate);
+      const norms = getHealthNorms(
+        age,
+        user.gender as "M" | "K",
+        newHeight,
+        newWeight
+      );
+
       updateData.bmi = +(newWeight / (newHeight / 100) ** 2).toFixed(1);
+
+      Object.assign(updateData, norms);
     }
   }
 
   if (Object.keys(updateData).length > 0) {
-    if (updateData.birthdate) {
-      updateData.birthdate = new Date(updateData.birthdate);
-    }
-
     const serializedUpdateData = {
       ...updateData,
       medications: updateData.medications

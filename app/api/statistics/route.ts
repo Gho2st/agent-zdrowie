@@ -17,7 +17,6 @@ export async function GET() {
       orderBy: { createdAt: "asc" },
     });
 
-    // ✅ Typowanie poprawne
     const groupByMonth = (
       data: Measurement[],
       field: keyof Measurement
@@ -58,6 +57,13 @@ export async function GET() {
       )
     );
 
+    const tetno = calculateStats(
+      groupByMonth(
+        measurements.filter((m) => m.type === "tętno"),
+        "amount"
+      )
+    );
+
     const cisnienieData = measurements.filter((m) => m.type === "ciśnienie");
 
     const cisnienie = Object.entries(
@@ -90,7 +96,10 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ waga, cukier, cisnienie }, { status: 200 });
+    return NextResponse.json(
+      { waga, cukier, tetno, cisnienie },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Błąd podczas generowania statystyk:", error);
     return NextResponse.json({ error: "Błąd statystyk" }, { status: 500 });

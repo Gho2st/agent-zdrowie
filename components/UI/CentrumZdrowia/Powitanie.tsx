@@ -23,7 +23,7 @@ export default function PowitanieMotywacja({
       append({
         role: "user",
         content:
-          "Wygeneruj jedno krótkie, pozytywne w formie lekkiego żartu lub hasła zdanie motywacyjne dla użytkownika aplikacji zdrowotnej. Nie używaj powitania.",
+          "Wygeneruj krótkie, pozytywne w formie lekkiego żartu, dowcipu, zachęty lub hasła zdanie motywacyjne dla użytkownika aplikacji zdrowotnej. Nie używaj powitania.",
       });
       hasAsked.current = true;
     }

@@ -32,10 +32,10 @@ ChartJS.register(
   annotationPlugin
 );
 
-// 🔸 Typy
+// Typy
 type Measurement = {
   id: number;
-  type: "ciśnienie" | "cukier" | "waga";
+  type: "ciśnienie" | "cukier" | "waga" | "tętno";
   createdAt: string;
   systolic?: number;
   diastolic?: number;
@@ -51,6 +51,8 @@ type Norms = {
   glucoseFastingMax?: number;
   weightMin?: number;
   weightMax?: number;
+  pulseMin?: number;
+  pulseMax?: number;
 };
 
 type StatItem = {
@@ -73,6 +75,7 @@ type PressureStatItem = {
 type Stats = {
   waga?: StatItem[];
   cukier?: StatItem[];
+  tetno?: StatItem[];
   cisnienie?: PressureStatItem[];
 };
 
@@ -135,10 +138,10 @@ export default function Statistics() {
           tension: 0.3,
         },
       ];
-    } else {
+    } else if (type === "cukier") {
       datasets = [
         {
-          label: type === "cukier" ? "Glukoza (mg/dL)" : "Waga (kg)",
+          label: "Glukoza (mg/dL)",
           data: filtered.map((m) => m.amount),
           borderColor: "#4bc0c0",
           backgroundColor: "rgba(75, 192, 192, 0.2)",
@@ -146,9 +149,31 @@ export default function Statistics() {
           fill: true,
         },
       ];
+    } else if (type === "waga") {
+      datasets = [
+        {
+          label: "Waga (kg)",
+          data: filtered.map((m) => m.amount),
+          borderColor: "#36a2eb",
+          backgroundColor: "rgba(54, 162, 235, 0.2)",
+          tension: 0.3,
+          fill: true,
+        },
+      ];
+    } else if (type === "tętno") {
+      datasets = [
+        {
+          label: "Tętno (bpm)",
+          data: filtered.map((m) => m.amount),
+          borderColor: "#f59e0b",
+          backgroundColor: "rgba(245, 158, 11, 0.2)",
+          tension: 0.3,
+          fill: true,
+        },
+      ];
     }
 
-    return { labels, datasets };
+    return { labels, datasets: datasets ?? [] };
   };
 
   const getAnnotations = (type: Measurement["type"]) => {
@@ -229,6 +254,25 @@ export default function Statistics() {
       };
     }
 
+    if (type === "tętno") {
+      lines.pulseMin = {
+        type: "line",
+        yMin: norms.pulseMin,
+        yMax: norms.pulseMin,
+        borderColor: "#f59e0b",
+        borderDash: [6, 4],
+        label: { content: "Tętno min", position: "start" },
+      };
+      lines.pulseMax = {
+        type: "line",
+        yMin: norms.pulseMax,
+        yMax: norms.pulseMax,
+        borderColor: "#f59e0b",
+        borderDash: [6, 4],
+        label: { content: "Tętno max", position: "start" },
+      };
+    }
+
     return lines;
   };
 
@@ -248,10 +292,10 @@ export default function Statistics() {
     <Container>
       <Header text="Statystyki zdrowia" />
       <div className="grid md:grid-cols-2 gap-6 my-8 mt-10">
-        {["ciśnienie", "cukier", "waga"].map((type) => (
+        {["ciśnienie", "cukier", "waga", "tętno"].map((type) => (
           <div key={type} className="bg-white p-4 rounded-xl shadow-2xl h-full">
             <h3 className="font-bold text-lg mb-4 capitalize">{type}</h3>
-            <div className="h-55">
+            <div className="h-55 xl:h-85">
               <Line
                 data={prepareChartData(type as Measurement["type"])}
                 options={baseOptions(type as Measurement["type"])}
@@ -283,6 +327,14 @@ export default function Statistics() {
                       </strong>{" "}
                       mmHg, Min: {item.minSystolic}/{item.minDiastolic}, Max:{" "}
                       {item.maxSystolic}/{item.maxDiastolic}
+                    </p>
+                  ))}
+                {type === "tętno" &&
+                  stats?.tetno?.map((item) => (
+                    <p key={item.month}>
+                      📅 {item.month} — Średnia:{" "}
+                      <strong>{item.avg.toFixed(1)}</strong> bpm, Min:{" "}
+                      {item.min}, Max: {item.max}
                     </p>
                   ))}
               </div>

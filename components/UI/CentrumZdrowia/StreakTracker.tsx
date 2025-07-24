@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Loader2, Flame } from "lucide-react";
 
 type StreakData = {
   streakCount: number;
@@ -25,31 +26,40 @@ export default function StreakTrackerDynamic() {
     fetchStreak();
   }, []);
 
-  if (loading) return <div>Ładowanie...</div>;
-  if (!data) return <div>Brak danych</div>;
-
   const today = new Date().toISOString().slice(0, 10);
-  const isStreakActive = data.lastEntryDate === today;
+  const isStreakActive = data?.lastEntryDate === today;
 
   return (
-    <div className="bg-white shadow rounded-2xl p-4 my-6 text-center">
-      <h2 className="text-xl font-semibold mb-2">🔥 Seria dni z pomiarami</h2>
-      <p className="text-3xl font-bold text-green-600">
-        {data.streakCount} dni
-      </p>
-      {isStreakActive ? (
-        <p className="text-sm text-gray-500 mt-1">
-          Dzisiaj już dodałeś pomiar 💪
-        </p>
-      ) : (
-        <p className="text-sm text-gray-500 mt-1">
-          Nie zapomnij dodać pomiaru dzisiaj!
-        </p>
-      )}
-      {data.streakCount > 0 && data.streakCount % 7 === 0 && (
-        <div className="mt-4 bg-yellow-100 p-2 rounded-lg font-medium">
-          🏅 Gratulacje! Zdobyłeś odznakę za {data.streakCount} dni ciągłości!
+    <div className="bg-white shadow rounded-2xl p-4 my-6 text-center flex flex-col justify-center items-center gap-6">
+      <h2 className="text-2xl font-semibold mb-2 flex items-center justify-center gap-2">
+        <Flame className="text-orange-500 w-6 h-6" /> Seria dni z pomiarami
+      </h2>
+
+      {loading ? (
+        <div className="flex flex-col items-center justify-center text-gray-500 py-6">
+          <Loader2 className="animate-spin w-5 h-5 mb-2" />
+          Ładowanie danych...
         </div>
+      ) : !data ? (
+        <p className="text-gray-500">Brak danych do wyświetlenia.</p>
+      ) : (
+        <>
+          <p className="text-4xl font-bold text-green-600">
+            {data.streakCount} dni
+          </p>
+          <p className="text-lg text-gray-500 mt-1">
+            {isStreakActive
+              ? "Dzisiaj już dodałeś pomiar 💪"
+              : "Nie zapomnij dodać pomiaru dzisiaj!"}
+          </p>
+
+          {data.streakCount > 0 && data.streakCount % 7 === 0 && (
+            <div className="mt-4 bg-yellow-100 text-yellow-800 p-3 rounded-lg font-medium">
+              🏅 Gratulacje! Zdobyłeś odznakę za {data.streakCount} dni
+              ciągłości!
+            </div>
+          )}
+        </>
       )}
     </div>
   );

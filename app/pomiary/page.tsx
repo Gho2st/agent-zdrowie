@@ -225,7 +225,7 @@ export default function Pomiary() {
                 ? "120/80"
                 : type === "tętno"
                 ? "np. 70"
-                : "np. 5.6"
+                : "np. 50"
             }
             className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
           />
@@ -274,7 +274,7 @@ export default function Pomiary() {
 
         <button
           type="submit"
-          className="bg-green-600 hover:bg-green-700 text-white w-full font-semibold py-3 rounded-lg transition"
+          className="bg-green-600 cursor-pointer hover:bg-green-700 text-white w-full font-semibold py-3 rounded-lg transition"
           disabled={status !== "authenticated"}
         >
           Zapisz pomiar
