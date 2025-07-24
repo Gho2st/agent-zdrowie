@@ -27,6 +27,8 @@ type UpdateUserData = {
   glucosePostMealMax?: number;
   weightMin?: number;
   weightMax?: number;
+  pulseMin?: number;
+  pulseMax?: number;
   medications?: string[];
   conditions?: string[];
   bmi?: number;
@@ -57,6 +59,8 @@ export async function GET() {
       glucosePostMealMax: true,
       weightMin: true,
       weightMax: true,
+      pulseMin: true,
+      pulseMax: true,
       bmi: true,
     },
   });
@@ -74,7 +78,6 @@ export async function PATCH(req: NextRequest) {
 
   const body: Partial<UpdateUserData> = await req.json();
 
-  // Jawna i bezpieczna budowa obiektu aktualizacji
   const updateData: Partial<UpdateUserData> = {
     birthdate: body.birthdate,
     height: body.height,
@@ -88,11 +91,13 @@ export async function PATCH(req: NextRequest) {
     glucosePostMealMax: body.glucosePostMealMax,
     weightMin: body.weightMin,
     weightMax: body.weightMax,
+    pulseMin: body.pulseMin,
+    pulseMax: body.pulseMax,
     medications: body.medications,
     conditions: body.conditions,
   };
 
-  // Obsługa tylko aktualizacji daty urodzenia i przeliczenia norm
+  // Aktualizacja na podstawie daty urodzenia (i wyliczenie norm)
   if (Object.keys(updateData).length === 1 && updateData.birthdate) {
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
@@ -111,7 +116,6 @@ export async function PATCH(req: NextRequest) {
     }
 
     const age = calculateAge(updateData.birthdate);
-
     const norms = getHealthNorms(
       age,
       user.gender as "M" | "K",
@@ -146,6 +150,8 @@ export async function PATCH(req: NextRequest) {
         glucosePostMealMax: true,
         weightMin: true,
         weightMax: true,
+        pulseMin: true,
+        pulseMax: true,
         medications: true,
         conditions: true,
       },
@@ -173,12 +179,10 @@ export async function PATCH(req: NextRequest) {
   }
 
   if (Object.keys(updateData).length > 0) {
-    // Konwersja birthdate do Date
     if (updateData.birthdate) {
       updateData.birthdate = new Date(updateData.birthdate);
     }
 
-    // Jeśli medications/conditions są tablicami, zamień na JSON.stringified
     const serializedUpdateData = {
       ...updateData,
       medications: updateData.medications
@@ -213,6 +217,8 @@ export async function PATCH(req: NextRequest) {
         glucosePostMealMax: true,
         weightMin: true,
         weightMax: true,
+        pulseMin: true,
+        pulseMax: true,
         medications: true,
         conditions: true,
       },

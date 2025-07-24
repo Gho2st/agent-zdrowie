@@ -23,6 +23,8 @@ model User {
   systolicMax   Int?
   diastolicMin  Int?
   diastolicMax  Int?
+  pulseMin      Int?
+  pulseMax      Int?
   glucoseFastingMin Int?
   glucoseFastingMax Int?
   glucosePrediabetesFastingMin Int?
@@ -39,7 +41,7 @@ model User {
 
 model Measurement {
   id         Int      @id @default(autoincrement())
-  amount     String
+  amount     Float?
   type       String
   unit       String
   systolic   Int?

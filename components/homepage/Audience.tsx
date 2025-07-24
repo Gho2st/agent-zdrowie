@@ -27,7 +27,7 @@ export default function Audience() {
       <h2 className="text-3xl md:text-4xl font-bold text-center mb-10 xl:mb-16">
         👥 Dla kogo jest Agent Zdrowie?
       </h2>
-      <div className="grid md:grid-cols-2 gap-8  mx-auto px-4">
+      <div className="grid md:grid-cols-2 gap-8  mx-auto">
         {items.map((item) => (
           <div
             key={item.label}

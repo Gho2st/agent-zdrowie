@@ -180,11 +180,13 @@ export default function Pomiary() {
               if (e.target.value === "ciśnienie") setUnit("mmHg");
               else if (e.target.value === "cukier") setUnit("mg/dL");
               else if (e.target.value === "waga") setUnit("kg");
+              else if (e.target.value === "tętno") setUnit("bpm");
               setValue("");
             }}
             className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
           >
             <option value="ciśnienie">💓 Ciśnienie</option>
+            <option value="tętno">❤️ Tętno</option>
             <option value="cukier">🍭 Cukier</option>
             <option value="waga">⚖️ Waga</option>
           </select>

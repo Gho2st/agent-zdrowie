@@ -33,6 +33,10 @@ export function getHealthNorms(
   const weightMin = parseFloat((bmiMin * heightMeters ** 2).toFixed(1));
   const weightMax = parseFloat((bmiMax * heightMeters ** 2).toFixed(1));
 
+  // Tętno spoczynkowe
+  const pulseMin = 60;
+  const pulseMax = 100;
+
   return {
     systolicMin,
     systolicMax,
@@ -45,6 +49,8 @@ export function getHealthNorms(
     glucosePostMealMax,
     weightMin,
     weightMax,
+    pulseMin,
+    pulseMax,
     bmi: parseFloat(bmi.toFixed(1)),
   };
 }

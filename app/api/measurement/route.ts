@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let finalAmount: string = "";
+  let numericAmount: number | null = null;
   let finalSystolic: number | null = null;
   let finalDiastolic: number | null = null;
 
@@ -33,8 +33,6 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
-
-      finalAmount = `${finalSystolic}/${finalDiastolic}`;
     } else {
       return NextResponse.json(
         { error: "Ciśnienie wymaga wartości skurczowej i rozkurczowej" },
@@ -42,18 +40,16 @@ export async function POST(req: NextRequest) {
       );
     }
   } else {
-    const parsedAmount = parseFloat(amount);
-    if (isNaN(parsedAmount)) {
+    numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount)) {
       return NextResponse.json(
-        { error: "Niepoprawna wartość dla cukru lub wagi" },
+        { error: `Niepoprawna wartość dla typu ${type}` },
         { status: 400 }
       );
     }
-    finalAmount = parsedAmount.toString();
 
-    // 🔄 Jeśli typ to "waga", zaktualizuj wagę i BMI w tabeli User
+    // Jeśli typ to "waga", zaktualizuj wagę i BMI
     if (type === "waga") {
-      const numericWeight = parsedAmount;
       const user = await prisma.user.findUnique({
         where: { id: parseInt(session.user.id) },
         select: { height: true },
@@ -63,13 +59,13 @@ export async function POST(req: NextRequest) {
 
       if (user?.height && user.height > 0) {
         const heightInMeters = user.height / 100;
-        bmi = parseFloat((numericWeight / heightInMeters ** 2).toFixed(2));
+        bmi = parseFloat((numericAmount / heightInMeters ** 2).toFixed(2));
       }
 
       await prisma.user.update({
         where: { id: parseInt(session.user.id) },
         data: {
-          weight: numericWeight,
+          weight: numericAmount,
           ...(bmi !== null && { bmi }),
         },
       });
@@ -79,9 +75,9 @@ export async function POST(req: NextRequest) {
   try {
     const measurement = await prisma.measurement.create({
       data: {
-        amount: finalAmount,
         type,
         unit,
+        amount: numericAmount ?? undefined,
         userId: parseInt(session.user.id),
         systolic: finalSystolic ?? undefined,
         diastolic: finalDiastolic ?? undefined,
@@ -90,6 +86,7 @@ export async function POST(req: NextRequest) {
         note: note || undefined,
       },
     });
+
     return NextResponse.json(measurement, { status: 200 });
   } catch (error) {
     console.error("Błąd podczas zapisywania pomiaru:", error);
@@ -111,6 +108,7 @@ export async function GET() {
       where: { userId: parseInt(session.user.id) },
       orderBy: { createdAt: "desc" },
     });
+
     return NextResponse.json(measurements, { status: 200 });
   } catch (error) {
     console.error("Błąd podczas pobierania pomiarów:", error);
