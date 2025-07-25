@@ -31,7 +31,7 @@ export default function StreakTrackerDynamic() {
 
   return (
     <div className="bg-white shadow rounded-2xl p-4 text-center flex flex-col justify-center items-center gap-6">
-      <h2 className="text-2xl font-semibold mb-2 flex items-center justify-center gap-2">
+      <h2 className="text-xl font-semibold mb-2 flex items-center justify-center gap-2">
         <Flame className="text-orange-500 w-6 h-6" /> Seria dni z pomiarami
       </h2>
 

@@ -51,7 +51,7 @@ export default function About() {
         </div>
 
         {/* Image */}
-        <div className="w-full max-w-sm md:max-w-md lg:max-w-lg">
+        <div className="w-full max-w-sm md:max-w-md 2xl:max-w-lg">
           <Image
             src="/agent.png"
             alt="agent ai"

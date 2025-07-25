@@ -24,13 +24,14 @@ export default function Pomiary() {
   const [value, setValue] = useState("");
   const [unit, setUnit] = useState("mmHg");
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
-  const [filterType, setFilterType] = useState("all");
+  const [filterType, setFilterType] = useState<string>("all");
 
   const [glucoseContext, setGlucoseContext] = useState("");
   const [glucoseTime, setGlucoseTime] = useState("przed posiłkiem");
   const [pressureNote, setPressureNote] = useState("");
 
   const [norms, setNorms] = useState<Partial<User> | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -50,6 +51,28 @@ export default function Pomiary() {
         .then(setNorms);
     }
   }, [status]);
+  const requestDelete = (id: string) => {
+    setConfirmDeleteId(id); // pokaż modal
+  };
+
+  const confirmDelete = async () => {
+    if (!confirmDeleteId) return;
+
+    const res = await fetch(`/api/measurement/${confirmDeleteId}`, {
+      method: "DELETE",
+    });
+
+    if (res.ok) {
+      setMeasurements((prev) =>
+        prev.filter((m) => String(m.id) !== confirmDeleteId)
+      );
+      toast.success("Pomiar został usunięty");
+    } else {
+      toast.error("Błąd podczas usuwania pomiaru");
+    }
+
+    setConfirmDeleteId(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,11 +205,11 @@ export default function Pomiary() {
         Zarządzaj swoimi pomiarami w prosty i przejrzysty sposób
       </p>
 
+      {/* Formularz dodawania */}
       <form
         onSubmit={handleSubmit}
         className="bg-white p-6 md:p-8 rounded-2xl shadow-xl w-full mx-auto space-y-5 transition-all duration-300"
       >
-        {/* Typ pomiaru */}
         <div>
           <label className="text-sm font-medium text-gray-700 block mb-1">
             Typ pomiaru
@@ -210,7 +233,6 @@ export default function Pomiary() {
           </select>
         </div>
 
-        {/* Wartość */}
         <div>
           <label className="text-sm font-medium text-gray-700 block mb-1">
             {type === "ciśnienie" ? "Ciśnienie (np. 120/80)" : "Wartość"}
@@ -225,13 +247,12 @@ export default function Pomiary() {
                 ? "120/80"
                 : type === "tętno"
                 ? "np. 70"
-                : "np. 50"
+                : "np. 72"
             }
             className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
           />
         </div>
 
-        {/* Jednostka */}
         <input
           type="text"
           value={unit}
@@ -239,7 +260,6 @@ export default function Pomiary() {
           className="w-full p-3 border border-gray-200 rounded-lg bg-gray-100 text-gray-600"
         />
 
-        {/* Pola kontekstowe dla cukru i ciśnienia */}
         {type === "cukier" && (
           <>
             <input
@@ -288,7 +308,9 @@ export default function Pomiary() {
         </h2>
         <select
           value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+            setFilterType(e.target.value)
+          }
           className="w-full p-3 border border-gray-300 rounded-lg"
         >
           <option value="all">Wszystkie</option>
@@ -310,7 +332,7 @@ export default function Pomiary() {
             {filteredMeasurements.map((m: Measurement) => (
               <li
                 key={m.id}
-                className="bg-white p-4 rounded-lg shadow-md text-gray-700"
+                className="bg-white p-4 rounded-lg shadow-md text-gray-700 relative"
               >
                 <strong className="capitalize">{m.type}</strong>:{" "}
                 {m.type === "ciśnienie" && m.systolic && m.diastolic
@@ -326,11 +348,40 @@ export default function Pomiary() {
                 {m.type === "ciśnienie" && m.note && (
                   <p className="text-sm text-gray-500">Notatka: {m.note}</p>
                 )}
+                <button
+                  onClick={() => requestDelete(String(m.id))}
+                  className="absolute cursor-pointer top-2 right-2 text-red-600 hover:text-red-800 text-sm"
+                >
+                  ✖
+                </button>
               </li>
             ))}
           </ul>
         )}
       </div>
+      {confirmDeleteId && (
+        <div className="fixed inset-0 bg-black/80  flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-11/12 max-w-sm">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              Czy na pewno chcesz usunąć pomiar?
+            </h3>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                className="px-4 py-2 rounded-lg cursor-pointer bg-gray-200 text-gray-700 hover:bg-gray-300"
+              >
+                Anuluj
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 rounded-lg cursor-pointer bg-red-600 text-white hover:bg-red-700"
+              >
+                Usuń
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Container>
   );
 }

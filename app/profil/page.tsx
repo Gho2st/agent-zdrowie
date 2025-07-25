@@ -44,6 +44,8 @@ export default function Profil() {
   const router = useRouter();
   const [editingHeight, setEditingHeight] = useState(false);
   const [editingWeight, setEditingWeight] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [norms, setNorms] = useState<CombinedNorms>({
     birthdate: new Date().toISOString(),
     height: 0,
@@ -78,6 +80,7 @@ export default function Profil() {
         const data: CombinedNorms = await res.json();
         setNorms(data);
       }
+      setIsLoading(false);
     };
 
     fetchUserNorms();
@@ -129,6 +132,17 @@ export default function Profil() {
   };
 
   if (!session) return null;
+
+  if (isLoading || !norms) {
+    return (
+      <Container>
+        <Header text="Mój Profil" />
+        <div className="mt-20 text-center text-gray-500">
+          Ładowanie danych profilu...
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container>

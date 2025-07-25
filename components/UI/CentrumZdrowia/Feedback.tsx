@@ -19,7 +19,7 @@ export default function Feedback() {
     append({
       role: "user",
       content:
-        "Na podstawie wszystkich moich dostępnych danych zdrowotnych daj krótką, empatyczną poradę. Zwróć uwagę na to, co może wymagać poprawy, ale zachowaj pozytywny ton.",
+        "Na podstawie wszystkich moich dostępnych danych zdrowotnych daj bardzo krótką, empatyczną poradę. Zwróć uwagę na to, co może wymagać poprawy, ale zachowaj pozytywny ton.",
     });
     setGeneratedAt(new Date());
   };
@@ -40,7 +40,7 @@ export default function Feedback() {
       <div className="flex flex-col md:flex-row items-center justify-between mb-3 text-gray-800">
         <div className="flex items-center justify-center gap-2">
           <HeartPulse className="w-5 h-5 text-red-500" />
-          <h2 className="text-base font-semibold">
+          <h2 className="text-lg font-semibold">
             Porada zdrowotna od Agenta
           </h2>
         </div>
