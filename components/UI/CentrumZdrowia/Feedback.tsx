@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useChat } from "@ai-sdk/react";
 import { HeartPulse, Loader2, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
@@ -15,21 +15,21 @@ export default function Feedback() {
     id: "feedback",
   });
 
-  const askForAdvice = () => {
+  const askForAdvice = useCallback(() => {
     append({
       role: "user",
       content:
         "Na podstawie wszystkich moich dostępnych danych zdrowotnych daj bardzo krótką, empatyczną poradę. Zwróć uwagę na to, co może wymagać poprawy, ale zachowaj pozytywny ton.",
     });
     setGeneratedAt(new Date());
-  };
+  }, [append]);
 
   useEffect(() => {
     if (!hasAsked.current && messages.length === 0) {
       askForAdvice();
       hasAsked.current = true;
     }
-  }, [messages.length]);
+  }, [messages.length, askForAdvice]);
 
   const gptResponse = messages
     .find((m) => m.role === "assistant")
@@ -38,18 +38,17 @@ export default function Feedback() {
   return (
     <div className="bg-white shadow rounded-2xl p-6">
       <div className="flex flex-col md:flex-row items-center justify-between mb-3 text-gray-800">
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center gap-2">
           <HeartPulse className="w-5 h-5 text-red-500" />
-          <h2 className="text-lg font-semibold">
-            Porada zdrowotna od Agenta
-          </h2>
+          <h2 className="text-lg font-semibold">Porada zdrowotna od Agenta</h2>
         </div>
         <button
           onClick={askForAdvice}
           disabled={isLoading}
-          className="text-sm flex my-3 xl:my-0 items-center gap-1 text-blue-600 hover:underline disabled:opacity-50"
+          className="text-sm flex items-center gap-1 text-blue-600 hover:underline disabled:opacity-50"
         >
-          <RotateCcw className="w-4 cursor-pointers h-4" /> Odśwież
+          <RotateCcw className="w-4 h-4" />
+          Odśwież
         </button>
       </div>
 
