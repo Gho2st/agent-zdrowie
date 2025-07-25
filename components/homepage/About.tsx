@@ -3,7 +3,7 @@ import Image from "next/image";
 export default function About() {
   return (
     <section className="">
-      <h1 className="text-3xl md:text-4xl lg:text-5xl leading-snug font-bold text-center">
+      <h1 className="text-3xl md:text-4xl 2xl:text-5xl leading-snug font-bold text-center">
         Agent Zdrowie – Twój cyfrowy asystent zdrowia
       </h1>
 
@@ -51,12 +51,12 @@ export default function About() {
         </div>
 
         {/* Image */}
-        <div className="w-full max-w-sm md:max-w-md 2xl:max-w-lg">
+        <div className="w-1/3">
           <Image
             src="/agent.png"
             alt="agent ai"
-            width={700}
-            height={700}
+            width={500}
+            height={500}
             layout="responsive"
             priority
           />

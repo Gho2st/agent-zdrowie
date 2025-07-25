@@ -8,7 +8,7 @@ import { Prisma } from "@prisma/client";
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    //test
+
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -25,10 +25,15 @@ export async function POST(req: NextRequest) {
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           take: 10,
         },
+        dailyCheckins: {
+          orderBy: { date: "desc" },
+          take: 30,
+        },
       },
     })) as Prisma.UserGetPayload<{
       include: {
         measurements: true;
+        dailyCheckins: true;
       };
     }>;
 
@@ -98,14 +103,29 @@ export async function POST(req: NextRequest) {
         })
         .join("\n");
 
-      contextData = `📌 Dane użytkownika:\n${healthInfo}\n\n📈 Ostatnie pomiary:\n${measurementInfo}`;
+      const checkinInfo = user.dailyCheckins
+        .map((c) => {
+          const date = new Date(c.date).toLocaleDateString("pl-PL");
+          return [
+            `📅 ${date}`,
+            c.mood ? `• Samopoczucie: ${c.mood}` : null,
+            c.sleep ? `• Sen: ${c.sleep}` : null,
+            c.energy ? `• Energia: ${c.energy}` : null,
+            c.stress ? `• Stres: ${c.stress}` : null,
+          ]
+            .filter(Boolean)
+            .join("\n");
+        })
+        .join("\n\n");
+
+      contextData = `📌 Dane użytkownika:\n${healthInfo}\n\n📈 Ostatnie pomiary:\n${measurementInfo}\n\n🧠 Historia samopoczucia:\n${checkinInfo}`;
     }
 
     console.log(contextData);
 
     const result = await streamText({
       model: openai("gpt-4o"),
-      system: `Jesteś cyfrowym asystentem zdrowia Agent Zdrowie. Pomóż użytkownikowi na podstawie poniższych danych:\n${contextData}\n\nOdpowiadaj jasno, krótko i empatycznie.`,
+      system: `Jesteś cyfrowym asystentem zdrowia Agent Zdrowie. Na podstawie danych użytkownika wygeneruj trafną, krótką i empatyczną poradę zdrowotną. Uwzględnij kontekst z ostatnich pomiarów i wpisów o samopoczuciu.\n\n${contextData}`,
       messages,
     });
 

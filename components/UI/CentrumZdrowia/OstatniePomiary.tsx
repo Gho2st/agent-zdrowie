@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Info } from "lucide-react";
 
 type Pomiar = {
   id: number;
@@ -16,7 +16,7 @@ type Pomiar = {
 const typeIcons: Record<string, string> = {
   waga: "⚖️",
   cukier: "🍭",
-  ciśnienie: "❤️",
+  ciśnienie: "💓",
 };
 
 export default function OstatniePomiary() {
@@ -43,25 +43,29 @@ export default function OstatniePomiary() {
 
   if (loading) {
     return (
-      <div className="bg-white p-4 rounded-xl shadow mt-6 flex items-center justify-center text-gray-500 h-[120px]">
-        <Loader2 className="animate-spin mr-2" size={20} />
-        Ładowanie pomiarów...
+      <div className="bg-white p-6 rounded-xl shadow mt-6 flex items-center justify-center text-gray-500 h-[140px] animate-pulse">
+        <Loader2 className="animate-spin mr-2" size={22} />
+        Ładowanie ostatnich pomiarów...
       </div>
     );
   }
 
   if (dane.length === 0) {
     return (
-      <div className="bg-white p-4 rounded-xl shadow text-center text-gray-500">
-        Brak zapisanych pomiarów.
+      <div className="bg-white p-6 rounded-xl shadow mt-6 text-center text-gray-600 flex flex-col items-center gap-2">
+        <Info className="w-6 h-6 text-gray-400" />
+        <p className="text-sm">Nie masz jeszcze żadnych zapisanych pomiarów.</p>
+        <p className="text-sm text-gray-500">
+          Dodaj pierwszy pomiar, aby śledzić swoje zdrowie.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white p-4 rounded-xl shadow mt-6">
+    <div className="bg-white p-6 rounded-xl shadow mt-6">
       <h3 className="text-lg font-semibold mb-4">📈 Ostatnie pomiary</h3>
-      <ul className="space-y-3">
+      <ul className="space-y-4">
         {dane.map((pomiar) => {
           const dataPomiaru = new Date(pomiar.createdAt).toLocaleString(
             "pl-PL",
@@ -75,24 +79,24 @@ export default function OstatniePomiary() {
           );
 
           const icon = typeIcons[pomiar.type] || "🔹";
-          let opis = "";
-
-          if (
-            pomiar.type === "ciśnienie" &&
-            pomiar.systolic &&
-            pomiar.diastolic
-          ) {
-            opis = `${pomiar.systolic}/${pomiar.diastolic} ${
-              pomiar.unit || "mmHg"
-            }`;
-          } else {
-            opis = `${pomiar.amount} ${pomiar.unit}`;
-          }
+          const opis =
+            pomiar.type === "ciśnienie" && pomiar.systolic && pomiar.diastolic
+              ? `${pomiar.systolic}/${pomiar.diastolic} ${
+                  pomiar.unit || "mmHg"
+                }`
+              : `${pomiar.amount} ${pomiar.unit}`;
 
           return (
-            <li key={pomiar.id} className="text-gray-700">
-              <span className="font-medium">{dataPomiaru}</span> – {icon}{" "}
-              <span className="capitalize">{pomiar.type}</span>: {opis}
+            <li
+              key={pomiar.id}
+              className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-2"
+            >
+              <div className="text-gray-800">
+                <span className="font-medium">{dataPomiaru}</span>
+              </div>
+              <div className="text-sm text-gray-700 mt-1 sm:mt-0">
+                {icon} <span className="capitalize">{pomiar.type}</span>: {opis}
+              </div>
             </li>
           );
         })}

@@ -41,7 +41,7 @@ export default function Navigation() {
 
       {/* 🔧 TO: MENU */}
       <div
-        className={`fixed top-0 left-0 h-screen w-72 bg-white px-8 py-10 z-40 flex flex-col justify-between transform transition-transform duration-300 ${
+        className={`fixed top-0 left-0 h-screen w-64 2xl:w-72 bg-white px-8 py-10 z-40 flex flex-col justify-between transform transition-transform duration-300 ${
           open ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0 md:static md:flex`}
       >

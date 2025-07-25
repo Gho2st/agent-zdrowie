@@ -36,6 +36,7 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   measurements  Measurement[]
+  dailyCheckins DailyCheckin[]
 }
 
 
@@ -55,3 +56,16 @@ model Measurement {
 }
 
 
+model DailyCheckin {
+  id        Int      @id @default(autoincrement())
+  date      DateTime
+  mood      String?  // np. "🙂 Dobre"
+  sleep     String?  // np. "🛌 Dobrze spałem"
+  energy    String?  // np. "⚡️ Wysoka"
+  stress    String?  // np. "😣 Wysoki"
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date]) // jeden check-in dziennie na użytkownika
+}

@@ -46,7 +46,7 @@ export default function RootLayout({
             {/* Treść */}
             <main
               id="scrollable"
-              className="flex-1 ml-0 md:ml-72  overflow-y-auto h-full"
+              className="flex-1 ml-0 md:ml-64 2xl:ml-72  overflow-y-auto h-full"
             >
               <ClientLayoutGuard>
                 {children}

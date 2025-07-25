@@ -12,6 +12,7 @@ import TrendMiniCisnienie from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniC
 import TrendMiniCukier from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniCukier";
 import TrendMiniTetno from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniTetno";
 import Feedback from "@/components/UI/CentrumZdrowia/Feedback";
+import DailyCheckin from "@/components/UI/CentrumZdrowia/DailyCheckin";
 
 export default function CentrumZdrowia() {
   const { data: session } = useSession();
@@ -26,6 +27,7 @@ export default function CentrumZdrowia() {
           <div className="grid xl:grid-cols-2 gap-4">
             <StreakTracker />
             <Feedback />
+            <DailyCheckin />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
             <TrendMiniWaga />

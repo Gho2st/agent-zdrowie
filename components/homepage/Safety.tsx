@@ -11,7 +11,7 @@ export default function Safety() {
         prywatności – zarówno technicznie, jak i etycznie.
       </p>
 
-      <div className="grid md:grid-cols-4 gap-8  mx-auto">
+      <div className="grid md:grid-cols-2 gap-6 2xl:gap-8  mx-auto">
         <div className="bg-white/30  backdrop-blur-sm border border-white/40 p-6 rounded-2xl shadow-xl">
           <h3 className="text-xl font-semibold mb-2">
             🛡️ Logowanie przez Google
