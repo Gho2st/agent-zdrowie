@@ -81,11 +81,18 @@ export default function ChatPage() {
         <textarea
           value={input}
           onChange={handleInputChange}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleCustomSubmit(e as any); // rzutowanie, bo e nie jest typu FormEvent
+            }
+          }}
           disabled={status !== "ready"}
           placeholder="Zadaj pytanie zdrowotne..."
           rows={1}
           className="flex-1 border rounded px-4 py-2 bg-white resize-none min-h-[42px] text-sm"
         />
+
         <button
           type="submit"
           disabled={status !== "ready"}

@@ -2,7 +2,8 @@
 
 import { useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 
 export default function ClientLayoutGuard({
   children,
@@ -12,24 +13,36 @@ export default function ClientLayoutGuard({
   const { data: session, status } = useSession();
   const pathname = usePathname();
   const router = useRouter();
-
-  const publicPaths = ["/", "/logowanie", "/rejestracja-dodatkowa"];
-  const isPublic = publicPaths.includes(pathname);
+  const [checkingProfile, setCheckingProfile] = useState(false);
 
   useEffect(() => {
-    if (status === "loading") return;
+    const checkProfile = async () => {
+      if (status !== "authenticated") return;
 
-    if (!session && !isPublic) {
-      router.replace("/logowanie");
-    }
-  }, [session, status, isPublic, router]);
+      try {
+        setCheckingProfile(true);
+        const res = await fetch("/api/user/profile-complete");
+        const data = await res.json();
 
-  // Można dodać prosty loader przy oczekiwaniu:
-  if (status === "loading") return null;
+        if (!data.complete && pathname !== "/rejestracja-dodatkowa") {
+          router.replace("/rejestracja-dodatkowa");
+        }
+      } catch (err) {
+        console.error("❌ Błąd sprawdzania profilu:", err);
+      } finally {
+        setCheckingProfile(false);
+      }
+    };
 
-  // Jeśli użytkownik jest niezalogowany i to strona prywatna, nie pokazuj nic:
-  if (!session && !isPublic) {
-    return null;
+    checkProfile();
+  }, [status, pathname, router]);
+
+  if (status === "loading" || checkingProfile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+      </div>
+    );
   }
 
   return <>{children}</>;

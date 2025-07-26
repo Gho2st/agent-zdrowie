@@ -20,7 +20,13 @@ export async function GET() {
   });
 
   const complete =
-    !!user?.birthdate && !!user?.gender && !!user?.height && !!user?.weight;
+    !!user &&
+    user.birthdate instanceof Date &&
+    (user.gender === "M" || user.gender === "K") &&
+    typeof user.height === "number" &&
+    user.height > 0 &&
+    typeof user.weight === "number" &&
+    user.weight > 0;
 
   return NextResponse.json({ complete });
 }
