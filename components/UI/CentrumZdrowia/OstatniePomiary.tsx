@@ -63,7 +63,7 @@ export default function OstatniePomiary() {
   }
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow mt-6">
+    <div className="bg-white p-6 rounded-xl shadow">
       <h3 className="text-lg font-semibold mb-4">📈 Ostatnie pomiary</h3>
       <ul className="space-y-4">
         {dane.map((pomiar) => {

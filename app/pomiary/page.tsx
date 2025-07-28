@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { User, Measurement } from "@prisma/client";
 import toast from "react-hot-toast";
+import { useChat } from "@ai-sdk/react";
 
 type MeasurementInput = {
   type: string;
@@ -32,6 +33,35 @@ export default function Pomiary() {
 
   const [norms, setNorms] = useState<Partial<User> | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const [chatId, setChatId] = useState(() => `feedback-${Date.now()}`);
+
+  useEffect(() => {
+    // Resetuj ID przy wejściu na stronę
+    setChatId(`feedback-${Date.now()}`);
+  }, []);
+
+  const { messages, append, isLoading } = useChat({
+    api: "/api/chat",
+    id: chatId,
+  });
+
+  const fetchAgentAdvice = async () => {
+    await append({
+      role: "user",
+      content:
+        "Dodano nowy pomiar. Proszę o krótką poradę zdrowotną na jego podstawie.",
+    });
+  };
+
+  const lastAssistantMessage = messages
+    .slice()
+    .reverse()
+    .find((m) => m.role === "assistant");
+
+  const gptResponse = lastAssistantMessage?.parts.find(
+    (p) => p.type === "text"
+  )?.text;
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -184,6 +214,7 @@ export default function Pomiary() {
       } else {
         toast.success("Pomyślnie dodano pomiar w normie!");
       }
+      await fetchAgentAdvice();
     } else {
       const data = await res.json();
       toast.error(data.error || "Błąd dodawania pomiaru");
@@ -300,6 +331,21 @@ export default function Pomiary() {
           Zapisz pomiar
         </button>
       </form>
+
+      {isLoading && (
+        <div className="mt-6 text-center text-sm text-gray-500">
+          Generowanie porady zdrowotnej...
+        </div>
+      )}
+
+      {gptResponse && (
+        <div className="mt-10 p-5 bg-blue-50 border border-blue-200 rounded-lg shadow-md">
+          <h3 className="text-lg font-semibold text-blue-800 mb-2">
+            Feedback od Agenta Zdrowie
+          </h3>
+          <p className="text-blue-900 whitespace-pre-line">{gptResponse}</p>
+        </div>
+      )}
 
       {/* Filtr i lista */}
       <div className="mt-10 mx-auto">

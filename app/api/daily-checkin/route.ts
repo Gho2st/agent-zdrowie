@@ -20,7 +20,10 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json(checkin, { status: 200 });
+  return NextResponse.json(
+    checkin ? { ...checkin, date: checkin.date.toISOString() } : null,
+    { status: 200 }
+  );
 }
 
 export async function POST(req: NextRequest) {

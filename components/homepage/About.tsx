@@ -1,20 +1,84 @@
+"use client";
+import { motion, Variants, Transition } from "framer-motion";
 import Image from "next/image";
+
+// Sekcje animacji
+const sectionVariants: Variants = {
+  hidden: { opacity: 0, y: 50 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { when: "beforeChildren", staggerChildren: 0.2 },
+  },
+};
+
+// Definicja przejścia dla kart
+const cardTransition: Transition = {
+  type: "spring",
+  stiffness: 100,
+  damping: 10,
+};
+
+const cardVariants: Variants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: cardTransition,
+  },
+  hover: {
+    scale: 1.05,
+    boxShadow: "0px 10px 20px rgba(0,0,0,0.2)",
+    transition: { duration: 0.3 },
+  },
+};
+
+// Przejście obrazu
+const imageTransition: Transition = {
+  duration: 0.8,
+};
+
+const imageVariants: Variants = {
+  hidden: { scale: 0.8, opacity: 0 },
+  visible: {
+    scale: 1,
+    opacity: 1,
+    transition: imageTransition,
+  },
+};
 
 export default function About() {
   return (
-    <section className="">
-      <h1 className="text-3xl md:text-4xl 2xl:text-5xl leading-snug font-bold text-center">
+    <motion.section
+      className="px-4 py-16"
+      initial="hidden"
+      animate="visible"
+      variants={sectionVariants}
+    >
+      <motion.h1
+        className="text-3xl md:text-4xl 2xl:text-5xl leading-snug font-bold text-center"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: { opacity: 1, transition: { duration: 0.6 } },
+        }}
+      >
         Agent Zdrowie – Twój cyfrowy asystent zdrowia
-      </h1>
+      </motion.h1>
 
-      <p className="my-10 text-lg md:text-xl text-center max-w-3xl mx-auto">
+      <motion.p
+        className="my-10 text-lg md:text-xl text-center max-w-3xl mx-auto"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: { opacity: 1, transition: { delay: 0.3, duration: 0.6 } },
+        }}
+      >
         Nowoczesna aplikacja zdrowotna, która nie tylko zapisuje pomiary – ona
         je rozumie. Dzięki sztucznej inteligencji analizuje Twoje dane i wspiera
         Cię w dbaniu o zdrowie każdego dnia.
-      </p>
+      </motion.p>
 
       <div className="flex flex-col-reverse lg:flex-row items-center gap-10 mt-16">
-        {/* Text Cards */}
+        {/* Karty tekstowe */}
         <div className="grid sm:grid-cols-2 gap-6 flex-1 w-full">
           {[
             {
@@ -38,20 +102,22 @@ export default function About() {
               text: "Zadaj pytanie, opisz objawy lub poproś o interpretację wyników – Agent odpowie, jak empatyczny doradca zdrowia.",
             },
           ].map((item) => (
-            <div
+            <motion.div
               key={item.title}
-              className="bg-white/30 backdrop-blur-sm border border-white/40 p-6 rounded-2xl shadow-2xl hover:shadow-lg transition"
+              className="bg-white/30 backdrop-blur-sm border border-white/40 p-6 rounded-2xl transition"
+              variants={cardVariants}
+              whileHover="hover"
             >
               <h2 className="text-xl font-semibold mb-2">
                 {item.emoji} {item.title}
               </h2>
               <p className="text-gray-700">{item.text}</p>
-            </div>
+            </motion.div>
           ))}
         </div>
 
-        {/* Image */}
-        <div className="w-1/3">
+        {/* Obraz */}
+        <motion.div className="w-full lg:w-1/3" variants={imageVariants}>
           <Image
             src="/agent.png"
             alt="agent ai"
@@ -60,8 +126,8 @@ export default function About() {
             layout="responsive"
             priority
           />
-        </div>
+        </motion.div>
       </div>
-    </section>
+    </motion.section>
   );
 }

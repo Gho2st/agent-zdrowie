@@ -9,9 +9,10 @@ type CheckinState = {
   sleep?: string;
   energy?: string;
   stress?: string;
+  date?: string;
 };
 
-const options = {
+const options: Record<keyof Omit<CheckinState, "date">, string[]> = {
   mood: ["😄 Świetne", "🙂 Dobre", "😐 Przeciętne", "😞 Złe"],
   sleep: ["🛌 Dobrze spałem", "😴 Średnio", "😵 Prawie nie spałem"],
   energy: ["⚡️ Wysoka", "🔋 Średnia", "🪫 Niska"],
@@ -21,31 +22,52 @@ const options = {
 export default function DailyCheckin() {
   const [checkin, setCheckin] = useState<CheckinState>({});
   const [loading, setLoading] = useState(true);
+  const [savingField, setSavingField] = useState<keyof CheckinState | null>(
+    null
+  );
   const [saved, setSaved] = useState(false);
 
-  // ⬇️ Pobierz dzisiejszy check-in z backendu
   useEffect(() => {
     const fetchCheckin = async () => {
       try {
-        const res = await fetch("/api/daily-checkin");
+        const res = await fetch("/api/daily-checkin", { cache: "no-store" });
         if (res.ok) {
-          const data = await res.json();
-          setCheckin(data || {});
-          setSaved(!!data);
+          const data: CheckinState | null = await res.json();
+          if (data) {
+            setCheckin(data);
+
+            const savedDate = new Date(data.date || "");
+            const today = new Date();
+
+            const isSameDay =
+              savedDate.getFullYear() === today.getFullYear() &&
+              savedDate.getMonth() === today.getMonth() &&
+              savedDate.getDate() === today.getDate();
+
+            setSaved(isSameDay);
+          }
         }
       } catch (err) {
         console.error("Błąd pobierania checkinu", err);
+        toast.error("Nie udało się pobrać danych.");
       } finally {
         setLoading(false);
       }
     };
+
     fetchCheckin();
   }, []);
 
-  const handleSelect = async (field: keyof CheckinState, value: string) => {
+  const handleSelect = async (
+    field: keyof Omit<CheckinState, "date">,
+    value: string
+  ) => {
+    // Jeśli nic się nie zmieniło — nie wysyłamy requesta
+    if (checkin[field] === value) return;
+
     const updated = { ...checkin, [field]: value };
     setCheckin(updated);
-    setSaved(false);
+    setSavingField(field);
 
     try {
       const res = await fetch("/api/daily-checkin", {
@@ -55,11 +77,29 @@ export default function DailyCheckin() {
       });
 
       if (!res.ok) throw new Error("Błąd zapisu checkinu");
+
       setSaved(true);
-      toast.success("Zapisano odpowiedź");
+      toast.success(`Zapisano: ${labelForField(field)}`);
     } catch (err) {
-      toast.error("Nie udało się zapisać danych");
+      toast.error("Nie udało się zapisać danych.");
       console.error(err);
+    } finally {
+      setSavingField(null);
+    }
+  };
+
+  const labelForField = (key: keyof CheckinState) => {
+    switch (key) {
+      case "mood":
+        return "Samopoczucie";
+      case "sleep":
+        return "Jakość snu";
+      case "energy":
+        return "Poziom energii";
+      case "stress":
+        return "Poziom stresu";
+      default:
+        return "";
     }
   };
 
@@ -67,7 +107,7 @@ export default function DailyCheckin() {
     return (
       <div className="bg-white shadow-lg rounded-2xl p-6">
         <p className="text-gray-500 text-sm">
-          Ładowanie dzisiejszego check-inu...
+          ⏳ Ładowanie dzisiejszego check-inu...
         </p>
       </div>
     );
@@ -79,7 +119,7 @@ export default function DailyCheckin() {
 
       {Object.entries(options).map(([key, values]) => (
         <div key={key} className="flex flex-col gap-2">
-          <span className="font-medium">
+          <span className="font-medium capitalize">
             {key === "mood" && "🧠 Samopoczucie"}
             {key === "sleep" && "🌙 Jakość snu"}
             {key === "energy" && "🔋 Poziom energii"}
@@ -89,22 +129,33 @@ export default function DailyCheckin() {
           <div className="flex flex-wrap gap-2">
             {values.map((val) => {
               const selected = checkin[key as keyof CheckinState] === val;
+              const isSaving = savingField === key;
+
               return (
                 <button
                   key={val}
-                  onClick={() => handleSelect(key as keyof CheckinState, val)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-full border ${
-                    selected
-                      ? "bg-blue-100 border-blue-600 text-blue-600"
-                      : "bg-gray-50 border-gray-300 text-gray-600"
-                  } hover:bg-blue-50 transition`}
+                  onClick={() =>
+                    handleSelect(key as keyof Omit<CheckinState, "date">, val)
+                  }
+                  disabled={isSaving}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-full border transition
+                    ${
+                      selected
+                        ? "bg-blue-100 border-blue-600 text-blue-600"
+                        : "bg-gray-50 border-gray-300 text-gray-600"
+                    }
+                    ${
+                      isSaving ? "opacity-50 cursor-wait" : "hover:!bg-blue-50"
+                    }`}
                 >
                   {selected ? (
                     <LuCheck className="w-4 h-4" />
                   ) : (
                     <LuCircle className="w-4 h-4" />
                   )}
-                  <span className="text-sm">{val}</span>
+                  <span className="text-sm">
+                    {val} {isSaving && selected ? "⏳" : ""}
+                  </span>
                 </button>
               );
             })}
@@ -112,7 +163,11 @@ export default function DailyCheckin() {
         </div>
       ))}
 
-      {saved && <p className="text-sm text-green-600 mt-2">✅ Dane zapisane</p>}
+      {saved && (
+        <p className="text-sm text-green-600 mt-2">
+          ✅ Check-in zapisany. Możesz edytować odpowiedzi do końca dnia.
+        </p>
+      )}
     </div>
   );
 }
