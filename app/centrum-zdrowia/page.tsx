@@ -22,39 +22,33 @@ export default function CentrumZdrowia() {
 
   return (
     <Container>
-      {session?.user ? (
-        <div className="">
-          <PowitanieMotywacja userName={userName} />
-          <div className="grid xl:grid-cols-2 gap-4">
-            <StreakTracker />
-            <Feedback />
-            <DailyCheckin />
-            <OstatniePomiary />
-            <TrendCheckinEnergy />
-            <TrendMiniWaga />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            <TrendMiniCukier />
-            <TrendMiniCisnienie />
-            <TrendMiniTetno />
-          </div>
-
-          <div className="grid md:grid-cols-2 md:gap-8">
-            <CeleZdrowotne />
-          </div>
-          <div className="text-center mt-6">
-            <Link href="/statystyki">
-              <span className="text-blue-600 underline text-sm hover:text-blue-800">
-                Zobacz pełne statystyki zdrowotne →
-              </span>
-            </Link>
-          </div>
+      <div className="">
+        <PowitanieMotywacja userName={userName} />
+        <div className="grid xl:grid-cols-2 gap-4">
+          <StreakTracker />
+          <Feedback />
+          <DailyCheckin />
+          <OstatniePomiary />
+          <TrendCheckinEnergy />
+          <TrendMiniWaga />
         </div>
-      ) : (
-        <p className="text-gray-500 text-center mt-20 text-lg">
-          Nie jesteś zalogowany
-        </p>
-      )}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <TrendMiniCukier />
+          <TrendMiniCisnienie />
+          <TrendMiniTetno />
+        </div>
+
+        <div className="grid md:grid-cols-2 md:gap-8">
+          <CeleZdrowotne />
+        </div>
+        <div className="text-center mt-6">
+          <Link href="/statystyki">
+            <span className="text-blue-600 underline text-sm hover:text-blue-800">
+              Zobacz pełne statystyki zdrowotne →
+            </span>
+          </Link>
+        </div>
+      </div>
     </Container>
   );
 }

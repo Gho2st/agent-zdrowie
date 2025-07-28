@@ -16,6 +16,11 @@ export default function ClientLayoutGuard({
   const [checkingProfile, setCheckingProfile] = useState(false);
 
   useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/logowanie"); // lub własna strona logowania
+      return;
+    }
+
     const checkProfile = async () => {
       if (status !== "authenticated") return;
 

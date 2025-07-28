@@ -69,11 +69,6 @@ export default function Profil() {
   };
 
   useEffect(() => {
-    if (!session) {
-      router.push("/logowanie");
-      return;
-    }
-
     const fetchUserNorms = async () => {
       const res = await fetch("/api/user/norms");
       if (res.ok) {
@@ -131,8 +126,6 @@ export default function Profil() {
     }
   };
 
-  if (!session) return null;
-
   if (isLoading || !norms) {
     return (
       <Container>
@@ -155,14 +148,18 @@ export default function Profil() {
       </button>
       <div className="grid sm:grid-cols-2 gap-8 mt-20">
         <div className="bg-white p-10 shadow-lg rounded-2xl">
-          <p className="text-xl font-bold">{session.user?.name}</p>
-          <Image
-            src={session.user?.image ?? ""}
-            alt="avatar"
-            width={500}
-            height={500}
-            className="w-16 h-16 rounded-full my-3"
-          />
+          {session && (
+            <>
+              <p className="text-xl font-bold">{session.user?.name}</p>
+              <Image
+                src={session.user?.image ?? ""}
+                alt="avatar"
+                width={500}
+                height={500}
+                className="w-16 h-16 rounded-full my-3"
+              />
+            </>
+          )}
 
           {/* 🔹 Sekcja: Wiek, wzrost, waga */}
           <Age
