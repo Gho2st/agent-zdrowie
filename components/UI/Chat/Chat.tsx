@@ -17,8 +17,7 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, status]);
 
-  const handleCustomSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitIfValid = async () => {
     setLocalError(null);
 
     if (!input.trim()) {
@@ -26,7 +25,12 @@ export default function ChatPage() {
       return;
     }
 
-    await handleSubmit(e);
+    await handleSubmit();
+  };
+
+  const handleCustomSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitIfValid();
   };
 
   return (
@@ -84,7 +88,7 @@ export default function ChatPage() {
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
-              handleCustomSubmit(e as any); // rzutowanie, bo e nie jest typu FormEvent
+              submitIfValid();
             }
           }}
           disabled={status !== "ready"}

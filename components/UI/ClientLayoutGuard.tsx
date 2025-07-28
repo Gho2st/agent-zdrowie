@@ -10,7 +10,7 @@ export default function ClientLayoutGuard({
 }: {
   children: ReactNode;
 }) {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const pathname = usePathname();
   const router = useRouter();
   const [checkingProfile, setCheckingProfile] = useState(false);
