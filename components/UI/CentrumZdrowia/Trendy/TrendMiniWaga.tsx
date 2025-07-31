@@ -1,5 +1,4 @@
 "use client";
-
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -34,12 +33,9 @@ export default function TrendMiniWaga() {
     .map((m) => m.value);
 
   return (
-    <div className="bg-white/30 rounded-xl shadow p-4 w-full max-w-full overflow-x-auto">
+    <div className="bg-white/30 rounded-xl shadow p-4">
       <h4 className="font-semibold text-sm mb-2">⚖️ Waga – ostatnie 7 dni</h4>
-      <div
-        className="relative w-full"
-        style={{ height: "160px", minWidth: "300px" }}
-      >
+      <div className="h-40">
         <Line
           data={{
             labels,
@@ -59,16 +55,8 @@ export default function TrendMiniWaga() {
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-              y: {
-                beginAtZero: false,
-                ticks: { font: { size: 10 } },
-              },
-              x: {
-                ticks: {
-                  maxTicksLimit: 5,
-                  font: { size: 10 },
-                },
-              },
+              y: { beginAtZero: false },
+              x: { ticks: { maxTicksLimit: 5 } },
             },
           }}
         />

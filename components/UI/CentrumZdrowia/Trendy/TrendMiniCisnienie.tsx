@@ -7,7 +7,6 @@ import {
   LinearScale,
   CategoryScale,
   Tooltip,
-  Legend,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
 import { useEffect, useState } from "react";
@@ -17,8 +16,7 @@ ChartJS.register(
   PointElement,
   LinearScale,
   CategoryScale,
-  Tooltip,
-  Legend
+  Tooltip
 );
 
 interface CisnienieData {
@@ -62,14 +60,11 @@ export default function TrendMiniCisnienie() {
   }, []);
 
   return (
-    <div className="bg-white/30 rounded-xl shadow p-4 w-full max-w-full overflow-x-auto">
+    <div className="bg-white/30 rounded-xl shadow p-4">
       <h4 className="font-semibold text-sm mb-2">
         💓 Ciśnienie – ostatnie 7 dni
       </h4>
-      <div
-        className="relative w-full"
-        style={{ height: "160px", minWidth: "300px" }}
-      >
+      <div className="h-40">
         <Line
           data={{
             labels: data.map((m) => m.date),
@@ -95,28 +90,10 @@ export default function TrendMiniCisnienie() {
           options={{
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                position: "top",
-                labels: {
-                  boxWidth: 12,
-                  font: { size: 10 },
-                },
-              },
-            },
+            plugins: { legend: { position: "top" } },
             scales: {
-              y: {
-                beginAtZero: false,
-                ticks: {
-                  font: { size: 10 },
-                },
-              },
-              x: {
-                ticks: {
-                  maxTicksLimit: 5,
-                  font: { size: 10 },
-                },
-              },
+              y: { beginAtZero: false },
+              x: { ticks: { maxTicksLimit: 5 } },
             },
           }}
         />

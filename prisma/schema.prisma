@@ -7,65 +7,62 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model User {
-  id            Int       @id @default(autoincrement())
-  email         String    @unique
-  name          String?
-  image         String?
-  gender        String?   // np. "M" lub "K"
-  height        Int?      // wzrost w cm
-  weight        Float?    // waga w kg
-  birthdate     DateTime? // wiek jako data urodzenia zeby potem dynamicznie obliczac wiek uzytkownika
-  medications String? // leki
-  conditions String? // choroby
-  systolicMin   Int?
-  systolicMax   Int?
-  diastolicMin  Int?
-  diastolicMax  Int?
-  pulseMin      Int?
-  pulseMax      Int?
-  glucoseFastingMin Int?
-  glucoseFastingMax Int?
-  glucosePrediabetesFastingMin Int?
+  id                           Int            @id @default(autoincrement())
+  email                        String         @unique
+  name                         String?
+  image                        String?
+  createdAt                    DateTime       @default(now())
+  updatedAt                    DateTime       @updatedAt
+  gender                       String?
+  height                       Int?
+  weight                       Float?
+  diastolicMax                 Int?
+  diastolicMin                 Int?
+  systolicMax                  Int?
+  systolicMin                  Int?
+  weightMax                    Float?
+  weightMin                    Float?
+  glucoseFastingMax            Int?
+  glucoseFastingMin            Int?
+  glucosePostMealMax           Int?
   glucosePrediabetesFastingMax Int?
-  glucosePostMealMax Int?
-  bmi Float?
-  weightMin     Float?
-  weightMax     Float?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  measurements  Measurement[]
-  dailyCheckins DailyCheckin[]
+  glucosePrediabetesFastingMin Int?
+  bmi                          Float?
+  medications                  String?
+  birthdate                    DateTime?
+  conditions                   String?
+  pulseMax                     Int?
+  pulseMin                     Int?
+  dailyCheckins                DailyCheckin[]
+  measurements                 Measurement[]
 }
-
 
 model Measurement {
-  id         Int      @id @default(autoincrement())
-  amount     Float?
-  type       String
-  unit       String
-  systolic   Int?
-  diastolic  Int?
-  timing     String?     // np. przed posiłkiem, po posiłku
-  context    String?     // np. owsianka
-  note       String?     // np. stres
-  createdAt  DateTime    @default(now())
-  userId     Int
-  user       User        @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  userId    Int
+  id        Int      @id @default(autoincrement())
+  type      String
+  unit      String
+  diastolic Int?
+  systolic  Int?
+  context   String?
+  note      String?
+  timing    String?
+  amount    Float?
+  user      User     @relation(fields: [userId], references: [id])
 }
-
 
 model DailyCheckin {
   id        Int      @id @default(autoincrement())
   date      DateTime
-  mood      String?  // np. "🙂 Dobre"
-  sleep     String?  // np. "🛌 Dobrze spałem"
-  energy    String?  // np. "⚡️ Wysoka"
-  stress    String?  // np. "😣 Wysoki"
+  mood      String?
+  sleep     String?
+  energy    String?
+  stress    String?
   userId    Int
-  user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
 
-  @@unique([userId, date]) // jeden check-in dziennie na użytkownika
+  @@unique([userId, date])
 }
