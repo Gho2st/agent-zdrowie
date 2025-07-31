@@ -30,8 +30,8 @@ export default function StreakTrackerDynamic() {
   const isStreakActive = data?.lastEntryDate === today;
 
   return (
-    <div className="bg-white shadow rounded-2xl p-4 text-center flex flex-col justify-center items-center gap-6">
-      <h2 className="text-xl font-semibold mb-2 flex items-center justify-center gap-2">
+    <div className="bg-white/30 shadow rounded-2xl p-4 text-center flex flex-col justify-center items-center gap-6">
+      <h2 className="text-xl md:text-2xl font-semibold mb-2 flex items-center justify-center gap-2">
         <Flame className="text-orange-500 w-6 h-6" /> Seria dni z pomiarami
       </h2>
 
@@ -44,10 +44,10 @@ export default function StreakTrackerDynamic() {
         <p className="text-gray-500">Brak danych do wyświetlenia.</p>
       ) : (
         <>
-          <p className="text-3xl xl:text-4xl font-bold text-green-600">
+          <p className="text-2xl xl:text-4xl font-bold text-green-600">
             {data.streakCount} dni
           </p>
-          <p className="text-lg text-gray-500 mt-1">
+          <p className="text-base md:text-lg text-gray-500 mt-1">
             {isStreakActive
               ? "Dzisiaj już dodałeś pomiar 💪"
               : "Nie zapomnij dodać pomiaru dzisiaj!"}

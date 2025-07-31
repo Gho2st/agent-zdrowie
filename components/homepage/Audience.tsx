@@ -23,7 +23,7 @@ export default function Audience() {
   ];
 
   return (
-    <section className="mt-20 py-20 rounded-4xl">
+    <section className="mt-20 pt-10 rounded-4xl">
       <h2 className="text-3xl md:text-4xl font-bold text-center mb-10 xl:mb-16">
         👥 Dla kogo jest Agent Zdrowie?
       </h2>

@@ -7,6 +7,11 @@ import { useSession } from "next-auth/react";
 import { User, Measurement } from "@prisma/client";
 import toast from "react-hot-toast";
 import { useChat } from "@ai-sdk/react";
+import TrendMiniCisnienie from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniCisnienie";
+import TrendMiniCukier from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniCukier";
+import TrendMiniTetno from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniTetno";
+import TrendMiniWaga from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniWaga";
+import ListaPomiarow from "./ListaPomiarów";
 
 type MeasurementInput = {
   type: string;
@@ -221,10 +226,6 @@ export default function Pomiary() {
     }
   };
 
-  const filteredMeasurements = measurements.filter((m: Measurement) =>
-    filterType === "all" ? true : m.type === filterType
-  );
-
   if (status === "loading") {
     return <div>Wczytywanie...</div>;
   }
@@ -235,109 +236,116 @@ export default function Pomiary() {
       <p className="text-gray-600 mt-4 mb-8">
         Zarządzaj swoimi pomiarami w prosty i przejrzysty sposób
       </p>
-
-      {/* Formularz dodawania */}
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-6 md:p-8 rounded-2xl shadow-xl w-full mx-auto space-y-5 transition-all duration-300"
-      >
-        <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1">
-            Typ pomiaru
-          </label>
-          <select
-            value={type}
-            onChange={(e) => {
-              setType(e.target.value);
-              if (e.target.value === "ciśnienie") setUnit("mmHg");
-              else if (e.target.value === "cukier") setUnit("mg/dL");
-              else if (e.target.value === "waga") setUnit("kg");
-              else if (e.target.value === "tętno") setUnit("bpm");
-              setValue("");
-            }}
-            className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
-          >
-            <option value="ciśnienie">💓 Ciśnienie</option>
-            <option value="cukier">🍭 Cukier</option>
-            <option value="waga">⚖️ Waga</option>
-            <option value="tętno">❤️ Tętno</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-gray-700 block mb-1">
-            {type === "ciśnienie" ? "Ciśnienie (np. 120/80)" : "Wartość"}
-          </label>
-          <input
-            type={type === "ciśnienie" ? "text" : "number"}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            required
-            placeholder={
-              type === "ciśnienie"
-                ? "120/80"
-                : type === "tętno"
-                ? "np. 70"
-                : "np. 72"
-            }
-            className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
-          />
-        </div>
-
-        <input
-          type="text"
-          value={unit}
-          readOnly
-          className="w-full p-3 border border-gray-200 rounded-lg bg-gray-100 text-gray-600"
-        />
-
-        {type === "cukier" && (
-          <>
-            <input
-              type="text"
-              value={glucoseContext}
-              onChange={(e) => setGlucoseContext(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg"
-              placeholder="Co jadłeś przed pomiarem?"
-            />
+      {/* góra lewo prawo na desktopie */}
+      <div className="grid md:grid-cols-2 gap-8">
+        {/* Formularz dodawania */}
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white/30 backdrop-blur-lg border border-white/20 p-6 md:p-8 rounded-2xl shadow-xl w-full mx-auto space-y-5 transition-all duration-300"
+        >
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">
+              Typ pomiaru
+            </label>
             <select
-              value={glucoseTime}
-              onChange={(e) => setGlucoseTime(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg"
+              value={type}
+              onChange={(e) => {
+                setType(e.target.value);
+                if (e.target.value === "ciśnienie") setUnit("mmHg");
+                else if (e.target.value === "cukier") setUnit("mg/dL");
+                else if (e.target.value === "waga") setUnit("kg");
+                else if (e.target.value === "tętno") setUnit("bpm");
+                setValue("");
+              }}
+              className="w-full p-3 rounded-lg border bg-white/30  border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
             >
-              <option value="przed posiłkiem">Przed posiłkiem</option>
-              <option value="po posiłku">Po posiłku</option>
-              <option value="rano">Rano</option>
-              <option value="wieczorem">Wieczorem</option>
+              <option value="ciśnienie">💓 Ciśnienie</option>
+              <option value="cukier">🍭 Cukier</option>
+              <option value="waga">⚖️ Waga</option>
+              <option value="tętno">❤️ Tętno</option>
             </select>
-          </>
-        )}
+          </div>
 
-        {type === "ciśnienie" && (
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1">
+              {type === "ciśnienie" ? "Ciśnienie (np. 120/80)" : "Wartość"}
+            </label>
+            <input
+              type={type === "ciśnienie" ? "text" : "number"}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              required
+              placeholder={
+                type === "ciśnienie"
+                  ? "120/80"
+                  : type === "tętno"
+                  ? "np. 70"
+                  : "np. 72"
+              }
+              className="w-full p-3 rounded-lg border bg-white/30 border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
+            />
+          </div>
+
           <input
             type="text"
-            value={pressureNote}
-            onChange={(e) => setPressureNote(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-lg"
-            placeholder="Notatka (np. stres, wysiłek)"
+            value={unit}
+            readOnly
+            className="w-full p-3 border rounded-lg border-gray-300 bg-green-50 text-gray-600"
           />
-        )}
 
-        <button
-          type="submit"
-          className="bg-green-600 cursor-pointer hover:bg-green-700 text-white w-full font-semibold py-3 rounded-lg transition"
-          disabled={status !== "authenticated"}
-        >
-          Zapisz pomiar
-        </button>
-      </form>
+          {type === "cukier" && (
+            <>
+              <input
+                type="text"
+                value={glucoseContext}
+                onChange={(e) => setGlucoseContext(e.target.value)}
+                className="w-full p-3 border bg-white/30 border-gray-300 rounded-lg"
+                placeholder="Co jadłeś przed pomiarem?"
+              />
+              <select
+                value={glucoseTime}
+                onChange={(e) => setGlucoseTime(e.target.value)}
+                className="w-full p-3 border bg-white/30 border-gray-300 rounded-lg"
+              >
+                <option value="przed posiłkiem">Przed posiłkiem</option>
+                <option value="po posiłku">Po posiłku</option>
+                <option value="rano">Rano</option>
+                <option value="wieczorem">Wieczorem</option>
+              </select>
+            </>
+          )}
 
+          {type === "ciśnienie" && (
+            <input
+              type="text"
+              value={pressureNote}
+              onChange={(e) => setPressureNote(e.target.value)}
+              className="w-full p-3 bg-white/30 border border-gray-300 rounded-lg"
+              placeholder="Notatka (np. stres, wysiłek)"
+            />
+          )}
+
+          <button
+            type="submit"
+            className="bg-green-600 cursor-pointer hover:bg-green-700 text-white w-full font-semibold py-3 rounded-lg transition"
+            disabled={status !== "authenticated"}
+          >
+            Zapisz pomiar
+          </button>
+        </form>
+
+        <div>
+          {type === "ciśnienie" && <TrendMiniCisnienie />}
+          {type === "cukier" && <TrendMiniCukier />}
+          {type === "tętno" && <TrendMiniTetno />}
+          {type === "waga" && <TrendMiniWaga />}
+        </div>
+      </div>
       {isLoading && (
         <div className="mt-6 text-center text-sm text-gray-500">
           Generowanie porady zdrowotnej...
         </div>
       )}
-
       {gptResponse && (
         <div className="mt-10 p-5 bg-blue-50 border border-blue-200 rounded-lg shadow-md">
           <h3 className="text-lg font-semibold text-blue-800 mb-2">
@@ -346,88 +354,15 @@ export default function Pomiary() {
           <p className="text-blue-900 whitespace-pre-line">{gptResponse}</p>
         </div>
       )}
-
-      {/* Filtr i lista */}
-      <div className="mt-10 mx-auto">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">
-          Filtruj pomiary
-        </h2>
-        <select
-          value={filterType}
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-            setFilterType(e.target.value)
-          }
-          className="w-full p-3 border border-gray-300 rounded-lg"
-        >
-          <option value="all">Wszystkie</option>
-          <option value="ciśnienie">Ciśnienie</option>
-          <option value="cukier">Cukier</option>
-          <option value="waga">Waga</option>
-          <option value="tętno">Tętno</option>
-        </select>
-      </div>
-
-      <div className="mt-6 mx-auto">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Twoje pomiary</h2>
-        {filteredMeasurements.length === 0 ? (
-          <p className="text-gray-500 text-center">
-            Brak pomiarów do wyświetlenia
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {filteredMeasurements.map((m: Measurement) => (
-              <li
-                key={m.id}
-                className="bg-white p-4 rounded-lg shadow-md text-gray-700 relative"
-              >
-                <strong className="capitalize">{m.type}</strong>:{" "}
-                {m.type === "ciśnienie" && m.systolic && m.diastolic
-                  ? `${m.systolic}/${m.diastolic} ${m.unit}`
-                  : `${m.amount} ${m.unit}`}{" "}
-                – {new Date(m.createdAt).toLocaleString("pl-PL")}
-                {m.type === "cukier" && (
-                  <p className="text-sm text-gray-500">
-                    {m.timing ? `(${m.timing})` : ""}{" "}
-                    {m.context && `– ${m.context}`}
-                  </p>
-                )}
-                {m.type === "ciśnienie" && m.note && (
-                  <p className="text-sm text-gray-500">Notatka: {m.note}</p>
-                )}
-                <button
-                  onClick={() => requestDelete(String(m.id))}
-                  className="absolute cursor-pointer top-2 right-2 text-red-600 hover:text-red-800 text-sm"
-                >
-                  ✖
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      {confirmDeleteId && (
-        <div className="fixed inset-0 bg-black/80  flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-xl w-11/12 max-w-sm">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">
-              Czy na pewno chcesz usunąć pomiar?
-            </h3>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setConfirmDeleteId(null)}
-                className="px-4 py-2 rounded-lg cursor-pointer bg-gray-200 text-gray-700 hover:bg-gray-300"
-              >
-                Anuluj
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 rounded-lg cursor-pointer bg-red-600 text-white hover:bg-red-700"
-              >
-                Usuń
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ListaPomiarow
+        measurements={measurements}
+        filterType={filterType}
+        setFilterType={setFilterType}
+        requestDelete={requestDelete}
+        confirmDeleteId={confirmDeleteId}
+        setConfirmDeleteId={setConfirmDeleteId}
+        confirmDelete={confirmDelete}
+      />{" "}
     </Container>
   );
 }

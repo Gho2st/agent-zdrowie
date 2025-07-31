@@ -34,17 +34,17 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10">
+    <div className="max-w-2xl mx-auto px-4">
       <h1 className="text-3xl font-bold mb-4">💬 Agent Zdrowie</h1>
 
-      <p className="text-gray-700 font-medium text-lg mb-8">
+      <p className="text-gray-700 font-medium md:text-lg mb-8">
         Twój osobisty asystent zdrowotny oparty na AI. Zadaj pytanie, a Agent
         Zdrowie odpowie na podstawie Twoich danych medycznych.
       </p>
 
       <div className="space-y-4 mb-6">
         {messages.length === 0 && status === "ready" && (
-          <p className="text-sm text-gray-400 italic">
+          <p className="text-sm text-gray-500 font-medium italic">
             Zadaj pierwsze pytanie, aby rozpocząć rozmowę.
           </p>
         )}

@@ -10,7 +10,7 @@ export default function Norms({ norms, handleChange }: NormsProps) {
   const [editingNorms, setEditingNorms] = useState(false);
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-md">
+    <div className="bg-white/30 backdrop-blur-lg border border-white/20 p-6 rounded-xl shadow-md">
       <p className="font-semibold mb-4">
         Masz własne normy od lekarza? Możesz je tutaj zaktualizować:
       </p>

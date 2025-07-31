@@ -34,7 +34,7 @@ export default function TrendMiniTetno() {
     .map((m) => m.value);
 
   return (
-    <div className="bg-white rounded-xl shadow p-4">
+    <div className="bg-white/30 rounded-xl shadow p-4">
       <h4 className="font-semibold text-sm mb-2">❤️ Tętno – ostatnie 7 dni</h4>
       <div className="h-40">
         <Line

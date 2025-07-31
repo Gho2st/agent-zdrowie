@@ -55,7 +55,7 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
   };
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-md space-y-6">
+    <div className="bg-white/30 backdrop-blur-lg border border-white/20 p-6 rounded-xl shadow-md space-y-6">
       {/* Leki */}
       <div>
         <label className="font-semibold block mb-1">

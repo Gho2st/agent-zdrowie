@@ -64,7 +64,7 @@ export default function CeleZdrowotne() {
   const Czerwony = "bg-red-50 border-red-200 text-red-800";
 
   return (
-    <div className="bg-white p-4 rounded-xl shadow mt-6">
+    <div className="bg-white/30 p-4 rounded-xl shadow mt-6">
       <h3 className="text-lg font-semibold mb-4">🎯 Cele zdrowotne</h3>
 
       <div className="grid gap-3 text-sm">

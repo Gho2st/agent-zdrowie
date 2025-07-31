@@ -114,7 +114,7 @@ export default function DailyCheckin() {
   }
 
   return (
-    <div className="bg-white shadow-lg rounded-2xl p-6 flex flex-col gap-6">
+    <div className="bg-white/30 shadow rounded-2xl p-6 flex flex-col gap-6">
       <h2 className="text-xl font-semibold">📝 Dzisiejszy check-in</h2>
 
       {Object.entries(options).map(([key, values]) => (

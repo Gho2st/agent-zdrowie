@@ -146,8 +146,8 @@ export default function Profil() {
       >
         Wyloguj się
       </button>
-      <div className="grid sm:grid-cols-2 gap-8 mt-20">
-        <div className="bg-white p-10 shadow-lg rounded-2xl">
+      <div className="grid sm:grid-cols-2 gap-8 mt-10">
+        <div className="bg-white/30 backdrop-blur-lg border border-white/20 p-10 shadow-lg rounded-2xl">
           {session && (
             <>
               <p className="text-xl font-bold">{session.user?.name}</p>
