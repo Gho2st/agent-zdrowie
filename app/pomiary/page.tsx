@@ -55,7 +55,7 @@ export default function Pomiary() {
     await append({
       role: "user",
       content:
-        "Dodano nowy pomiar. Proszę o krótką poradę zdrowotną na jego podstawie.",
+        "Na podstawie tylko ostatniego pomiaru oceń go",
     });
   };
 
