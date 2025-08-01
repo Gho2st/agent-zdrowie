@@ -36,7 +36,7 @@ export default function TrendMiniTetno() {
   return (
     <div className="bg-white/30 rounded-xl shadow p-4">
       <h4 className="font-semibold text-sm mb-2">❤️ Tętno – ostatnie 7 dni</h4>
-      <div className="h-40">
+      <div className="h-40 xl:h-95">
         <Line
           data={{
             labels,
