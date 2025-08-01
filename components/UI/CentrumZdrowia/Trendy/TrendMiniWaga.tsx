@@ -20,8 +20,9 @@ ChartJS.register(
   Filler
 );
 
-export default function TrendMiniWaga() {
-  const { prepared } = useHealthChartData("waga");
+export default function TrendMiniWaga({ refreshKey }: { refreshKey?: number }) {
+  const { prepared } = useHealthChartData("waga", refreshKey);
+  console.log("prepared waga:", prepared);
 
   const labels = prepared
     .slice()

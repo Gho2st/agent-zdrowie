@@ -278,6 +278,7 @@ export default function Statistics() {
 
   const baseOptions = (type: Measurement["type"]) => ({
     responsive: true,
+    maintainAspectRatio: false, // TO DODAJ
     plugins: {
       legend: { position: "top" as const },
       tooltip: { mode: "index" as const, intersect: false },
@@ -293,14 +294,19 @@ export default function Statistics() {
       <Header text="Statystyki zdrowia" />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-8 mt-10">
         {["ciśnienie", "cukier", "waga", "tętno"].map((type) => (
-          <div key={type} className="bg-white/30 backdrop-blur-lg border border-white/20 p-4 rounded-xl shadow-2xl h-full">
+          <div
+            key={type}
+            className="bg-white/30 backdrop-blur-lg border border-white/20 p-4 rounded-xl shadow-2xl h-full"
+          >
             <h3 className="font-bold text-lg mb-4 capitalize">{type}</h3>
-            <div className="h-45 xl:h-95">
-              <Line
-                data={prepareChartData(type as Measurement["type"])}
-                options={baseOptions(type as Measurement["type"])}
-              />
-              <div className="mt-4 space-y-1 text-sm text-gray-700">
+            <div className="space-y-4">
+              <div className="relative h-[300px] sm:h-[400px] md:h-[500px]">
+                <Line
+                  data={prepareChartData(type as Measurement["type"])}
+                  options={baseOptions(type as Measurement["type"])}
+                />
+              </div>
+              <div className="text-sm text-gray-700 space-y-1">
                 {type === "waga" &&
                   stats?.waga?.map((item) => (
                     <p key={item.month}>

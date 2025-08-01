@@ -31,8 +31,11 @@ interface Measurement {
   systolic: number;
   diastolic: number;
 }
-
-export default function TrendMiniCisnienie() {
+export default function TrendMiniCisnienie({
+  refreshKey,
+}: {
+  refreshKey?: number;
+}) {
   const [data, setData] = useState<CisnienieData[]>([]);
 
   useEffect(() => {
@@ -57,7 +60,7 @@ export default function TrendMiniCisnienie() {
     };
 
     fetchData();
-  }, []);
+  }, [refreshKey ?? "initial"]);
 
   return (
     <div className="bg-white/30 rounded-xl shadow p-4">

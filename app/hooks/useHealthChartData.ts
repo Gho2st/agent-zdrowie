@@ -24,7 +24,7 @@ export interface PreparedData {
   value: number | [number, number];
 }
 
-export default function useHealthChartData(type: string) {
+export default function useHealthChartData(type: string, refreshKey?: number) {
   const [data, setData] = useState<Measurement[]>([]);
   const [norms, setNorms] = useState<Norms | null>(null);
 
@@ -43,7 +43,7 @@ export default function useHealthChartData(type: string) {
     };
 
     fetchData();
-  }, [type]);
+  }, [type, refreshKey]); // <--- poprawnie działa
 
   const prepared: PreparedData[] = data
     .map((m) => {
@@ -62,7 +62,8 @@ export default function useHealthChartData(type: string) {
 
       return { date, value };
     })
-    .slice(-7); // tylko ostatnie 7 pomiarów
+    .sort((a, b) => b.date.getTime() - a.date.getTime()) // sortowanie po dacie
+    .slice(0, 7); // 7 najnowszych
 
   return { prepared, norms };
 }

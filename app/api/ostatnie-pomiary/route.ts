@@ -15,7 +15,7 @@ export async function GET() {
     const measurements = await prisma.measurement.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
-      take: 5,
+      take: 7,
     });
 
     return NextResponse.json(measurements, { status: 200 });

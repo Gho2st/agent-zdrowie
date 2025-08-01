@@ -20,7 +20,11 @@ ChartJS.register(
   Filler
 );
 
-export default function TrendMiniTetno() {
+export default function TrendMiniTetno({
+  refreshKey,
+}: {
+  refreshKey?: number;
+}) {
   const { prepared } = useHealthChartData("tętno");
 
   const labels = prepared

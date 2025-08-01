@@ -31,6 +31,7 @@ export default function Pomiary() {
   const [unit, setUnit] = useState("mmHg");
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [filterType, setFilterType] = useState<string>("all");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const [glucoseContext, setGlucoseContext] = useState("");
   const [glucoseTime, setGlucoseTime] = useState("przed posiłkiem");
@@ -38,6 +39,9 @@ export default function Pomiary() {
 
   const [norms, setNorms] = useState<Partial<User> | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastSubmittedAt, setLastSubmittedAt] = useState<number | null>(null);
 
   const [chatId, setChatId] = useState(() => `feedback-${Date.now()}`);
 
@@ -54,8 +58,7 @@ export default function Pomiary() {
   const fetchAgentAdvice = async () => {
     await append({
       role: "user",
-      content:
-        "Na podstawie tylko ostatniego pomiaru oceń go",
+      content: "Na podstawie tylko ostatniego pomiaru oceń go",
     });
   };
 
@@ -116,113 +119,127 @@ export default function Pomiary() {
       return;
     }
 
+    const now = Date.now();
+    if (lastSubmittedAt && now - lastSubmittedAt < 5000) {
+      toast.error("Odczekaj chwilę przed kolejnym pomiarem.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setLastSubmittedAt(now);
+
     const body: MeasurementInput = { type, unit };
     let isOutOfNorm = false;
     let alertDetails = "";
 
-    if (type === "ciśnienie") {
-      const parts = value.split("/").map(Number);
-      if (parts.length !== 2 || parts.some(isNaN)) {
-        toast.error("Niepoprawny format ciśnienia (np. 120/80)");
-        return;
-      }
-      body.systolic = parts[0];
-      body.diastolic = parts[1];
-      body.note = pressureNote;
+    try {
+      if (type === "ciśnienie") {
+        const parts = value.split("/").map(Number);
+        if (parts.length !== 2 || parts.some(isNaN)) {
+          toast.error("Niepoprawny format ciśnienia (np. 120/80)");
+          return;
+        }
+        body.systolic = parts[0];
+        body.diastolic = parts[1];
+        body.note = pressureNote;
 
-      if (
-        norms?.systolicMin != null &&
-        norms?.systolicMax != null &&
-        norms?.diastolicMin != null &&
-        norms?.diastolicMax != null &&
-        (body.systolic < norms.systolicMin ||
-          body.systolic > norms.systolicMax ||
-          body.diastolic < norms.diastolicMin ||
-          body.diastolic > norms.diastolicMax)
-      ) {
-        isOutOfNorm = true;
-        alertDetails = `Zapisano pomiar, ale Twoje ciśnienie ${body.systolic}/${body.diastolic} mmHg wykracza poza normę.\nSkurczowe: ${norms.systolicMin}–${norms.systolicMax}, Rozkurczowe: ${norms.diastolicMin}–${norms.diastolicMax}`;
-      }
-    } else {
-      const numeric = parseFloat(value);
-      if (isNaN(numeric)) {
-        toast.error("Niepoprawna wartość");
-        return;
-      }
-      body.amount = numeric;
+        if (
+          norms?.systolicMin != null &&
+          norms?.systolicMax != null &&
+          norms?.diastolicMin != null &&
+          norms?.diastolicMax != null &&
+          (body.systolic < norms.systolicMin ||
+            body.systolic > norms.systolicMax ||
+            body.diastolic < norms.diastolicMin ||
+            body.diastolic > norms.diastolicMax)
+        ) {
+          isOutOfNorm = true;
+          alertDetails = `Zapisano pomiar, ale Twoje ciśnienie ${body.systolic}/${body.diastolic} mmHg wykracza poza normę.\nSkurczowe: ${norms.systolicMin}–${norms.systolicMax}, Rozkurczowe: ${norms.diastolicMin}–${norms.diastolicMax}`;
+        }
+      } else {
+        const numeric = parseFloat(value);
+        if (isNaN(numeric)) {
+          toast.error("Niepoprawna wartość");
+          return;
+        }
+        body.amount = numeric;
 
-      if (type === "cukier") {
-        body.context = glucoseContext;
-        body.timing = glucoseTime;
+        if (type === "cukier") {
+          body.context = glucoseContext;
+          body.timing = glucoseTime;
 
-        if (glucoseTime === "przed posiłkiem") {
-          if (
-            norms?.glucoseFastingMin != null &&
-            norms?.glucoseFastingMax != null &&
-            (numeric < norms.glucoseFastingMin ||
-              numeric > norms.glucoseFastingMax)
-          ) {
-            isOutOfNorm = true;
-            alertDetails = `Twój cukier ${numeric} ${unit} wykracza poza normę na czczo.\nNorma: ${norms.glucoseFastingMin}–${norms.glucoseFastingMax} ${unit}`;
+          if (glucoseTime === "przed posiłkiem") {
+            if (
+              norms?.glucoseFastingMin != null &&
+              norms?.glucoseFastingMax != null &&
+              (numeric < norms.glucoseFastingMin ||
+                numeric > norms.glucoseFastingMax)
+            ) {
+              isOutOfNorm = true;
+              alertDetails = `Twój cukier ${numeric} ${unit} wykracza poza normę na czczo.\nNorma: ${norms.glucoseFastingMin}–${norms.glucoseFastingMax} ${unit}`;
+            }
+          } else if (glucoseTime === "po posiłku") {
+            if (
+              norms?.glucosePostMealMax != null &&
+              numeric > norms.glucosePostMealMax
+            ) {
+              isOutOfNorm = true;
+              alertDetails = `Twój cukier ${numeric} ${unit} wykracza poza normę po posiłku.\nNorma: < ${norms.glucosePostMealMax} ${unit}`;
+            }
           }
-        } else if (glucoseTime === "po posiłku") {
-          if (
-            norms?.glucosePostMealMax != null &&
-            numeric > norms.glucosePostMealMax
-          ) {
-            isOutOfNorm = true;
-            alertDetails = `Twój cukier ${numeric} ${unit} wykracza poza normę po posiłku.\nNorma: < ${norms.glucosePostMealMax} ${unit}`;
-          }
+        }
+
+        if (
+          type === "waga" &&
+          norms?.weightMin != null &&
+          norms?.weightMax != null &&
+          (numeric < norms.weightMin || numeric > norms.weightMax)
+        ) {
+          isOutOfNorm = true;
+          alertDetails = `Twoja waga ${numeric} ${unit} wykracza poza normę.\nNorma: ${norms.weightMin}–${norms.weightMax} ${unit}`;
+        }
+
+        if (
+          type === "tętno" &&
+          norms?.pulseMin != null &&
+          norms?.pulseMax != null &&
+          (numeric < norms.pulseMin || numeric > norms.pulseMax)
+        ) {
+          isOutOfNorm = true;
+          alertDetails = `Twoje tętno ${numeric} ${unit} wykracza poza normę.\nNorma: ${norms.pulseMin}–${norms.pulseMax} ${unit}`;
         }
       }
 
-      if (
-        type === "waga" &&
-        norms?.weightMin != null &&
-        norms?.weightMax != null &&
-        (numeric < norms.weightMin || numeric > norms.weightMax)
-      ) {
-        isOutOfNorm = true;
-        alertDetails = `Twoja waga ${numeric} ${unit} wykracza poza normę.\nNorma: ${norms.weightMin}–${norms.weightMax} ${unit}`;
-      }
+      const res = await fetch("/api/measurement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-      if (
-        type === "tętno" &&
-        norms?.pulseMin != null &&
-        norms?.pulseMax != null &&
-        (numeric < norms.pulseMin || numeric > norms.pulseMax)
-      ) {
-        isOutOfNorm = true;
-        alertDetails = `Twoje tętno ${numeric} ${unit} wykracza poza normę.\nNorma: ${norms.pulseMin}–${norms.pulseMax} ${unit}`;
-      }
-    }
+      if (res.ok) {
+        setValue("");
+        setGlucoseContext("");
+        setGlucoseTime("przed posiłkiem");
+        setPressureNote("");
 
-    const res = await fetch("/api/measurement", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+        const refreshRes = await fetch("/api/measurement");
+        if (refreshRes.ok) {
+          setMeasurements(await refreshRes.json());
+          setRefreshKey(Date.now());
+        }
 
-    if (res.ok) {
-      setValue("");
-      setGlucoseContext("");
-      setGlucoseTime("przed posiłkiem");
-      setPressureNote("");
-
-      const refreshRes = await fetch("/api/measurement");
-      if (refreshRes.ok) {
-        setMeasurements(await refreshRes.json());
-      }
-
-      if (isOutOfNorm) {
-        toast.error(`${alertDetails}`);
+        if (isOutOfNorm) {
+          toast.error(`${alertDetails}`);
+        } else {
+          toast.success("Pomyślnie dodano pomiar w normie!");
+        }
+        await fetchAgentAdvice();
       } else {
-        toast.success("Pomyślnie dodano pomiar w normie!");
+        const data = await res.json();
+        toast.error(data.error || "Błąd dodawania pomiaru");
       }
-      await fetchAgentAdvice();
-    } else {
-      const data = await res.json();
-      toast.error(data.error || "Błąd dodawania pomiaru");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -327,18 +344,26 @@ export default function Pomiary() {
 
           <button
             type="submit"
-            className="bg-green-600 cursor-pointer hover:bg-green-700 text-white w-full font-semibold py-3 rounded-lg transition"
-            disabled={status !== "authenticated"}
+            className="bg-green-600 hover:bg-green-700 text-white w-full font-semibold py-3 rounded-lg transition disabled:opacity-50"
+            disabled={status !== "authenticated" || isSubmitting}
           >
-            Zapisz pomiar
+            {isSubmitting ? "Odczekaj chwilę..." : "Zapisz pomiar"}
           </button>
         </form>
 
-        <div>
-          {type === "ciśnienie" && <TrendMiniCisnienie />}
-          {type === "cukier" && <TrendMiniCukier />}
-          {type === "tętno" && <TrendMiniTetno />}
-          {type === "waga" && <TrendMiniWaga />}
+        <div className="space-y-6">
+          <div className={type !== "ciśnienie" ? "hidden" : ""}>
+            <TrendMiniCisnienie refreshKey={refreshKey} />
+          </div>
+          <div className={type !== "cukier" ? "hidden" : ""}>
+            <TrendMiniCukier refreshKey={refreshKey} />
+          </div>
+          <div className={type !== "tętno" ? "hidden" : ""}>
+            <TrendMiniTetno refreshKey={refreshKey} />
+          </div>
+          <div className={type !== "waga" ? "hidden" : ""}>
+            <TrendMiniWaga refreshKey={refreshKey} />
+          </div>
         </div>
       </div>
       {isLoading && (
@@ -348,7 +373,7 @@ export default function Pomiary() {
       )}
       {gptResponse && (
         <div className="mt-10 p-5 bg-blue-50 border border-blue-200 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold text-blue-800 mb-2">
+          <h3 className="text-lg xl:text-2xl font-semibold text-blue-800 mb-2">
             Feedback od Agenta Zdrowie
           </h3>
           <p className="text-blue-900 whitespace-pre-line">{gptResponse}</p>

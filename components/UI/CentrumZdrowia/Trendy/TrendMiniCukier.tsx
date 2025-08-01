@@ -20,7 +20,11 @@ ChartJS.register(
   Filler
 );
 
-export default function TrendMiniCukier() {
+export default function TrendMiniCukier({
+  refreshKey,
+}: {
+  refreshKey?: number;
+}) {
   const { prepared } = useHealthChartData("cukier");
 
   const labels = prepared
