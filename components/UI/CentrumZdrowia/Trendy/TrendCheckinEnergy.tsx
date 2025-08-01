@@ -28,11 +28,7 @@ type SleepEmoji = "🛌 Dobrze spałem" | "😴 Średnio" | "😵 Prawie nie spa
 type StressEmoji = "😌 Niski" | "😬 Średni" | "😣 Wysoki";
 type EnergyEmoji = "⚡️ Wysoka" | "🔋 Średnia" | "🪫 Niska";
 
-export default function TrendCheckinEnergy({
-  refreshKey,
-}: {
-  refreshKey?: number;
-}) {
+export default function TrendCheckinEnergy() {
   const { trends } = useCheckinTrends();
 
   const labels = trends.map((m) => new Date(m.date).toISOString().slice(5, 10));

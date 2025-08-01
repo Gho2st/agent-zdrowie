@@ -25,7 +25,7 @@ export default function TrendMiniTetno({
 }: {
   refreshKey?: number;
 }) {
-  const { prepared } = useHealthChartData("tętno");
+  const { prepared } = useHealthChartData("tętno", refreshKey);
 
   const labels = prepared
     .slice()

@@ -37,6 +37,7 @@ export default function TrendMiniCisnienie({
   refreshKey?: number;
 }) {
   const [data, setData] = useState<CisnienieData[]>([]);
+  const effectiveRefreshKey = refreshKey ?? "initial";
 
   useEffect(() => {
     const fetchData = async () => {
@@ -60,7 +61,7 @@ export default function TrendMiniCisnienie({
     };
 
     fetchData();
-  }, [refreshKey ?? "initial"]);
+  }, [effectiveRefreshKey]);
 
   return (
     <div className="bg-white/30 rounded-xl shadow p-4">

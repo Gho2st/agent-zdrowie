@@ -25,7 +25,7 @@ export default function TrendMiniCukier({
 }: {
   refreshKey?: number;
 }) {
-  const { prepared } = useHealthChartData("cukier");
+  const { prepared } = useHealthChartData("cukier", refreshKey);
 
   const labels = prepared
     .slice()
