@@ -105,7 +105,7 @@ export default function DailyCheckin() {
 
   if (loading) {
     return (
-      <div className="bg-white shadow-lg rounded-2xl p-6">
+      <div className="bg-white/30 shadow-lg rounded-2xl p-6">
         <p className="text-gray-500 text-sm">
           ⏳ Ładowanie dzisiejszego check-inu...
         </p>
