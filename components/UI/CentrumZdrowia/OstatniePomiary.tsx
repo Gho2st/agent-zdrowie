@@ -43,7 +43,7 @@ export default function OstatniePomiary() {
 
   if (loading) {
     return (
-      <div className="bg-white p-6 rounded-xl shadow mt-6 flex items-center justify-center text-gray-500 h-[140px] animate-pulse">
+      <div className="bg-white/30 p-6 rounded-xl shadow  flex items-center justify-center h-[140px] animate-pulse">
         <Loader2 className="animate-spin mr-2" size={22} />
         Ładowanie ostatnich pomiarów...
       </div>
@@ -52,9 +52,9 @@ export default function OstatniePomiary() {
 
   if (dane.length === 0) {
     return (
-      <div className="bg-white p-6 rounded-xl shadow mt-6 text-center text-gray-600 flex flex-col items-center gap-2">
-        <Info className="w-6 h-6 text-gray-400" />
-        <p className="text-sm">Nie masz jeszcze żadnych zapisanych pomiarów.</p>
+      <div className="bg-white/30 p-6 rounded-xl shadow  text-center  flex flex-col items-center gap-2">
+        <Info className="w-7 h-7" />
+        <p className="text-lg">Nie masz jeszcze żadnych zapisanych pomiarów.</p>
         <p className="text-sm text-gray-500">
           Dodaj pierwszy pomiar, aby śledzić swoje zdrowie.
         </p>
