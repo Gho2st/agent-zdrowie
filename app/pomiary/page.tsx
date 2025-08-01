@@ -237,7 +237,7 @@ export default function Pomiary() {
         Zarządzaj swoimi pomiarami w prosty i przejrzysty sposób
       </p>
       {/* góra lewo prawo na desktopie */}
-      <div className="grid md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Formularz dodawania */}
         <form
           onSubmit={handleSubmit}
