@@ -16,6 +16,8 @@ export default function ClientLayoutGuard({
   const [checkingProfile, setCheckingProfile] = useState(false);
 
   useEffect(() => {
+    // ⚠️ Nie blokuj strony głównej "/"
+    if (pathname === "/") return;
     if (status === "unauthenticated") {
       router.replace("/logowanie"); // lub własna strona logowania
       return;
