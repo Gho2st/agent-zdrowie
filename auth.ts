@@ -6,6 +6,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  secret: process.env.AUTH_SECRET, // ⬅️ to jest klucz
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -27,7 +28,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               email: user.email,
               name: user.name ?? null,
               image: user.image ?? null,
-              // możesz tu dodać wartości domyślne jeśli chcesz
             },
           });
           console.log("✅ Utworzono nowego użytkownika:", user.email);
@@ -42,15 +42,53 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
     },
 
-    async session({ session }) {
-      if (!session.user?.email) return session;
+    // 🔐 DODANE: jwt callback
+    async jwt({ token, user }) {
+      if (!token?.email && user?.email) {
+        token.email = user.email;
+      }
 
-      const dbUser = await prisma.user.findUnique({
-        where: { email: session.user.email },
-      });
+      if (token?.email) {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: token.email },
+          select: {
+            birthdate: true,
+            gender: true,
+            height: true,
+            weight: true,
+          },
+        });
 
-      if (dbUser) {
-        (session.user as any).id = dbUser.id.toString();
+        const profileComplete =
+          !!dbUser &&
+          dbUser.birthdate instanceof Date &&
+          (dbUser.gender === "M" || dbUser.gender === "K") &&
+          typeof dbUser.height === "number" &&
+          dbUser.height > 0 &&
+          typeof dbUser.weight === "number" &&
+          dbUser.weight > 0;
+
+        token.profileComplete = profileComplete;
+      }
+
+      return token;
+    },
+
+    // 🔁 ZAKTUALIZOWANE: session callback
+    async session({ session, token }) {
+      if (session.user?.email) {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: session.user.email },
+        });
+
+        if (dbUser) {
+          (session.user as any).id = dbUser.id.toString();
+        }
+      }
+
+      // Dodaj profileComplete do sesji (opcjonalnie dla client-side)
+      if (token?.profileComplete !== undefined) {
+        (session as any).profileComplete = token.profileComplete;
       }
 
       return session;

@@ -24,20 +24,22 @@ export default function CentrumZdrowia() {
     <Container>
       <div className="">
         <PowitanieMotywacja userName={userName} />
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <StreakTracker />
+        <StreakTracker />
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-8">
           <Feedback />
           <DailyCheckin />
           <OstatniePomiary />
           <TrendCheckinEnergy />
 
           <TrendMiniWaga />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
           <TrendMiniCukier />
           <TrendMiniCisnienie />
           <TrendMiniTetno />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          
         </div>
 
         <div className="grid md:grid-cols-2 md:gap-8">

@@ -47,7 +47,7 @@ export default function Feedback() {
         <button
           onClick={askForAdvice}
           disabled={isLoading}
-          className="mt-4 mb-2 text-sm flex items-center gap-1 text-blue-600 hover:underline disabled:opacity-50"
+          className="mt-6 mb-4  text-sm flex items-center gap-1 cursor-pointer text-blue-600 hover:underline disabled:opacity-50"
         >
           <RotateCcw className="w-4 h-4" />
           Odśwież
@@ -60,17 +60,17 @@ export default function Feedback() {
           <span>Generuję poradę zdrowotną…</span>
         </div>
       ) : gptResponse ? (
-        <div className="text-gray-700 whitespace-pre-line leading-relaxed text-sm">
+        <div className="text-gray-800 whitespace-pre-line leading-relaxed text-lg">
           <p>{gptResponse}</p>
           {generatedAt && (
-            <p className="mt-3 text-xs text-gray-400">
+            <p className="mt-3 text-lg">
               🕒 Wygenerowano:{" "}
               {format(generatedAt, "d MMMM yyyy, HH:mm", { locale: pl })}
             </p>
           )}
         </div>
       ) : (
-        <p className="text-gray-500 text-sm">Brak porady do wyświetlenia.</p>
+        <p className="">Brak porady do wyświetlenia.</p>
       )}
     </div>
   );
