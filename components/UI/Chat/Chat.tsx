@@ -37,7 +37,7 @@ export default function ChatPage() {
     <div className="max-w-2xl mx-auto px-4">
       <h1 className="text-3xl font-bold mb-4">💬 Agent Zdrowie</h1>
 
-      <p className="text-gray-700 font-medium md:text-lg mb-8">
+      <p className="text-gray-700 font-medium md:text-lg mb-4">
         Twój osobisty asystent zdrowotny oparty na AI. Zadaj pytanie, a Agent
         Zdrowie odpowie na podstawie Twoich danych medycznych.
       </p>
