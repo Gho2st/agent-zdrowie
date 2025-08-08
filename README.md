@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🧠 Agent Zdrowie – aplikacja zdrowotna z AI
 
-## Getting Started
+**Agent Zdrowie** to nowoczesna aplikacja webowa, która pomaga użytkownikom dbać o zdrowie poprzez zapisywanie pomiarów (cukier, ciśnienie, waga, tętno), analizę danych oraz motywację opartą na sztucznej inteligencji.  
+Wykorzystuje chatbota AI z dostępem do danych użytkownika oraz system streaków i monitorowanie samopoczucia.
 
-First, run the development server:
+> 🌐 Dostępna online: https://agent-zdrowie.vercel.app
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🔧 Funkcje aplikacji
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- ✅ Logowanie przez Google (OAuth)
+- ✅ Dodawanie i analiza pomiarów zdrowotnych
+- ✅ Porównanie wyników z normami na podstawie wieku i wzrostu
+- ✅ Chatbot AI (OpenAI) z dostępem do danych użytkownika
+- ✅ Monitorowanie samopoczucia + streak
+- ✅ Responsywny interfejs (Next.js + Tailwind CSS)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🧰 Technologie
 
-To learn more about Next.js, take a look at the following resources:
+- **Next.js (App Router)** – frontend + backend
+- **TypeScript** – statyczne typowanie
+- **Tailwind CSS** – stylowanie
+- **OpenAI API** – chatbot i porady AI
+- **Neon (PostgreSQL)** – baza danych
+- **Prisma ** – dostęp do bazy danych
+- **React Hook Form  – walidacja formularzy
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
