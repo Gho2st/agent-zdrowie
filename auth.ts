@@ -7,6 +7,9 @@ const prisma = new PrismaClient();
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET, // ⬅️ to jest klucz
+  session: {
+    strategy: "jwt", // ✅ konieczne!
+  },
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
