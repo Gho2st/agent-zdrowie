@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🧠 Agent Zdrowie – AI-powered Health Tracking App
 
-## Getting Started
+**Agent Zdrowie** is a modern web application that helps users monitor their health by logging measurements (such as blood sugar, pressure, weight, and pulse), analyzing data, and providing motivation through artificial intelligence (AI).  
+It features an AI chatbot with access to user data, a daily check-in system, and a streak mechanism to encourage healthy habits.
 
-First, run the development server:
+> 🌐 Live app: https://agent-zdrowie.vercel.app
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🔧 Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- ✅ Google login (OAuth)
+- ✅ Add and view health measurements
+- ✅ Compare data with personalized norms based on age, weight, and height
+- ✅ AI chatbot (OpenAI) with access to user data
+- ✅ Mood tracking and daily streak system
+- ✅ Fully responsive UI (Next.js + Tailwind CSS)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🧰 Tech Stack
 
-To learn more about Next.js, take a look at the following resources:
+- **Next.js (App Router)** – full-stack framework
+- **TypeScript** – type-safe development
+- **Tailwind CSS** – styling
+- **OpenAI API** – AI chatbot for personalized suggestions
+- **Neon (PostgreSQL)** – database
+- **Prisma** – database access layer
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 💡 Future Ideas
 
-## Deploy on Vercel
+- Immutable health logs stored on blockchain
+- Marketplace for sharing anonymized health data
+- Integration with smartwatches and Bluetooth health devices
+- Mobile version (PWA or native)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📄 License
+
+This is an educational project created as part of an engineering thesis.  
+For demonstration and academic purposes only.
+
