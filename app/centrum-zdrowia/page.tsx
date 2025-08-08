@@ -7,13 +7,13 @@ import StreakTracker from "@/components/UI/CentrumZdrowia/StreakTracker";
 import OstatniePomiary from "@/components/UI/CentrumZdrowia/OstatniePomiary";
 import CeleZdrowotne from "@/components/UI/CentrumZdrowia/CeleZdrowotne";
 import Link from "next/link";
-// import TrendMiniWaga from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniWaga";
-// import TrendMiniCisnienie from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniCisnienie";
-// import TrendMiniCukier from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniCukier";
-// import TrendMiniTetno from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniTetno";
+import TrendMiniWaga from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniWaga";
+import TrendMiniCisnienie from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniCisnienie";
+import TrendMiniCukier from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniCukier";
+import TrendMiniTetno from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniTetno";
 import Feedback from "@/components/UI/CentrumZdrowia/Feedback";
 import DailyCheckin from "@/components/UI/CentrumZdrowia/DailyCheckin";
-import TrendCheckinEnergy from "@/components/UI/CentrumZdrowia/Trendy/TrendCheckinEnergy";
+// import TrendCheckinEnergy from "@/components/UI/CentrumZdrowia/Trendy/TrendCheckinEnergy";
 import { useState } from "react";
 
 export default function CentrumZdrowia() {
@@ -34,11 +34,11 @@ export default function CentrumZdrowia() {
             onCheckinSuccess={() => setRefreshKey((prev) => prev + 1)}
           />
           <OstatniePomiary />
-          <TrendCheckinEnergy refreshKey={refreshKey} />
-          {/* <TrendMiniWaga />
+          {/* <TrendCheckinEnergy refreshKey={refreshKey} /> */}
+          <TrendMiniWaga />
           <TrendMiniCukier />
           <TrendMiniCisnienie />
-          <TrendMiniTetno /> */}
+          <TrendMiniTetno />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6"></div>
