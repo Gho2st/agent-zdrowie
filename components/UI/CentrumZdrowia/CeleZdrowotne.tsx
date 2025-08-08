@@ -45,7 +45,7 @@ export default function CeleZdrowotne() {
 
   if (loading)
     return (
-      <div className="bg-white p-4 rounded-xl shadow mt-6 flex items-center justify-center text-gray-500 h-[120px]">
+      <div className="bg-white/30 p-4 rounded-xl shadow mt-6 flex items-center justify-center text-gray-500 h-[120px]">
         <Loader2 className="animate-spin mr-2" size={20} />
         Ładowanie celów...
       </div>

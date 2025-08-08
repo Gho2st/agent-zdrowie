@@ -15,15 +15,23 @@ export default function useCheckinTrends(refreshKey?: number) {
   useEffect(() => {
     const fetchTrends = async () => {
       try {
+        setLoading(true);
         const res = await fetch("/api/checkin-trends?days=7", {
           cache: "no-store",
         });
         if (!res.ok) throw new Error("Błąd pobierania danych");
+
         const data = await res.json();
-        setTrends(data);
+
+        if (Array.isArray(data)) {
+          setTrends(data);
+        } else {
+          setTrends([]); // fallback, gdyby coś poszło nie tak
+        }
       } catch (err) {
         setError("Nie udało się pobrać trendów");
         console.error(err);
+        setTrends([]); // zabezpieczenie
       } finally {
         setLoading(false);
       }

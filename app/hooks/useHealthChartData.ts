@@ -30,20 +30,35 @@ export default function useHealthChartData(type: string, refreshKey?: number) {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [mRes, nRes] = await Promise.all([
-        fetch("/api/measurement"),
-        fetch("/api/user/norms"),
-      ]);
+      try {
+        const [mRes, nRes] = await Promise.all([
+          fetch("/api/measurement"),
+          fetch("/api/user/norms"),
+        ]);
 
-      const measurements: Measurement[] = await mRes.json();
-      const normsData: Norms = await nRes.json();
+        if (!mRes.ok || !nRes.ok) {
+          throw new Error("Błąd pobierania danych");
+        }
 
-      setData(measurements.filter((m) => m.type === type));
-      setNorms(normsData);
+        const measurements: Measurement[] = await mRes.json();
+        const normsData: Norms = await nRes.json();
+
+        if (!Array.isArray(measurements)) {
+          setData([]);
+        } else {
+          setData(measurements.filter((m) => m.type === type));
+        }
+
+        setNorms(normsData ?? null);
+      } catch (error) {
+        console.error("Błąd w hooku useHealthChartData:", error);
+        setData([]);
+        setNorms(null);
+      }
     };
 
     fetchData();
-  }, [type, refreshKey]); // <--- poprawnie działa
+  }, [type, refreshKey]);
 
   const prepared: PreparedData[] = data
     .map((m) => {
@@ -62,8 +77,9 @@ export default function useHealthChartData(type: string, refreshKey?: number) {
 
       return { date, value };
     })
-    .sort((a, b) => b.date.getTime() - a.date.getTime()) // sortowanie po dacie
-    .slice(0, 7); // 7 najnowszych
+    .filter((m) => !isNaN(m.date.getTime()))
+    .sort((a, b) => b.date.getTime() - a.date.getTime())
+    .slice(0, 7);
 
   return { prepared, norms };
 }

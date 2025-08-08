@@ -24,6 +24,8 @@ export default function TrendMiniWaga({ refreshKey }: { refreshKey?: number }) {
   const { prepared } = useHealthChartData("waga", refreshKey);
   console.log("prepared waga:", prepared);
 
+  if (!prepared || prepared.length === 0) return null; // ← dodaj to
+
   const labels = prepared
     .slice()
     .reverse()

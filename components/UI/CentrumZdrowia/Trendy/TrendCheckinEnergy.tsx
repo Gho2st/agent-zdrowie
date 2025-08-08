@@ -55,10 +55,11 @@ export default function TrendCheckinEnergy({
     "🪫 Niska": 1,
   };
 
-  const sleepData = trends.map((m) =>
-    m.sleep && sleepMap[m.sleep as SleepEmoji] !== undefined
-      ? sleepMap[m.sleep as SleepEmoji]
-      : null
+  const sleepData = trends.map(
+    (m) =>
+      m.sleep && sleepMap[m.sleep as SleepEmoji] !== undefined
+        ? sleepMap[m.sleep as SleepEmoji]
+        : 0 // zamiast null
   );
 
   const stressData = trends.map((m) =>

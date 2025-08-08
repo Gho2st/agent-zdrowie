@@ -63,6 +63,17 @@ export default function TrendMiniCisnienie({
     fetchData();
   }, [effectiveRefreshKey]);
 
+  // ✅ Jeśli brak danych – nie renderuj wykresu
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-white/30 rounded-xl shadow p-4 h-40 flex items-center justify-center">
+        <span className="text-gray-500 text-sm">
+          Brak danych do wyświetlenia
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white/30 rounded-xl shadow p-4">
       <h4 className="font-semibold text-sm mb-2">
