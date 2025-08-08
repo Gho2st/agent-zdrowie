@@ -24,7 +24,6 @@ export async function middleware(request: NextRequest) {
   });
 
   console.log("🔐 Token w middleware:", token);
-  console.log("🔍 request.cookies.getAll():", request.cookies.getAll());
 
   if (!token) {
     return NextResponse.redirect(new URL("/logowanie", request.url));
@@ -43,6 +42,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/|api/|favicon.ico|public|logowanie|rejestracja|rejestracja-dodatkowa).*)",
+    "/((?!_next/|api/|static/|favicon.ico|images/|icons/|fonts/|media/).*)",
   ],
 };
