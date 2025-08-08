@@ -61,7 +61,12 @@ export default function TrendMiniCukier({
           options={{
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            plugins: {
+              annotation: {
+                annotations: {}, // 👈 to zapobiega błędowi
+              },
+              legend: { display: false },
+            },
             scales: {
               y: { beginAtZero: false },
               x: { ticks: { maxTicksLimit: 5 } },
