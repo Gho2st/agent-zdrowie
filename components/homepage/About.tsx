@@ -119,7 +119,7 @@ export default function About() {
         {/* Obraz */}
         <motion.div className="w-full lg:w-1/3" variants={imageVariants}>
           <Image
-            src="/agent.png"
+            src="/images/agent.png"
             alt="agent ai"
             width={500}
             height={500}

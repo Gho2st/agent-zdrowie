@@ -48,7 +48,7 @@ export default function Navigation() {
         {/* Logo */}
         <Link href="/" className="w-fit" onClick={() => setOpen(false)}>
           <Image
-            src="/logo.png"
+            src="/images/logo.png"
             alt="Logo Agent Zdrowie"
             width={0}
             height={0}
