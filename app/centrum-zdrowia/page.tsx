@@ -39,13 +39,9 @@ export default function CentrumZdrowia() {
           <TrendMiniCukier />
           <TrendMiniCisnienie />
           <TrendMiniTetno />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6"></div>
-
-        <div className="grid md:grid-cols-2 md:gap-8">
           <CeleZdrowotne />
         </div>
+
         <div className="text-center mt-6">
           <Link href="/statystyki">
             <span className="text-blue-600 underline text-sm hover:text-blue-800">
