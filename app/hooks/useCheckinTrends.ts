@@ -7,7 +7,7 @@ export type CheckinTrend = {
   energy?: string;
 };
 
-export default function useCheckinTrends() {
+export default function useCheckinTrends(refreshKey?: number) {
   const [trends, setTrends] = useState<CheckinTrend[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +30,7 @@ export default function useCheckinTrends() {
     };
 
     fetchTrends();
-  }, []);
+  }, [refreshKey]);
 
   return { trends, loading, error };
 }

@@ -19,7 +19,11 @@ const options: Record<keyof Omit<CheckinState, "date">, string[]> = {
   stress: ["😌 Niski", "😬 Średni", "😣 Wysoki"],
 };
 
-export default function DailyCheckin() {
+export default function DailyCheckin({
+  onCheckinSuccess,
+}: {
+  onCheckinSuccess?: () => void;
+}) {
   const [checkin, setCheckin] = useState<CheckinState>({});
   const [loading, setLoading] = useState(true);
   const [savingField, setSavingField] = useState<keyof CheckinState | null>(
@@ -62,7 +66,6 @@ export default function DailyCheckin() {
     field: keyof Omit<CheckinState, "date">,
     value: string
   ) => {
-    // Jeśli nic się nie zmieniło — nie wysyłamy requesta
     if (checkin[field] === value) return;
 
     const updated = { ...checkin, [field]: value };
@@ -80,6 +83,7 @@ export default function DailyCheckin() {
 
       setSaved(true);
       toast.success(`Zapisano: ${labelForField(field)}`);
+      onCheckinSuccess?.(); // 🚀 TUTAJ
     } catch (err) {
       toast.error("Nie udało się zapisać danych.");
       console.error(err);
