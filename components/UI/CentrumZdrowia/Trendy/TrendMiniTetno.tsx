@@ -1,4 +1,5 @@
 "use client";
+
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -8,8 +9,10 @@ import {
   CategoryScale,
   Tooltip,
   Filler,
+  Legend,
 } from "chart.js";
 import useHealthChartData from "@/app/hooks/useHealthChartData";
+import annotationPlugin from "chartjs-plugin-annotation";
 
 ChartJS.register(
   LineElement,
@@ -17,7 +20,9 @@ ChartJS.register(
   LinearScale,
   CategoryScale,
   Tooltip,
-  Filler
+  Filler,
+  Legend,
+  annotationPlugin
 );
 
 export default function TrendMiniTetno({
@@ -26,7 +31,8 @@ export default function TrendMiniTetno({
   refreshKey?: number;
 }) {
   const { prepared } = useHealthChartData("tętno", refreshKey);
-  if (!prepared || prepared.length === 0) return null; // ← dodaj to
+
+  if (!prepared || prepared.length === 0) return null;
 
   const labels = prepared
     .slice()
@@ -60,10 +66,11 @@ export default function TrendMiniTetno({
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-              annotation: {
-                annotations: {}, // 👈 to zapobiega błędowi
-              },
               legend: { display: false },
+              // ✅ Zabezpieczenie przed błędem `setting 'annotations'`
+              annotation: {
+                annotations: {},
+              },
             },
             scales: {
               y: { beginAtZero: false },

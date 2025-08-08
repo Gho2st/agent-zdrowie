@@ -1,4 +1,5 @@
 "use client";
+
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -8,28 +9,34 @@ import {
   CategoryScale,
   Tooltip,
   Filler,
+  Legend,
 } from "chart.js";
+import annotationPlugin from "chartjs-plugin-annotation";
 import useHealthChartData from "@/app/hooks/useHealthChartData";
 
+// ✅ Zarejestruj wszystkie potrzebne pluginy
 ChartJS.register(
   LineElement,
   PointElement,
   LinearScale,
   CategoryScale,
   Tooltip,
-  Filler
+  Filler,
+  Legend,
+  annotationPlugin // 👈 to musi być, nawet jeśli nie używasz linii
 );
 
 export default function TrendMiniWaga({ refreshKey }: { refreshKey?: number }) {
   const { prepared } = useHealthChartData("waga", refreshKey);
   console.log("prepared waga:", prepared);
 
-  if (!prepared || prepared.length === 0) return null; // ← dodaj to
+  if (!prepared || prepared.length === 0) return null;
 
   const labels = prepared
     .slice()
     .reverse()
     .map((m) => m.date.toISOString().slice(5, 10));
+
   const data = prepared
     .slice()
     .reverse()
@@ -57,10 +64,11 @@ export default function TrendMiniWaga({ refreshKey }: { refreshKey?: number }) {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-              annotation: {
-                annotations: {}, // 👈 to zapobiega błędowi
-              },
               legend: { display: false },
+              // ✅ TO DODAJ – nawet jeśli nie masz adnotacji
+              annotation: {
+                annotations: {},
+              },
             },
             scales: {
               y: { beginAtZero: false },

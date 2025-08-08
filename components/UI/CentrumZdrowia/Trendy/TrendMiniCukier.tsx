@@ -1,4 +1,5 @@
 "use client";
+
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -8,16 +9,21 @@ import {
   CategoryScale,
   Tooltip,
   Filler,
+  Legend,
 } from "chart.js";
+import annotationPlugin from "chartjs-plugin-annotation"; // ✅ IMPORT
 import useHealthChartData from "@/app/hooks/useHealthChartData";
 
+// ✅ REJESTRACJA WSZYSTKICH PLUGINÓW
 ChartJS.register(
   LineElement,
   PointElement,
   LinearScale,
   CategoryScale,
   Tooltip,
-  Filler
+  Filler,
+  Legend,
+  annotationPlugin
 );
 
 export default function TrendMiniCukier({
@@ -26,7 +32,8 @@ export default function TrendMiniCukier({
   refreshKey?: number;
 }) {
   const { prepared } = useHealthChartData("cukier", refreshKey);
-  if (!prepared || prepared.length === 0) return null; // ← dodaj to
+
+  if (!prepared || prepared.length === 0) return null;
 
   const labels = prepared
     .slice()
@@ -63,6 +70,10 @@ export default function TrendMiniCukier({
             maintainAspectRatio: false,
             plugins: {
               legend: { display: false },
+              // ✅ KLUCZOWE ZABEZPIECZENIE
+              annotation: {
+                annotations: {},
+              },
             },
             scales: {
               y: { beginAtZero: false },

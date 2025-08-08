@@ -8,6 +8,7 @@ import {
   CategoryScale,
   Tooltip,
 } from "chart.js";
+import annotationPlugin from "chartjs-plugin-annotation";
 import { Line } from "react-chartjs-2";
 import { useEffect, useState } from "react";
 
@@ -16,7 +17,8 @@ ChartJS.register(
   PointElement,
   LinearScale,
   CategoryScale,
-  Tooltip
+  Tooltip,
+  annotationPlugin // ✅ Dodano plugin
 );
 
 interface CisnienieData {
@@ -31,6 +33,7 @@ interface Measurement {
   systolic: number;
   diastolic: number;
 }
+
 export default function TrendMiniCisnienie({
   refreshKey,
 }: {
@@ -63,7 +66,6 @@ export default function TrendMiniCisnienie({
     fetchData();
   }, [effectiveRefreshKey]);
 
-  // ✅ Jeśli brak danych – nie renderuj wykresu
   if (!data || data.length === 0) {
     return (
       <div className="bg-white/30 rounded-xl shadow p-4 h-40 flex items-center justify-center">
@@ -107,6 +109,9 @@ export default function TrendMiniCisnienie({
             maintainAspectRatio: false,
             plugins: {
               legend: { position: "top" },
+              annotation: {
+                annotations: {}, // ✅ KLUCZOWE DLA STABILNOŚCI
+              },
             },
             scales: {
               y: { beginAtZero: false },

@@ -11,8 +11,10 @@ import {
   Filler,
   Legend,
 } from "chart.js";
+import annotationPlugin from "chartjs-plugin-annotation";
 import useCheckinTrends from "@/app/hooks/useCheckinTrends";
 
+// ✅ Zarejestruj plugin adnotacji
 ChartJS.register(
   LineElement,
   PointElement,
@@ -20,10 +22,10 @@ ChartJS.register(
   CategoryScale,
   Tooltip,
   Filler,
-  Legend
+  Legend,
+  annotationPlugin
 );
 
-// Definiujemy dokładne typy stringów jako unie (dla bezpiecznego indeksowania)
 type SleepEmoji = "🛌 Dobrze spałem" | "😴 Średnio" | "😵 Prawie nie spałem";
 type StressEmoji = "😌 Niski" | "😬 Średni" | "😣 Wysoki";
 type EnergyEmoji = "⚡️ Wysoka" | "🔋 Średnia" | "🪫 Niska";
@@ -34,6 +36,8 @@ export default function TrendCheckinEnergy({
   refreshKey?: number;
 }) {
   const { trends } = useCheckinTrends(refreshKey);
+
+  if (!trends || trends.length === 0) return null;
 
   const labels = trends.map((m) => new Date(m.date).toISOString().slice(5, 10));
 
@@ -55,23 +59,22 @@ export default function TrendCheckinEnergy({
     "🪫 Niska": 1,
   };
 
-  const sleepData = trends.map(
-    (m) =>
-      m.sleep && sleepMap[m.sleep as SleepEmoji] !== undefined
-        ? sleepMap[m.sleep as SleepEmoji]
-        : 0 // zamiast null
+  const sleepData = trends.map((m) =>
+    m.sleep && sleepMap[m.sleep as SleepEmoji] !== undefined
+      ? sleepMap[m.sleep as SleepEmoji]
+      : 0
   );
 
   const stressData = trends.map((m) =>
     m.stress && stressMap[m.stress as StressEmoji] !== undefined
       ? stressMap[m.stress as StressEmoji]
-      : null
+      : 0
   );
 
   const energyData = trends.map((m) =>
     m.energy && energyMap[m.energy as EnergyEmoji] !== undefined
       ? energyMap[m.energy as EnergyEmoji]
-      : null
+      : 0
   );
 
   return (
@@ -115,6 +118,9 @@ export default function TrendCheckinEnergy({
                 labels: {
                   font: { size: 12 },
                 },
+              },
+              annotation: {
+                annotations: {}, // ✅ Zabezpieczenie
               },
             },
             scales: {
