@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+export const runtime = "nodejs"; // <- TO JEST KLUCZOWE!
+
 const publicPaths = ["/", "/logowanie", "/rejestracja"];
 
 export async function middleware(request: NextRequest) {
@@ -16,15 +18,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const cookieName =
-    request.nextUrl.protocol === "https:"
-      ? "__Secure-next-auth.session-token"
-      : "next-auth.session-token";
-
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,
-    cookieName,
   });
 
   console.log("🔐 Token w middleware:", token);
@@ -47,7 +43,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/|api/|static/|favicon.ico|images/|icons/|fonts/|media/).*)",
+    "/((?!_next/|api/|favicon.ico|public|logowanie|rejestracja|rejestracja-dodatkowa).*)",
   ],
-  runtime: "nodejs",
 };

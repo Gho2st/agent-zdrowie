@@ -47,7 +47,7 @@ export default function Feedback() {
         <button
           onClick={askForAdvice}
           disabled={isLoading}
-          className="mt-6 mb-4  text-sm flex items-center gap-1 cursor-pointer text-blue-600 hover:underline disabled:opacity-50"
+          className="mt-6   text-sm flex items-center gap-1 cursor-pointer text-blue-600 hover:underline disabled:opacity-50"
         >
           <RotateCcw className="w-4 h-4" />
           Odśwież
