@@ -16,12 +16,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const cookieName =
+    request.nextUrl.protocol === "https:"
+      ? "__Secure-next-auth.session-token"
+      : "next-auth.session-token";
+
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,
+    cookieName,
   });
 
   console.log("🔐 Token w middleware:", token);
+  console.log("🔍 request.cookies.getAll():", request.cookies.getAll());
 
   if (!token) {
     return NextResponse.redirect(new URL("/logowanie", request.url));
