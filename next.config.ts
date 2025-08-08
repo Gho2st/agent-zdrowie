@@ -10,9 +10,6 @@ const nextConfig = {
       },
     ],
   },
-  experimental: {
-    nodeMiddleware: true, // 👈 WYMAGANE do runtime: "nodejs"
-  },
 };
 
 export default nextConfig;
