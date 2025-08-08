@@ -12,15 +12,15 @@ import TrendMiniCisnienie from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniC
 import TrendMiniCukier from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniCukier";
 import TrendMiniTetno from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniTetno";
 import Feedback from "@/components/UI/CentrumZdrowia/Feedback";
-import DailyCheckin from "@/components/UI/CentrumZdrowia/DailyCheckin";
+// import DailyCheckin from "@/components/UI/CentrumZdrowia/DailyCheckin";
 // import TrendCheckinEnergy from "@/components/UI/CentrumZdrowia/Trendy/TrendCheckinEnergy";
-import { useState } from "react";
+// import { useState } from "react";
 
 export default function CentrumZdrowia() {
   const { data: session } = useSession();
   const fullName = session?.user?.name || "Użytkowniku";
   const userName = fullName.split(" ")[0];
-  const [refreshKey, setRefreshKey] = useState(0);
+  // const [refreshKey, setRefreshKey] = useState(0);
 
   return (
     <Container>
@@ -30,9 +30,9 @@ export default function CentrumZdrowia() {
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-8">
           <Feedback />
-          <DailyCheckin
+          {/* <DailyCheckin
             onCheckinSuccess={() => setRefreshKey((prev) => prev + 1)}
-          />
+          /> */}
           <OstatniePomiary />
           {/* <TrendCheckinEnergy refreshKey={refreshKey} /> */}
           <TrendMiniWaga />
