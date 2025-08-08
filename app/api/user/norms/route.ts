@@ -138,12 +138,18 @@ export async function PATCH(req: NextRequest) {
   if (Object.keys(updateData).length > 0) {
     const serializedUpdateData = {
       ...updateData,
-      medications: updateData.medications
-        ? JSON.stringify(updateData.medications)
-        : undefined,
-      conditions: updateData.conditions
-        ? JSON.stringify(updateData.conditions)
-        : undefined,
+      medications:
+        updateData.medications === undefined
+          ? undefined
+          : updateData.medications === null
+          ? null
+          : JSON.stringify(updateData.medications),
+      conditions:
+        updateData.conditions === undefined
+          ? undefined
+          : updateData.conditions === null
+          ? null
+          : JSON.stringify(updateData.conditions),
     };
 
     await prisma.user.update({

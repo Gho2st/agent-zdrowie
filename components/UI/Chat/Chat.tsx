@@ -94,7 +94,7 @@ export default function ChatPage() {
           disabled={status !== "ready"}
           placeholder="Zadaj pytanie zdrowotne..."
           rows={1}
-          className="flex-1 border rounded px-4 py-2 bg-white resize-none min-h-[42px] text-sm"
+          className="flex-1 border rounded px-4 py-2 bg-white resize-none h-auto min-h-[50px] text-sm leading-snug overflow-hidden"
         />
 
         <button
