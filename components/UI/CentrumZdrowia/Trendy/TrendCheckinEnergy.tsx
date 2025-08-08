@@ -111,9 +111,6 @@ export default function TrendCheckinEnergy({
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-              annotation: {
-                annotations: {}, // 👈 to zapobiega błędowi
-              },
               legend: {
                 labels: {
                   font: { size: 12 },

@@ -106,9 +106,6 @@ export default function TrendMiniCisnienie({
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-              annotation: {
-                annotations: {}, // 👈 to zapobiega błędowi
-              },
               legend: { position: "top" },
             },
             scales: {
