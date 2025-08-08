@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-export const runtime = "nodejs"; // <- TO JEST KLUCZOWE!
-
 const publicPaths = ["/", "/logowanie", "/rejestracja"];
 
 export async function middleware(request: NextRequest) {
@@ -18,10 +16,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const cookieKey =
+    process.env.NODE_ENV === "production"
+      ? "__Secure-authjs.session-token"
+      : "authjs.session-token";
+
   const token = await getToken({
     req: request,
-    secret: process.env.AUTH_SECRET,
-    secureCookie: true,
+    secret: process.env.AUTH_SECRET || "",
+    salt: cookieKey,
+    cookieName: cookieKey,
   });
 
   console.log("🔐 Token w middleware:", token);
