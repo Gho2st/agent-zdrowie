@@ -67,7 +67,6 @@ export default function TrendMiniTetno({
             maintainAspectRatio: false,
             plugins: {
               legend: { display: false },
-              // ✅ Zabezpieczenie przed błędem `setting 'annotations'`
               annotation: {
                 annotations: {},
               },

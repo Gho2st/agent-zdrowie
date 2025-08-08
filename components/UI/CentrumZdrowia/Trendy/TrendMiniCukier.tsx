@@ -70,7 +70,6 @@ export default function TrendMiniCukier({
             maintainAspectRatio: false,
             plugins: {
               legend: { display: false },
-              // ✅ KLUCZOWE ZABEZPIECZENIE
               annotation: {
                 annotations: {},
               },

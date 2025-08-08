@@ -110,7 +110,7 @@ export default function TrendMiniCisnienie({
             plugins: {
               legend: { position: "top" },
               annotation: {
-                annotations: {}, // ✅ KLUCZOWE DLA STABILNOŚCI
+                annotations: {},
               },
             },
             scales: {

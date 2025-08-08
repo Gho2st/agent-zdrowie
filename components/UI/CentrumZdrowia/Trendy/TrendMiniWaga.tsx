@@ -65,7 +65,6 @@ export default function TrendMiniWaga({ refreshKey }: { refreshKey?: number }) {
             maintainAspectRatio: false,
             plugins: {
               legend: { display: false },
-              // ✅ TO DODAJ – nawet jeśli nie masz adnotacji
               annotation: {
                 annotations: {},
               },
