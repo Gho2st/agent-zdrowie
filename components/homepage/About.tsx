@@ -50,7 +50,7 @@ const imageVariants: Variants = {
 export default function About() {
   return (
     <motion.section
-      className="md:py-10"
+      className=""
       initial="hidden"
       animate="visible"
       variants={sectionVariants}
