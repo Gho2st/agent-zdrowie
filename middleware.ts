@@ -21,6 +21,8 @@ export async function middleware(request: NextRequest) {
     secret: process.env.AUTH_SECRET,
   });
 
+  console.log("🔐 Token w middleware:", token);
+
   if (!token) {
     return NextResponse.redirect(new URL("/logowanie", request.url));
   }
@@ -40,4 +42,5 @@ export const config = {
   matcher: [
     "/((?!_next/|api/|static/|favicon.ico|images/|icons/|fonts/|media/).*)",
   ],
+  runtime: "nodejs",
 };
