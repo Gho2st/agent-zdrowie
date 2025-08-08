@@ -1,33 +1,45 @@
-# 🧠 Agent Zdrowie – aplikacja zdrowotna z AI
+# 🧠 Agent Zdrowie – AI-powered Health Tracking App
 
-**Agent Zdrowie** to nowoczesna aplikacja webowa, która pomaga użytkownikom dbać o zdrowie poprzez zapisywanie pomiarów (cukier, ciśnienie, waga, tętno), analizę danych oraz motywację opartą na sztucznej inteligencji.  
-Wykorzystuje chatbota AI z dostępem do danych użytkownika oraz system streaków i monitorowanie samopoczucia.
+**Agent Zdrowie** is a modern web application that helps users monitor their health by logging measurements (such as blood sugar, pressure, weight, and pulse), analyzing data, and providing motivation through artificial intelligence (AI).  
+It features an AI chatbot with access to user data, a daily check-in system, and a streak mechanism to encourage healthy habits.
 
-> 🌐 Dostępna online: https://agent-zdrowie.vercel.app
-
----
-
-## 🔧 Funkcje aplikacji
-
-- ✅ Logowanie przez Google (OAuth)
-- ✅ Dodawanie i analiza pomiarów zdrowotnych
-- ✅ Porównanie wyników z normami na podstawie wieku i wzrostu
-- ✅ Chatbot AI (OpenAI) z dostępem do danych użytkownika
-- ✅ Monitorowanie samopoczucia + streak
-- ✅ Responsywny interfejs (Next.js + Tailwind CSS)
+> 🌐 Live app: https://agent-zdrowie.vercel.app
 
 ---
 
-## 🧰 Technologie
+## 🔧 Features
 
-- **Next.js (App Router)** – frontend + backend
-- **TypeScript** – statyczne typowanie
-- **Tailwind CSS** – stylowanie
-- **OpenAI API** – chatbot i porady AI
-- **Neon (PostgreSQL)** – baza danych
-- **Prisma ** – dostęp do bazy danych
-- **React Hook Form  – walidacja formularzy
+- ✅ Google login (OAuth)
+- ✅ Add and view health measurements
+- ✅ Compare data with personalized norms based on age, weight, and height
+- ✅ AI chatbot (OpenAI) with access to user data
+- ✅ Mood tracking and daily streak system
+- ✅ Fully responsive UI (Next.js + Tailwind CSS)
 
 ---
 
+## 🧰 Tech Stack
+
+- **Next.js (App Router)** – full-stack framework
+- **TypeScript** – type-safe development
+- **Tailwind CSS** – styling
+- **OpenAI API** – AI chatbot for personalized suggestions
+- **Neon (PostgreSQL)** – database
+- **Prisma** – database access layer
+
+---
+
+## 💡 Future Ideas
+
+- Immutable health logs stored on blockchain
+- Marketplace for sharing anonymized health data
+- Integration with smartwatches and Bluetooth health devices
+- Mobile version (PWA or native)
+
+---
+
+## 📄 License
+
+This is an educational project created as part of an engineering thesis.  
+For demonstration and academic purposes only.
 
