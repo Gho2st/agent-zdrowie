@@ -41,6 +41,15 @@ function asBP(v: string): { sys: number; dia: number } | null {
   return m ? { sys: Number(m[1]), dia: Number(m[2]) } : null;
 }
 
+type TextPart = { type: "text"; text: string };
+type ContentPart = { type: string } & Record<string, unknown>;
+
+function isTextPart(p: ContentPart): p is TextPart {
+  return (
+    p.type === "text" && typeof (p as { text?: unknown }).text === "string"
+  );
+}
+
 function checkNorms(
   t: string,
   v: number,
@@ -136,15 +145,6 @@ export default function Pomiary() {
       console.error("AI advice error", e);
     }
   };
-
-  type TextPart = { type: "text"; text: string };
-  type ContentPart = { type: string } & Record<string, unknown>;
-
-  function isTextPart(p: ContentPart): p is TextPart {
-    return (
-      p.type === "text" && typeof (p as { text?: unknown }).text === "string"
-    );
-  }
 
   const gptResponse = useMemo(() => {
     const lastAssistant = [...messages]
@@ -331,7 +331,7 @@ export default function Pomiary() {
     if (value !== "") return;
     if (glucoseTime === "przed posiłkiem") setValue("85");
     else if (glucoseTime === "po posiłku") setValue("110");
-  }, [glucoseTime, type]);
+  }, [glucoseTime, type, value]);
 
   // Rerender jednostki przy zmianie typu
   useEffect(() => {
