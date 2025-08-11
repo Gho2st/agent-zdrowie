@@ -137,23 +137,34 @@ export default function Pomiary() {
     }
   };
 
-  // Ostatnia odpowiedź modelu: AI SDK zwykle daje string w message.content
+  type TextPart = { type: "text"; text: string };
+  type ContentPart = { type: string } & Record<string, unknown>;
+
+  function isTextPart(p: ContentPart): p is TextPart {
+    return (
+      p.type === "text" && typeof (p as { text?: unknown }).text === "string"
+    );
+  }
+
   const gptResponse = useMemo(() => {
     const lastAssistant = [...messages]
       .reverse()
       .find((m) => m.role === "assistant");
-    const c: any = lastAssistant?.content as any;
+    const c: unknown = lastAssistant?.content;
     if (!c) return undefined;
+
     if (typeof c === "string") return c;
+
     if (Array.isArray(c)) {
-      return c
-        .filter((p: any) => p?.type === "text" && typeof p?.text === "string")
-        .map((p: any) => p.text)
+      const parts = c as ContentPart[];
+      return parts
+        .filter(isTextPart)
+        .map((p) => p.text)
         .join("\n");
     }
+
     return undefined;
   }, [messages]);
-
   // Fetch danych po zalogowaniu
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -189,7 +200,8 @@ export default function Pomiary() {
       });
       if (!res.ok) throw new Error();
       toast.success("Pomiar został usunięty");
-    } catch (e) {
+    } catch (error) {
+      console.error(error);
       setMeasurements(prev);
       toast.error("Błąd podczas usuwania pomiaru");
     } finally {
