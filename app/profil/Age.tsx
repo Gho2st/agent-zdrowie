@@ -1,5 +1,7 @@
 import { LuPencil, LuCheck, LuX } from "react-icons/lu";
 import { useState, useEffect } from "react";
+import { Weight, Ruler, Calendar } from "lucide-react";
+import BMICompact from "./Bmi";
 
 interface AgeProps {
   norms: {
@@ -83,12 +85,20 @@ export default function Age({
 
   return (
     <div className="flex flex-col gap-3">
-      <span className="text-lg font-medium">{age} lat</span>
+      <div className="flex items-center gap-2">
+        <span>
+          <Calendar />
+        </span>
+        <span className="text-lg font-bold">{age} lat</span>
+      </div>
 
       {/* Wzrost */}
       {!editingHeight ? (
         <div className="flex items-center gap-2">
-          <span className="text-lg">{norms.height} cm</span>
+          <span>
+            <Ruler />
+          </span>
+          <span className="text-lg font-bold">{norms.height} cm</span>
           <button
             onClick={() => setEditingHeight(true)}
             className="text-blue-600 hover:text-blue-800 cursor-pointer"
@@ -141,7 +151,10 @@ export default function Age({
       {/* Waga */}
       {!editingWeight ? (
         <div className="flex items-center gap-2">
-          <span className="text-lg">{norms.weight} kg</span>
+          <span>
+            <Weight />
+          </span>
+          <span className="text-lg font-bold">{norms.weight} kg</span>
           <button
             onClick={() => setEditingWeight(true)}
             className="text-blue-600 hover:text-blue-800 cursor-pointer"
@@ -192,9 +205,8 @@ export default function Age({
       )}
 
       {/* BMI */}
-      {norms.bmi !== undefined && (
-        <span className="text-lg">BMI: {norms.bmi.toFixed(1)}</span>
-      )}
+
+      {norms.bmi !== undefined && <BMICompact bmi={norms.bmi} />}
     </div>
   );
 }

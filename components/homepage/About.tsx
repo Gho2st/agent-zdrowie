@@ -72,9 +72,8 @@ export default function About() {
           visible: { opacity: 1, transition: { delay: 0.3, duration: 0.6 } },
         }}
       >
-        Nowoczesna aplikacja zdrowotna, która nie tylko zapisuje pomiary – ona
-        je rozumie. Dzięki sztucznej inteligencji analizuje Twoje dane i wspiera
-        Cię w dbaniu o zdrowie każdego dnia.
+        Dbaj o zdrowie mądrzej. Zapisuj pomiary, analizuj je z pomocą AI i
+        otrzymuj wskazówki dopasowane do Ciebie.
       </motion.p>
 
       <div className="flex flex-col-reverse lg:flex-row items-center gap-10 mt-16">
@@ -84,22 +83,22 @@ export default function About() {
             {
               emoji: "🤖",
               title: "Spersonalizowana analiza",
-              text: "Dzięki integracji z Twoim profilem zdrowotnym, Agent interpretuje wyniki pomiarów w kontekście wieku, płci, historii chorób i leków.",
+              text: "Uwzględniam Twój wiek, płeć, historię chorób i przyjmowane leki, aby trafnie interpretować wyniki.",
             },
             {
               emoji: "📊",
-              title: "Połączenie z bazą danych",
-              text: "Wszystkie pomiary są zapisywane i analizowane – aplikacja pamięta Twoje ostatnie wartości i wykrywa zmiany na przestrzeni czasu.",
+              title: "Pomiary, które mają sens",
+              text: "Zapisuję wszystkie dane, śledzę zmiany w czasie i wykrywam niepokojące trendy.",
             },
             {
               emoji: "🚨",
-              title: "Inteligentne ostrzeżenia",
-              text: "Przekroczyłeś normę ciśnienia? Glukoza za wysoka? Agent nie tylko Ci to powie, ale też wyjaśni dlaczego to ważne.",
+              title: "Inteligentne alerty",
+              text: "Ciśnienie, cukier, tętno, waga — jeśli wynik odbiega od normy, od razu wiesz dlaczego i co warto zrobić.",
             },
             {
               emoji: "💡",
               title: "Rozmowy z AI",
-              text: "Zadaj pytanie, opisz objawy lub poproś o interpretację wyników – Agent odpowie, jak empatyczny doradca zdrowia.",
+              text: "Zadaj pytanie, opisz objawy, poproś o interpretację — odpowiem jasno, empatycznie i na temat.",
             },
           ].map((item) => (
             <motion.div

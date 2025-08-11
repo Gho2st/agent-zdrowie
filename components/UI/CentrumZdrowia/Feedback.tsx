@@ -63,7 +63,7 @@ export default function Feedback() {
         <div className="text-gray-800 whitespace-pre-line leading-relaxed xl:text-lg">
           <p>{gptResponse}</p>
           {generatedAt && (
-            <p className="mt-3 text-lg">
+            <p className="mt-3 text-sm text-gray-500">
               🕒 Wygenerowano:{" "}
               {format(generatedAt, "d MMMM yyyy, HH:mm", { locale: pl })}
             </p>

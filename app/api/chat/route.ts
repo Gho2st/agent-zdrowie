@@ -95,11 +95,15 @@ export async function POST(req: NextRequest) {
             hour: "2-digit",
             minute: "2-digit",
           });
-          if (m.type === "ciśnienie") {
-            return `${date} – Ciśnienie: ${m.systolic}/${m.diastolic} ${m.unit}`;
-          } else {
-            return `${date} – ${m.type}: ${m.amount} ${m.unit}`;
-          }
+
+          const base =
+            m.type === "ciśnienie"
+              ? `${date} – Ciśnienie: ${m.systolic}/${m.diastolic} ${m.unit}`
+              : `${date} – ${m.type}: ${m.amount} ${m.unit}`;
+
+          const note = m.context ? `\n   • Kontekst: ${m.context}` : "";
+
+          return `${base}${note}`;
         })
         .join("\n");
 

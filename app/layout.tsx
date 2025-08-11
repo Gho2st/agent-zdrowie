@@ -4,6 +4,7 @@ import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import Navigation from "@/components/UI/Navigation";
 import { Toaster } from "react-hot-toast";
+import Footer from "@/components/UI/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -47,9 +48,12 @@ export default function RootLayout({
               id="scrollable"
               className="flex-1 ml-0 md:ml-64 2xl:ml-72  overflow-y-auto h-full"
             >
-                {children}
-                <Toaster position="top-right" reverseOrder={false} />
+              {children}
+              <Toaster position="top-right" reverseOrder={false} />
             </main>
+          </div>
+          <div className="ml-0 md:ml-64 2xl:ml-72">
+            <Footer />
           </div>
         </SessionProvider>
       </body>

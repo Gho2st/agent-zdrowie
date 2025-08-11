@@ -10,6 +10,7 @@ import Medications from "./Medications";
 import Norms from "./Norms";
 import Age from "./Age";
 import toast from "react-hot-toast";
+import { Hand, LogOut } from "lucide-react";
 
 // 🔹 Typ łączony dla wszystkich komponentów
 type CombinedNorms = {
@@ -139,18 +140,10 @@ export default function Profil() {
 
   return (
     <Container>
-      <Header text="Mój Profil" />
-      <button
-        onClick={() => signOut()}
-        className="text-sm text-red-500 underline cursor-pointer"
-      >
-        Wyloguj się
-      </button>
-      <div className="grid sm:grid-cols-2 gap-8 mt-10">
-        <div className="bg-white/30 backdrop-blur-lg border border-white/20 p-10 shadow-lg rounded-2xl">
-          {session && (
-            <>
-              <p className="text-xl font-bold">{session.user?.name}</p>
+      {session && (
+        <>
+          <div className="flex justify-between gap-4 flex-row items-center">
+            <div className="flex items-center gap-4">
               <Image
                 src={session.user?.image ?? ""}
                 alt="avatar"
@@ -158,9 +151,28 @@ export default function Profil() {
                 height={500}
                 className="w-16 h-16 rounded-full my-3"
               />
-            </>
-          )}
+              <div>
+                <div className="text-sm flex items-center gap-1 font-semibold text-gray-900">
+                  Witaj <Hand className="text-blue-500 w-4" />
+                </div>
+                <p className="font-bold">{session.user?.name}</p>
+              </div>
+            </div>
 
+            <div>
+              <button
+                onClick={() => signOut()}
+                className="text-red-500 underline cursor-pointer"
+              >
+                <LogOut className="md:w-10 md:h-10 2xl:w-12 2xl:h-12" />
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="grid sm:grid-cols-2 gap-8 mt-10">
+        <div className="bg-white/30 backdrop-blur-lg border border-white/20 p-6 shadow-lg rounded-2xl">
           {/* 🔹 Sekcja: Wiek, wzrost, waga */}
           <Age
             norms={{

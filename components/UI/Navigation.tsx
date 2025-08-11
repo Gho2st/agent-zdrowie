@@ -53,7 +53,7 @@ export default function Navigation() {
             width={0}
             height={0}
             sizes="100vw"
-            className="w-auto h-32 object-contain"
+            className="w-auto h-32 2xl:h-46 object-contain"
             priority
           />
         </Link>
