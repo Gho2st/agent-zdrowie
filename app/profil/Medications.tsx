@@ -2,6 +2,7 @@
 
 import toast from "react-hot-toast";
 import { Dispatch, SetStateAction } from "react";
+import { Save, X } from "lucide-react";
 
 interface NormsState {
   medications?: string;
@@ -73,18 +74,21 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
           }
           className="w-full border rounded px-3 py-2 text-sm"
         />
-        <div className="mt-2 flex gap-4 flex-wrap">
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <button
             onClick={() => handleSave("medications")}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/70 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            💾 Zapisz leki
+            <Save className="h-4 w-4" />
+            Zapisz
           </button>
+
           <button
             onClick={() => handleClear("medications")}
-            className="text-red-600 hover:text-red-700 underline text-sm"
+            className="inline-flex items-center gap-2 bg-red-100 rounded-lg border border-red-200 px-3.5 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/60"
           >
-            ❌ Usuń wszystkie leki
+            <X className="h-4 w-4" />
+            Wyczyść
           </button>
         </div>
       </div>
@@ -106,18 +110,21 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
           }
           className="w-full border rounded px-3 py-2 text-sm"
         />
-        <div className="mt-2 flex gap-4 flex-wrap">
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <button
             onClick={() => handleSave("conditions")}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/70 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            💾 Zapisz choroby
+            <Save className="h-4 w-4" />
+            Zapisz
           </button>
+
           <button
             onClick={() => handleClear("conditions")}
-            className="text-red-600 hover:text-red-700 underline text-sm"
+            className="inline-flex items-center bg-red-100 gap-2 rounded-lg border border-red-200 px-3.5 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/60"
           >
-            ❌ Usuń wszystkie choroby
+            <X className="h-4 w-4" />
+            Wyczyść
           </button>
         </div>
       </div>

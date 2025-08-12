@@ -133,7 +133,7 @@ export default function StreakTrackerDynamic({ userTimeZone }: Props) {
         <>
           <p className="text-3xl md:text-4xl font-extrabold">
             <span
-              className={isStreakActive ? "text-orange-600" : "text-gray-800"}
+              className={isStreakActive ? "text-green-600" : "text-gray-800"}
             >
               {data.streakCount}
             </span>{" "}

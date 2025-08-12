@@ -6,6 +6,8 @@ import { HeartPulse, Loader2, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 
+const FRESH_FOR_MS = 1000 * 60 * 60 * 12; // 12 godzin
+
 export default function Feedback() {
   const hasAsked = useRef(false);
   const [generatedAt, setGeneratedAt] = useState<Date | null>(null);
@@ -25,11 +27,14 @@ export default function Feedback() {
   }, [append]);
 
   useEffect(() => {
-    if (!hasAsked.current && messages.length === 0) {
+    const isFresh =
+      generatedAt && Date.now() - generatedAt.getTime() < FRESH_FOR_MS;
+
+    if (!hasAsked.current && messages.length === 0 && !isFresh) {
       askForAdvice();
       hasAsked.current = true;
     }
-  }, [messages.length, askForAdvice]);
+  }, [messages.length, askForAdvice, generatedAt]);
 
   const gptResponse = messages
     .find((m) => m.role === "assistant")
@@ -38,16 +43,14 @@ export default function Feedback() {
   return (
     <div className="bg-white/30 shadow rounded-2xl p-6">
       <div className="flex flex-col justify-center items-center mb-3 text-gray-800">
-        <div className="text-center ">
-          <h2 className="text-xl md:text-2xl text-center font-semibold flex items-center justify-center gap-2">
-            <HeartPulse className="w-6 h-6 text-red-500" />
-            Porada zdrowotna od Agenta
-          </h2>
-        </div>
+        <h2 className="text-xl md:text-2xl font-semibold flex items-center gap-2">
+          <HeartPulse className="w-6 h-6 text-red-500" />
+          Porada zdrowotna od Agenta
+        </h2>
         <button
           onClick={askForAdvice}
           disabled={isLoading}
-          className="mt-6 text-sm flex items-center gap-1 cursor-pointer text-blue-600 hover:underline disabled:opacity-50"
+          className="mt-6 text-sm flex items-center gap-1 text-blue-600 hover:underline disabled:opacity-50"
         >
           <RotateCcw className="w-4 h-4" />
           Odśwież
@@ -70,7 +73,7 @@ export default function Feedback() {
           )}
         </div>
       ) : (
-        <p className="">Brak porady do wyświetlenia.</p>
+        <p>Brak porady do wyświetlenia.</p>
       )}
     </div>
   );

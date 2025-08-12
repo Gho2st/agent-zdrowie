@@ -3,7 +3,7 @@ export default function Audience() {
     {
       emoji: "👵",
       label: "Seniorzy",
-      desc: "Prosty interfejs, przypomnienia o pomiarach, bezpieczeństwo.",
+      desc: "Łatwy w obsłudze interfejs, przypomnienia o pomiarach i wysoki poziom bezpieczeństwa.",
     },
     {
       emoji: "👨‍⚕️",
@@ -13,12 +13,12 @@ export default function Audience() {
     {
       emoji: "👩‍💻",
       label: "Osoby zapracowane",
-      desc: "Szybkie odpowiedzi, bez szukania w Google. AI Cię zna.",
+      desc: "Błyskawiczne odpowiedzi bez przeszukiwania internetu — AI zna Twój kontekst.",
     },
     {
       emoji: "👨‍👩‍👧",
       label: "Rodziny",
-      desc: "Zadbaj o zdrowie bliskich – możesz analizować ich pomiary razem.",
+      desc: "Zadbaj o zdrowie bliskich - możesz analizować ich pomiary razem.",
     },
   ];
 

@@ -24,6 +24,8 @@ export default function BMICompact({ bmi }: { bmi: number }) {
       ? "Nadwaga"
       : "Otyłość";
 
+  const ticks = [minScale, 18.5, 25, 30, maxScale];
+
   return (
     <div className="bg-white/30 mt-6 w-full rounded-2xl border border-gray-200 shadow-2xl p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -36,9 +38,21 @@ export default function BMICompact({ bmi }: { bmi: number }) {
         </div>
       </div>
 
-      {/* Pasek stref z markerem */}
+      {/* Skala: podpisy NAD markerem */}
       <div className="space-y-2">
-        <div className="flex w-full h-4 rounded-xl overflow-hidden ring-1 ring-black/5">
+        {/* Podpisy skali nad paskiem/markerem */}
+        <div className="relative">
+          <div className="absolute inset-x-0 -top-4 flex justify-between text-[10px] text-gray-500">
+            {ticks.map((t, i) => (
+              <span key={i} className={i === 0 ? "" : "-translate-x-1/2"}>
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Pasek stref */}
+        <div className="flex w-full h-4 rounded-xl overflow-hidden ring-1 ring-black/5 mt-4">
           {ranges.map((r) => (
             <div
               key={r.label}
@@ -47,28 +61,36 @@ export default function BMICompact({ bmi }: { bmi: number }) {
                 width: `${((r.to - r.from) / (maxScale - minScale)) * 100}%`,
               }}
               aria-label={`${r.label} ${r.from}–${r.to}`}
+              title={`${r.label} ${r.from}–${r.to}`}
             />
           ))}
         </div>
+
         {/* Marker z wartością */}
         <div className="relative h-6">
           <div
             className="absolute -top-2"
             style={{ left: `calc(${positionPct}% - 8px)` }}
           >
+            {/* trójkąt-markeryk */}
             <div className="w-0 h-0 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-gray-700" />
             <div className="text-[11px] text-gray-700 text-center font-medium">
               {bmi.toFixed(1)}
             </div>
           </div>
-          <div className="absolute inset-0 flex justify-between text-[10px] text-gray-500">
-            <span>{minScale}</span>
-            <span>18.5</span>
-            <span>25</span>
-            <span>30</span>
-            <span>{maxScale}</span>
-          </div>
         </div>
+      </div>
+
+      {/* Legenda kolorów */}
+      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-700">
+        {ranges.map((r) => (
+          <div key={r.label} className="flex items-center gap-1.5">
+            <span
+              className={`inline-block w-3 h-3 rounded ${r.bg} ring-1 ring-black/10`}
+            />
+            <span>{r.label}</span>
+          </div>
+        ))}
       </div>
 
       {/* Alert - krótka interpretacja */}

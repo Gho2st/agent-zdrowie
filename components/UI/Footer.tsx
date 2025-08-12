@@ -6,10 +6,14 @@ export default function Footer() {
     <footer className="border-t border-gray-200 bg-white">
       <div className="container mx-auto px-4 py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-600">
         {/* Lewa strona */}
-        <div className="flex items-center gap-1">
+        <div className="flex flex-col sm:flex-row items-center gap-4">
           <span>© {new Date().getFullYear()} Agent Zdrowie</span>
-          <Heart className="h-4 w-4 text-red-500 animate-pulse" />
-          <span className="text-gray-500">Twoje zdrowie w dobrych rękach</span>
+          <div className="flex items-center gap-1">
+            <Heart className="h-4 w-4 text-red-500 animate-pulse" />
+            <span className="text-gray-500">
+              Twoje zdrowie w dobrych rękach
+            </span>
+          </div>
         </div>
 
         {/* Prawa strona */}
