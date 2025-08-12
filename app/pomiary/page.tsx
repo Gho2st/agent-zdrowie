@@ -138,7 +138,7 @@ export default function Pomiary() {
       await append({
         role: "user",
         content:
-          "Na podstawie konkretnie ostatniego pomiaru dokładnie najnoszwego pod względem daty i czasu oceń go, bierz pod uwagę notki jakie zostawił user. Szerszą historie usera bierz pod uwagę tylko w szerszym zakresie jak widzisz jakieś powody.",
+          "Oceń konkretnie ostatni pomiar — ten najnowszy pod względem daty i czasu. Uwzględnij ewentualne notatki pozostawione przez użytkownika. Jeśli ich nie ma, nie musisz nic o nich pisać. Nie musisz podawać dokładnej godziny, jeśli pomiar został dodany przed chwilą. Szerszą historię użytkownika analizuj tylko wtedy, gdy widzisz ku temu istotne powody.",
       });
     } catch (e) {
       console.error("AI advice error", e);
