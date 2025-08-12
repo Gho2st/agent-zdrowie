@@ -3,16 +3,17 @@ import React from "react";
 export default function BMICompact({ bmi }: { bmi: number }) {
   const minScale = 14;
   const maxScale = 40;
+
   const clamp = (v: number, min: number, max: number) =>
     Math.max(min, Math.min(max, v));
   const bmiClamped = clamp(bmi, minScale, maxScale);
   const positionPct = ((bmiClamped - minScale) / (maxScale - minScale)) * 100;
 
   const ranges = [
-    { label: "Niedowaga", from: 0, to: 18.5, bg: "bg-sky-300" },
+    { label: "Niedowaga", from: minScale, to: 18.5, bg: "bg-sky-300" },
     { label: "Prawidłowe", from: 18.5, to: 25, bg: "bg-emerald-400" },
     { label: "Nadwaga", from: 25, to: 30, bg: "bg-amber-400" },
-    { label: "Otyłość", from: 30, to: 40, bg: "bg-rose-500" },
+    { label: "Otyłość", from: 30, to: maxScale, bg: "bg-rose-500" },
   ];
 
   const category =
@@ -40,7 +41,6 @@ export default function BMICompact({ bmi }: { bmi: number }) {
 
       {/* Skala: podpisy NAD markerem */}
       <div className="space-y-2">
-        {/* Podpisy skali nad paskiem/markerem */}
         <div className="relative">
           <div className="absolute inset-x-0 -top-4 flex justify-between text-[10px] text-gray-500">
             {ticks.map((t, i) => (
@@ -66,13 +66,12 @@ export default function BMICompact({ bmi }: { bmi: number }) {
           ))}
         </div>
 
-        {/* Marker z wartością */}
+        {/* Marker */}
         <div className="relative h-6">
           <div
             className="absolute -top-2"
             style={{ left: `calc(${positionPct}% - 8px)` }}
           >
-            {/* trójkąt-markeryk */}
             <div className="w-0 h-0 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-gray-700" />
             <div className="text-[11px] text-gray-700 text-center font-medium">
               {bmi.toFixed(1)}
@@ -93,7 +92,7 @@ export default function BMICompact({ bmi }: { bmi: number }) {
         ))}
       </div>
 
-      {/* Alert - krótka interpretacja */}
+      {/* Alert */}
       <div
         className={`p-3 rounded-xl text-sm flex gap-2 ${
           bmi < 18.5
