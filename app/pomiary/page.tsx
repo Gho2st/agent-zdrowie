@@ -138,10 +138,9 @@ export default function Pomiary() {
       await append({
         role: "user",
         content:
-          "Na podstawie tylko ostatniego pomiaru oceń go, bierz pod uwagę notki jakie zostawił user",
+          "Na podstawie konkretnie ostatniego pomiaru dokładnie najnoszwego pod względem daty i czasu oceń go, bierz pod uwagę notki jakie zostawił user. Szerszą historie usera bierz pod uwagę tylko w szerszym zakresie jak widzisz jakieś powody.",
       });
     } catch (e) {
-      // miękka obsługa — brak toast, żeby nie męczyć usera
       console.error("AI advice error", e);
     }
   };
@@ -171,8 +170,8 @@ export default function Pomiary() {
     (async () => {
       try {
         const [mRes, nRes] = await Promise.all([
-          fetch("/api/measurement"),
-          fetch("/api/user/norms"),
+          fetch("/api/measurement", { cache: "no-store" }),
+          fetch("/api/user/norms", { cache: "no-store" }),
         ]);
         if (!mRes.ok || !nRes.ok) throw new Error("fetch");
         const m = await mRes.json();

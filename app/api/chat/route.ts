@@ -94,6 +94,7 @@ export async function POST(req: NextRequest) {
             year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
+            second: "2-digit",
           });
 
           const base =
@@ -127,9 +128,11 @@ export async function POST(req: NextRequest) {
 
     console.log(contextData);
 
+    const system = `Jesteś cyfrowym asystentem zdrowia Agent Zdrowie. ${contextData}`;
+
     const result = await streamText({
       model: openai("gpt-4o"),
-      system: `Jesteś cyfrowym asystentem zdrowia Agent Zdrowie. Na podstawie danych użytkownika wygeneruj trafną, krótką i empatyczną poradę zdrowotną. Uwzględnij kontekst z ostatnich pomiarów i wpisów o samopoczuciu.\n\n${contextData}`,
+      system: system,
       messages,
     });
 

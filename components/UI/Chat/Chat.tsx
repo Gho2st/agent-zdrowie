@@ -8,6 +8,7 @@ export default function ChatPage() {
   const { messages, input, handleInputChange, handleSubmit, status, error } =
     useChat({
       api: "/api/chat",
+      id: "health-assistant-chat",
     });
 
   const [localError, setLocalError] = useState<string | null>(null);
