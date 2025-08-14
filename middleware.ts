@@ -47,10 +47,9 @@ export async function middleware(request: NextRequest) {
 
   // Jeśli profil nieuzupełniony i nie jest na stronie rejestracji - przekieruj
   if (!profileComplete && pathname !== "/rejestracja-dodatkowa") {
-    // Dodaj flagę do URL, aby uniknąć pętli przekierowań
-    const url = new URL("/rejestracja-dodatkowa", request.url);
-    url.searchParams.set("from", pathname);
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(
+      new URL("/rejestracja-dodatkowa", request.url)
+    );
   }
 
   return NextResponse.next();
