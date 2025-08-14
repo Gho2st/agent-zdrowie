@@ -17,7 +17,7 @@ export default function Logowanie() {
   }, [session, router]);
 
   const handleLogin = async () => {
-    await signIn("google");
+    await signIn("google", { callbackUrl: "/centrum-zdrowia" });
   };
 
   const handleLogout = async () => {
