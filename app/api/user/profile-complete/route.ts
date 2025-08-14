@@ -2,6 +2,10 @@ import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+// 🔹 Wyłączamy cache w Next.js
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET() {
   const session = await auth();
 
@@ -28,5 +32,12 @@ export async function GET() {
     typeof user.weight === "number" &&
     user.weight > 0;
 
-  return NextResponse.json({ complete });
+  return NextResponse.json(
+    { complete },
+    {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+      },
+    }
+  );
 }
