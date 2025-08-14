@@ -7,7 +7,7 @@ const publicPaths = ["/"];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Static assets
+  // Static/public assets
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
@@ -35,11 +35,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/logowanie", request.url));
   }
 
+  // 🔹 Jeśli świeżo po zapisie — przepuść
+  if (request.cookies.get("justCompletedProfile")) {
+    return NextResponse.next();
+  }
+
   // 🔹 Pobierz świeży stan profilu z API
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin;
   const profileRes = await fetch(`${baseUrl}/api/user/profile-complete`, {
-    headers: { cookie: request.headers.get("cookie") || "" },
-    cache: "no-store", // ważne, żeby ominąć cache
+    headers: {
+      cookie: request.headers.get("cookie") || "",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+    },
   });
 
   let profileComplete = false;
