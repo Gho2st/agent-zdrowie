@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 const publicPaths = ["/"];
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -28,24 +29,32 @@ export async function middleware(request: NextRequest) {
 
   // Brak sesji
   if (!token) {
-    // pozwól na stronę logowania i stronę główną
     if (pathname === "/logowanie" || publicPaths.includes(pathname)) {
       return NextResponse.next();
     }
-    // wszystko inne → logowanie
     return NextResponse.redirect(new URL("/logowanie", request.url));
   }
 
-  // Zalogowany i profil kompletny → blokujemy wejście na /logowanie
-  if (token.profileComplete === true && pathname === "/logowanie") {
+  // 🔹 Pobierz świeży stan profilu z API
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin;
+  const profileRes = await fetch(`${baseUrl}/api/user/profile-complete`, {
+    headers: { cookie: request.headers.get("cookie") || "" },
+    cache: "no-store", // ważne, żeby ominąć cache
+  });
+
+  let profileComplete = false;
+  if (profileRes.ok) {
+    const data = await profileRes.json();
+    profileComplete = !!data.complete;
+  }
+
+  // Profil kompletny → jeśli wchodzi na logowanie, przekieruj do centrum zdrowia
+  if (profileComplete && pathname === "/logowanie") {
     return NextResponse.redirect(new URL("/centrum-zdrowia", request.url));
   }
 
-  // Zalogowany i profil niekompletny → przekieruj na rejestracja-dodatkowa
-  if (
-    token.profileComplete === false &&
-    pathname !== "/rejestracja-dodatkowa"
-  ) {
+  // Profil niekompletny → przekieruj na rejestracja-dodatkowa
+  if (!profileComplete && pathname !== "/rejestracja-dodatkowa") {
     return NextResponse.redirect(
       new URL("/rejestracja-dodatkowa", request.url)
     );
