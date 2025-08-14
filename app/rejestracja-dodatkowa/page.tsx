@@ -26,7 +26,8 @@ export default function RejestracjaDodatkowa() {
 
       if (status === "authenticated") {
         try {
-          const res = await fetch("/api/user/profile-complete");
+          const ts = Date.now();
+          const res = await fetch(`/api/user/profile-complete/${ts}`);
           const data = await res.json();
 
           if (data.complete) {

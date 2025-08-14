@@ -42,7 +42,8 @@ export async function middleware(request: NextRequest) {
 
   // 🔹 Pobierz świeży stan profilu z API
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin;
-  const profileRes = await fetch(`${baseUrl}/api/user/profile-complete`, {
+  const ts = Date.now();
+  const profileRes = await fetch(`${baseUrl}/api/user/profile-complete/${ts}`, {
     headers: {
       cookie: request.headers.get("cookie") || "",
       "Cache-Control": "no-cache, no-store, must-revalidate",
