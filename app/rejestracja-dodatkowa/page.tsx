@@ -26,8 +26,7 @@ export default function RejestracjaDodatkowa() {
 
       if (status === "authenticated") {
         try {
-          const ts = Date.now();
-          const res = await fetch(`/api/user/profile-complete/${ts}`);
+          const res = await fetch(`/api/user/profile-complete/`);
           const data = await res.json();
 
           if (data.complete) {
@@ -53,7 +52,9 @@ export default function RejestracjaDodatkowa() {
 
     if (res.ok) {
       await update(); // odśwież sesję, żeby middleware widział profileComplete: true
-      await signIn("google", { redirect: false }); // 🔹 wymusza nowy JWT w cookie
+      await signIn("google", { callbackUrl: "/profil" });
+      // 🔹 wymusza nowy JWT w cookie
+      document.cookie = `justCompletedProfile=true; path=/; max-age=10; SameSite=Lax`;
       router.push("/profil");
     } else {
       toast.error("Błąd zapisu");

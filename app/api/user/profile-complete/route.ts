@@ -2,26 +2,15 @@ import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
 export async function GET() {
   const session = await auth();
-
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: {
-      birthdate: true,
-      gender: true,
-      height: true,
-      weight: true,
-    },
+    select: { birthdate: true, gender: true, height: true, weight: true },
   });
-
   const complete =
     !!user &&
     user.birthdate instanceof Date &&
@@ -30,13 +19,5 @@ export async function GET() {
     user.height > 0 &&
     typeof user.weight === "number" &&
     user.weight > 0;
-
-  return NextResponse.json(
-    { complete },
-    {
-      headers: {
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-      },
-    }
-  );
+  return NextResponse.json({ complete });
 }

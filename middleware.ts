@@ -8,11 +8,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Static/public assets
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api") ||
-    pathname.startsWith("/favicon.ico")
-  ) {
+  if (pathname.startsWith("/_next") || pathname.startsWith("/favicon.ico")) {
     return NextResponse.next();
   }
 
@@ -35,19 +31,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/logowanie", request.url));
   }
 
-  // 🔹 Jeśli świeżo po zapisie — przepuść
+  // Jeśli świeżo po zapisie profilu — przepuść
   if (request.cookies.get("justCompletedProfile")) {
     return NextResponse.next();
   }
 
-  // 🔹 Pobierz świeży stan profilu z API
+  // Pobierz świeży stan profilu z API
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin;
-  const ts = Date.now();
-  const profileRes = await fetch(`${baseUrl}/api/user/profile-complete/${ts}`, {
+  const profileRes = await fetch(`${baseUrl}/api/user/profile-complete`, {
     headers: {
       cookie: request.headers.get("cookie") || "",
       "Cache-Control": "no-cache, no-store, must-revalidate",
     },
+    cache: "no-store",
   });
 
   let profileComplete = false;
@@ -73,6 +69,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    // Wykluczamy API, żeby nie robić fetch loop
     "/((?!_next/|api/|static/|favicon.ico|images/|icons/|fonts/|media/).*)",
   ],
 };
