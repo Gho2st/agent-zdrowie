@@ -51,6 +51,7 @@ export default function RejestracjaDodatkowa() {
 
     if (res.ok) {
       await update(); // odśwież sesję, żeby middleware widział profileComplete: true
+
       router.push("/profil");
     } else {
       toast.error("Błąd zapisu");

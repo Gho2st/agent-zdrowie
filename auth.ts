@@ -71,37 +71,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
 
     async jwt({ token }) {
-      if (token?.email) {
-        const dbUser = await prisma.user.findUnique({
-          where: { email: token.email },
-          select: {
-            id: true,
-            birthdate: true,
-            gender: true,
-            height: true,
-            weight: true,
-          },
-        });
+      if (!token?.email) return token;
 
-        if (dbUser) {
-          token.id = String(dbUser.id); // zapisujemy id w tokenie
-        }
+      // 🔹 Zawsze pobieramy aktualne dane użytkownika z bazy
+      const dbUser = await prisma.user.findUnique({
+        where: { email: token.email },
+        select: {
+          id: true,
+          birthdate: true,
+          gender: true,
+          height: true,
+          weight: true,
+        },
+      });
 
-        const profileComplete =
-          !!dbUser &&
+      if (dbUser) {
+        token.id = String(dbUser.id);
+        token.profileComplete =
           dbUser.birthdate instanceof Date &&
           (dbUser.gender === "M" || dbUser.gender === "K") &&
           typeof dbUser.height === "number" &&
           dbUser.height > 0 &&
           typeof dbUser.weight === "number" &&
           dbUser.weight > 0;
-
-        token.profileComplete = profileComplete;
+      } else {
+        token.profileComplete = false;
       }
 
       return token;
     },
-
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id;
