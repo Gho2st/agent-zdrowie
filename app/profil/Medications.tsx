@@ -5,6 +5,7 @@ import { Dispatch, SetStateAction } from "react";
 import { Save, X } from "lucide-react";
 
 interface NormsState {
+  // trzymamy tekst w textarea; przy zapisie zamienimy na string[]
   medications?: string;
   conditions?: string;
 }
@@ -14,18 +15,26 @@ interface Props {
   setNorms: Dispatch<SetStateAction<NormsState>>;
 }
 
+const normalizeList = (text: string) =>
+  text
+    .split(/[,\n;]+/) // przecinki, entery, średniki
+    .map((s) => s.trim())
+    .filter(Boolean);
+
 export default function MedicationsAndConditions({ norms, setNorms }: Props) {
   const handleSave = async (field: keyof NormsState) => {
     const value = norms[field]?.trim();
     if (!value) {
-      toast.error(`Wprowadź dane zanim zapiszesz.`);
+      toast.error("Wprowadź dane zanim zapiszesz.");
       return;
     }
+
+    const list = normalizeList(value); // ← wyślemy TABELĘ do API
 
     const res = await fetch("/api/user/norms", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [field]: value }),
+      body: JSON.stringify({ [field]: list }),
     });
 
     if (res.ok) {
@@ -36,7 +45,8 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
   };
 
   const handleClear = async (field: keyof NormsState) => {
-    if (!norms[field]) {
+    const hasData = Boolean(norms[field] && norms[field]!.trim());
+    if (!hasData) {
       toast("Brak danych do usunięcia.");
       return;
     }
@@ -44,7 +54,7 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
     const res = await fetch("/api/user/norms", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [field]: null }),
+      body: JSON.stringify({ [field]: null }), // ← czyścimy w DB (Json null)
     });
 
     if (res.ok) {

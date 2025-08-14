@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { getHealthNorms } from "@/lib/norms";
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client"; // ⬅️ NOWE
 
 function calculateAge(birthdate: string | Date): number {
   const birth = new Date(birthdate);
@@ -28,10 +29,19 @@ type UpdateUserData = {
   weightMax?: number;
   pulseMin?: number;
   pulseMax?: number;
-  medications?: string[];
-  conditions?: string[];
+  medications?: string[] | null; // Json? → array lub null
+  conditions?: string[] | null; // Json? → array lub null
   bmi?: number;
 };
+
+// ⬅️ NOWE: mapuje string[] | null | undefined do typów akceptowanych przez Prisma dla Json?
+function toJsonValue(
+  value: string[] | null | undefined
+): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined {
+  if (value === undefined) return undefined; // nie aktualizuj pola
+  if (value === null) return Prisma.DbNull; // SQL NULL w kolumnie
+  return value as Prisma.JsonArray; // tablica JSON
+}
 
 export async function GET() {
   const session = await auth();
@@ -45,8 +55,8 @@ export async function GET() {
       gender: true,
       height: true,
       weight: true,
-      medications: true,
-      conditions: true,
+      medications: true, // Json → array lub null
+      conditions: true, // Json → array lub null
       systolicMin: true,
       systolicMax: true,
       diastolicMin: true,
@@ -67,6 +77,7 @@ export async function GET() {
   if (!user)
     return NextResponse.json({ error: "User not found" }, { status: 404 });
 
+  // Prisma już zwraca natywne JSON-y — nic nie parse’ujemy
   return NextResponse.json(user);
 }
 
@@ -91,8 +102,8 @@ export async function PATCH(req: NextRequest) {
     weightMax: body.weightMax,
     pulseMin: body.pulseMin,
     pulseMax: body.pulseMax,
-    medications: body.medications,
-    conditions: body.conditions,
+    medications: body.medications ?? undefined, // spodziewamy się array/null/undefined
+    conditions: body.conditions ?? undefined,
   };
 
   const changingWeightOrHeight =
@@ -135,59 +146,65 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
-  if (Object.keys(updateData).length > 0) {
-    const serializedUpdateData = {
-      ...updateData,
-      medications:
-        updateData.medications === undefined
-          ? undefined
-          : updateData.medications === null
-          ? null
-          : JSON.stringify(updateData.medications),
-      conditions:
-        updateData.conditions === undefined
-          ? undefined
-          : updateData.conditions === null
-          ? null
-          : JSON.stringify(updateData.conditions),
-    };
+  const hasSomethingToUpdate = Object.values(updateData).some(
+    (v) => v !== undefined
+  );
 
-    await prisma.user.update({
-      where: { email: session.user.email },
-      data: serializedUpdateData,
-    });
-
-    const updated = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: {
-        birthdate: true,
-        gender: true,
-        height: true,
-        weight: true,
-        bmi: true,
-        systolicMin: true,
-        systolicMax: true,
-        diastolicMin: true,
-        diastolicMax: true,
-        glucoseFastingMin: true,
-        glucoseFastingMax: true,
-        glucosePrediabetesFastingMin: true,
-        glucosePrediabetesFastingMax: true,
-        glucosePostMealMax: true,
-        weightMin: true,
-        weightMax: true,
-        pulseMin: true,
-        pulseMax: true,
-        medications: true,
-        conditions: true,
-      },
-    });
-
-    return NextResponse.json(updated);
+  if (!hasSomethingToUpdate) {
+    return NextResponse.json(
+      { error: "Brak danych do aktualizacji" },
+      { status: 400 }
+    );
   }
 
-  return NextResponse.json(
-    { error: "Brak danych do aktualizacji" },
-    { status: 400 }
-  );
+  // ZAPIS: używamy helpera toJsonValue — bez stringify/parse
+  await prisma.user.update({
+    where: { email: session.user.email },
+    data: {
+      height: updateData.height,
+      weight: updateData.weight,
+      systolicMin: updateData.systolicMin,
+      systolicMax: updateData.systolicMax,
+      diastolicMin: updateData.diastolicMin,
+      diastolicMax: updateData.diastolicMax,
+      glucoseFastingMin: updateData.glucoseFastingMin,
+      glucoseFastingMax: updateData.glucoseFastingMax,
+      glucosePostMealMax: updateData.glucosePostMealMax,
+      weightMin: updateData.weightMin,
+      weightMax: updateData.weightMax,
+      pulseMin: updateData.pulseMin,
+      pulseMax: updateData.pulseMax,
+      medications: toJsonValue(updateData.medications), // ⬅️ ważne
+      conditions: toJsonValue(updateData.conditions), // ⬅️ ważne
+      bmi: updateData.bmi as number | undefined,
+    },
+  });
+
+  const updated = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    select: {
+      birthdate: true,
+      gender: true,
+      height: true,
+      weight: true,
+      bmi: true,
+      systolicMin: true,
+      systolicMax: true,
+      diastolicMin: true,
+      diastolicMax: true,
+      glucoseFastingMin: true,
+      glucoseFastingMax: true,
+      glucosePrediabetesFastingMin: true,
+      glucosePrediabetesFastingMax: true,
+      glucosePostMealMax: true,
+      weightMin: true,
+      weightMax: true,
+      pulseMin: true,
+      pulseMax: true,
+      medications: true, // Json → array lub null
+      conditions: true, // Json → array lub null
+    },
+  });
+
+  return NextResponse.json(updated);
 }

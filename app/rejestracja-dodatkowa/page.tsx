@@ -14,6 +14,7 @@ export default function RejestracjaDodatkowa() {
   const router = useRouter();
 
   const { status } = useSession();
+  const { update } = useSession();
 
   useEffect(() => {
     const verify = async () => {
@@ -28,7 +29,6 @@ export default function RejestracjaDodatkowa() {
           const data = await res.json();
 
           if (data.complete) {
-            router.replace("/");
             return;
           }
         } catch (e) {
@@ -50,7 +50,8 @@ export default function RejestracjaDodatkowa() {
     });
 
     if (res.ok) {
-      router.push("/");
+      await update(); // odśwież sesję, żeby middleware widział profileComplete: true
+      router.push("/profil");
     } else {
       toast.error("Błąd zapisu");
     }

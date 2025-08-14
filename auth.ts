@@ -1,14 +1,39 @@
-// auth.ts
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { PrismaClient } from "@prisma/client";
 
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    };
+    profileComplete?: boolean;
+  }
+
+  interface User {
+    id: string;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string;
+    profileComplete?: boolean;
+  }
+}
+
 const prisma = new PrismaClient();
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  secret: process.env.AUTH_SECRET, // ⬅️ to jest klucz
+  secret: process.env.AUTH_SECRET,
   session: {
-    strategy: "jwt", // ✅ konieczne!
+    strategy: "jwt",
+  },
+  pages: {
+    signIn: "/logowanie",
   },
   providers: [
     Google({
@@ -45,22 +70,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
     },
 
-    // 🔐 DODANE: jwt callback
-    async jwt({ token, user }) {
-      if (!token?.email && user?.email) {
-        token.email = user.email;
-      }
-
+    async jwt({ token }) {
       if (token?.email) {
         const dbUser = await prisma.user.findUnique({
           where: { email: token.email },
           select: {
+            id: true,
             birthdate: true,
             gender: true,
             height: true,
             weight: true,
           },
         });
+
+        if (dbUser) {
+          token.id = String(dbUser.id); // zapisujemy id w tokenie
+        }
 
         const profileComplete =
           !!dbUser &&
@@ -77,23 +102,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
 
-    // 🔁 ZAKTUALIZOWANE: session callback
     async session({ session, token }) {
-      if (session.user?.email) {
-        const dbUser = await prisma.user.findUnique({
-          where: { email: session.user.email },
-        });
-
-        if (dbUser) {
-          (session.user as any).id = dbUser.id.toString();
-        }
+      if (session.user) {
+        session.user.id = token.id;
+        session.profileComplete = token.profileComplete;
       }
-
-      // Dodaj profileComplete do sesji (opcjonalnie dla client-side)
-      if (token?.profileComplete !== undefined) {
-        (session as any).profileComplete = token.profileComplete;
-      }
-
       return session;
     },
   },

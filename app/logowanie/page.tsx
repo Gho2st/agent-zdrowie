@@ -1,49 +1,28 @@
 "use client";
 
-import { signIn, useSession } from "next-auth/react";
-import { useRouter, usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { signIn, signOut, useSession } from "next-auth/react";
 import { FcGoogle } from "react-icons/fc";
-import { Loader2 } from "lucide-react";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Logowanie() {
-  const { status } = useSession();
+  const { data: session } = useSession();
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
-    const checkProfile = async () => {
-      if (status === "authenticated") {
-        try {
-          const res = await fetch("/api/user/profile-complete");
-          const data = await res.json();
-
-          if (!data.complete && pathname !== "/rejestracja-dodatkowa") {
-            router.replace("/rejestracja-dodatkowa");
-          } else {
-            router.replace("/");
-          }
-        } catch (err) {
-          console.error("❌ Błąd sprawdzania profilu:", err);
-        }
-      }
-    };
-
-    checkProfile();
-  }, [status, pathname, router]);
+    if (session?.user && session.profileComplete === false) {
+      router.replace("/rejestracja-dodatkowa");
+    }
+  }, [session, router]);
 
   const handleLogin = async () => {
     await signIn("google");
   };
 
-  // 🔄 Pokaż loader zanim załadujemy sesję
-  if (status === "loading" || status === "authenticated") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-blue-200 to-purple-200">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  const handleLogout = async () => {
+    await signOut();
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-blue-200 to-purple-200 px-4">
@@ -53,16 +32,27 @@ export default function Logowanie() {
           Witamy w Agent Zdrowie
         </h1>
         <p className="text-gray-600 mb-8 text-sm">
-          Zaloguj się przez Google, aby rozpocząć zarządzanie swoim zdrowiem
+          {session
+            ? `Zalogowany jako ${session.user?.name}`
+            : "Zaloguj się przez Google, aby rozpocząć zarządzanie swoim zdrowiem"}
         </p>
 
-        <button
-          onClick={handleLogin}
-          className="w-full flex cursor-pointer items-center justify-center gap-3 bg-white text-gray-800 font-semibold border border-gray-300 px-6 py-3 rounded-lg shadow-lg hover:shadow-md hover:bg-gray-50 transition-all"
-        >
-          <FcGoogle size={22} />
-          Zaloguj się przez Google
-        </button>
+        {session ? (
+          <button
+            onClick={handleLogout}
+            className="w-full flex cursor-pointer items-center justify-center gap-3 bg-red-500 text-white font-semibold border border-red-600 px-6 py-3 rounded-lg shadow-lg hover:shadow-md hover:bg-red-600 transition-all"
+          >
+            Wyloguj się
+          </button>
+        ) : (
+          <button
+            onClick={handleLogin}
+            className="w-full flex cursor-pointer items-center justify-center gap-3 bg-white text-gray-800 font-semibold border border-gray-300 px-6 py-3 rounded-lg shadow-lg hover:shadow-md hover:bg-gray-50 transition-all"
+          >
+            <FcGoogle size={22} />
+            Zaloguj się przez Google
+          </button>
+        )}
       </div>
     </div>
   );
