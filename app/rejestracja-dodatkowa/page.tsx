@@ -50,8 +50,9 @@ export default function RejestracjaDodatkowa() {
     });
 
     if (res.ok) {
-      await update();
+      await update(); // Poczekaj na aktualizację sesji
       router.push("/profil");
+      router.refresh(); // Wymuś odświeżenie danych
     } else {
       toast.error("Błąd zapisu");
     }

@@ -2,16 +2,18 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-const publicPaths = ["/"];
+const publicPaths = ["/", "/logowanie", "/rejestracja"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Static assets
+  // Zezwól na statyczne zasoby i API
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
-    pathname.startsWith("/favicon.ico")
+    pathname.startsWith("/favicon.ico") ||
+    pathname.startsWith("/images") ||
+    pathname.startsWith("/fonts")
   ) {
     return NextResponse.next();
   }
@@ -27,27 +29,28 @@ export async function middleware(request: NextRequest) {
     cookieName: cookieKey,
   });
 
-  // Brak sesji
+  // Brak tokena - przekieruj na logowanie
   if (!token) {
-    if (pathname === "/logowanie" || publicPaths.includes(pathname)) {
+    if (publicPaths.includes(pathname)) {
       return NextResponse.next();
     }
     return NextResponse.redirect(new URL("/logowanie", request.url));
   }
 
-  // 🔹 ProfileComplete  z tokena
-  const profileComplete = Boolean(token?.profileComplete);
+  // Pobierz status uzupełnienia profilu
+  const profileComplete = token?.profileComplete === true;
 
-  // Profil kompletny → jeśli wchodzi na logowanie, przekieruj do centrum zdrowia
-  if (profileComplete && pathname === "/logowanie") {
-    return NextResponse.redirect(new URL("/centrum-zdrowia", request.url));
+  // Jeśli profil uzupełniony, a użytkownik na stronie rejestracji - przekieruj
+  if (profileComplete && pathname === "/rejestracja-dodatkowa") {
+    return NextResponse.redirect(new URL("/profil", request.url));
   }
 
-  // Profil niekompletny → przekieruj na rejestracja-dodatkowa
+  // Jeśli profil nieuzupełniony i nie jest na stronie rejestracji - przekieruj
   if (!profileComplete && pathname !== "/rejestracja-dodatkowa") {
-    return NextResponse.redirect(
-      new URL("/rejestracja-dodatkowa", request.url)
-    );
+    // Dodaj flagę do URL, aby uniknąć pętli przekierowań
+    const url = new URL("/rejestracja-dodatkowa", request.url);
+    url.searchParams.set("from", pathname);
+    return NextResponse.redirect(url);
   }
 
   return NextResponse.next();
@@ -55,6 +58,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/|api/|static/|favicon.ico|images/|icons/|fonts/|media/).*)",
+    "/((?!_next/static|_next/image|api/auth|images|fonts|media|icons).*)",
   ],
 };
