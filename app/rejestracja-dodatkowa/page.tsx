@@ -51,10 +51,7 @@ export default function RejestracjaDodatkowa() {
     });
 
     if (res.ok) {
-      await update(); // odśwież sesję, żeby middleware widział profileComplete: true
-      await signIn("google", { callbackUrl: "/profil" });
-      // 🔹 wymusza nowy JWT w cookie
-      document.cookie = `justCompletedProfile=true; path=/; max-age=10; SameSite=Lax`;
+      await update();
       router.push("/profil");
     } else {
       toast.error("Błąd zapisu");

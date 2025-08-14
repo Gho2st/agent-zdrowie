@@ -7,8 +7,12 @@ const publicPaths = ["/"];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Static/public assets
-  if (pathname.startsWith("/_next") || pathname.startsWith("/favicon.ico")) {
+  // Static assets
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/favicon.ico")
+  ) {
     return NextResponse.next();
   }
 
@@ -31,26 +35,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/logowanie", request.url));
   }
 
-  // Jeśli świeżo po zapisie profilu — przepuść
-  if (request.cookies.get("justCompletedProfile")) {
-    return NextResponse.next();
-  }
-
-  // Pobierz świeży stan profilu z API
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin;
-  const profileRes = await fetch(`${baseUrl}/api/user/profile-complete`, {
-    headers: {
-      cookie: request.headers.get("cookie") || "",
-      "Cache-Control": "no-cache, no-store, must-revalidate",
-    },
-    cache: "no-store",
-  });
-
-  let profileComplete = false;
-  if (profileRes.ok) {
-    const data = await profileRes.json();
-    profileComplete = !!data.complete;
-  }
+  // 🔹 ProfileComplete  z tokena
+  const profileComplete = Boolean(token?.profileComplete);
 
   // Profil kompletny → jeśli wchodzi na logowanie, przekieruj do centrum zdrowia
   if (profileComplete && pathname === "/logowanie") {
@@ -69,7 +55,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Wykluczamy API, żeby nie robić fetch loop
     "/((?!_next/|api/|static/|favicon.ico|images/|icons/|fonts/|media/).*)",
   ],
 };
