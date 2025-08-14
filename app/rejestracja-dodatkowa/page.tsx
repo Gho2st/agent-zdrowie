@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
-import { signIn } from "next-auth/react";
 
 export default function RejestracjaDodatkowa() {
   const [birthdate, setBirthdate] = useState("");
