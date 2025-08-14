@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
+import { signIn } from "next-auth/react";
 
 export default function RejestracjaDodatkowa() {
   const [birthdate, setBirthdate] = useState("");
@@ -51,7 +52,7 @@ export default function RejestracjaDodatkowa() {
 
     if (res.ok) {
       await update(); // odśwież sesję, żeby middleware widział profileComplete: true
-
+      await signIn("google", { redirect: false }); // 🔹 wymusza nowy JWT w cookie
       router.push("/profil");
     } else {
       toast.error("Błąd zapisu");
