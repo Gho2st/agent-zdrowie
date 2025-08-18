@@ -19,11 +19,11 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
   const [gender] = useState<"M" | "K" | null>(null);
   const [customCondition, setCustomCondition] = useState("");
 
-  // Dodawanie niestandardowej choroby
+  // Dodawanie niestandardowej kondycji
   const handleAddCustomCondition = () => {
     const trimmedCondition = customCondition.trim();
     if (!trimmedCondition) {
-      toast.error("Wpisz nazwę choroby");
+      toast.error("Wpisz nazwę kondycji");
       return;
     }
     if (norms.conditions.includes(trimmedCondition)) {
@@ -37,7 +37,7 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
     setCustomCondition("");
   };
 
-  // Usuwanie choroby
+  // Usuwanie
   const handleRemoveCondition = (condition: string) => {
     setNorms((prev) => ({
       ...prev,
@@ -45,7 +45,7 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
     }));
   };
 
-  // Zaznaczanie predefiniowanej choroby
+  // Zaznaczanie predefiniowanej kondycji
   const handleConditionChange = (condition: string) => {
     setNorms((prev) => ({
       ...prev,
@@ -59,7 +59,7 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
     let value = norms[field];
     if (field === "conditions") {
       if (!norms.conditions.length) {
-        toast.error("Wybierz lub wpisz co najmniej jedną chorobę");
+        toast.error("Wybierz lub wpisz co najmniej jedną kondycję");
         return;
       }
       value = norms.conditions.join(","); // Konwersja na ciąg dla bazy
@@ -160,7 +160,7 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
         </div>
       </div>
 
-      {/* Choroby */}
+      {/* Kod */}
       <div>
         <label className="font-semibold block mb-1">🩺 Stan zdrowia</label>
         <div className="space-y-2">
@@ -198,7 +198,7 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
               type="text"
               value={customCondition}
               onChange={(e) => setCustomCondition(e.target.value)}
-              placeholder="Wpisz własną chorobę (np. astma)"
+              placeholder="Wpisz własną kondycję (np. astma)"
               className="w-full border rounded px-3 py-2 text-sm"
             />
             <button
