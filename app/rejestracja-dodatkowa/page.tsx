@@ -7,14 +7,23 @@ import toast from "react-hot-toast";
 
 export default function RejestracjaDodatkowa() {
   const [birthdate, setBirthdate] = useState("");
-  const [gender, setGender] = useState("M");
+  const [gender, setGender] = useState<"M" | "K">("M");
   const [height, setHeight] = useState(170);
   const [weight, setWeight] = useState(70);
+  const [activityLevel, setActivityLevel] = useState<
+    "niski" | "umiarkowany" | "wysoki"
+  >("umiarkowany");
+  const [conditions, setConditions] = useState<string[]>([]);
   const [checking, setChecking] = useState(true);
   const router = useRouter();
+  const { status, update } = useSession();
 
-  const { status } = useSession();
-  const { update } = useSession();
+  // Usuwanie ciąży przy zmianie płci na mężczyznę
+  useEffect(() => {
+    if (gender === "M" && conditions.includes("ciąża")) {
+      setConditions((prev) => prev.filter((c) => c !== "ciąża"));
+    }
+  }, [gender, conditions]);
 
   useEffect(() => {
     const verify = async () => {
@@ -26,13 +35,18 @@ export default function RejestracjaDodatkowa() {
       if (status === "authenticated") {
         try {
           const res = await fetch(`/api/user/profile-complete/`);
+          if (!res.ok) {
+            throw new Error("Błąd pobierania danych profilu");
+          }
           const data = await res.json();
 
           if (data.complete) {
+            router.push("/profil");
             return;
           }
         } catch (e) {
           console.error("❌ Błąd pobierania danych profilu:", e);
+          toast.error("Błąd weryfikacji profilu");
         }
       }
 
@@ -42,19 +56,66 @@ export default function RejestracjaDodatkowa() {
     verify();
   }, [status, router]);
 
+  const handleConditionChange = (condition: string) => {
+    setConditions((prev) =>
+      prev.includes(condition)
+        ? prev.filter((c) => c !== condition)
+        : [...prev, condition]
+    );
+  };
+
   const handleSubmit = async () => {
+    // Walidacja danych
+    if (!birthdate || isNaN(new Date(birthdate).getTime())) {
+      toast.error("Podaj prawidłową datę urodzenia");
+      return;
+    }
+    if (height < 50 || height > 250) {
+      toast.error("Wzrost musi być między 50 a 250 cm");
+      return;
+    }
+    if (weight < 20 || weight > 300) {
+      toast.error("Waga musi być między 20 a 300 kg");
+      return;
+    }
+    if (!["niski", "umiarkowany", "wysoki"].includes(activityLevel)) {
+      toast.error("Wybierz prawidłowy poziom aktywności");
+      return;
+    }
+    if (gender === "M" && conditions.includes("ciąża")) {
+      toast.error("Ciąża możliwa tylko dla kobiet");
+      setConditions((prev) => prev.filter((c) => c !== "ciąża"));
+      return;
+    }
+    if (conditions.includes("ciąża")) {
+      const age = new Date().getFullYear() - new Date(birthdate).getFullYear();
+      if (age < 15 || age > 50) {
+        toast.error("Ciąża możliwa tylko dla kobiet w wieku 15-50 lat");
+        return;
+      }
+    }
+
     const res = await fetch("/api/user/setup", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ birthdate, gender, height, weight }),
+      body: JSON.stringify({
+        birthdate,
+        gender,
+        height,
+        weight,
+        activityLevel,
+        conditions: conditions.join(","),
+      }),
     });
 
     if (res.ok) {
-      await update(); // Poczekaj na aktualizację sesji
+      await update();
+      toast.success("Dane zapisane pomyślnie");
       router.push("/profil");
-      router.refresh(); // Wymuś odświeżenie danych
+      router.refresh();
     } else {
-      toast.error("Błąd zapisu");
+      const errorData = await res.json();
+      toast.error(errorData.error || "Błąd zapisu danych");
     }
   };
 
@@ -75,7 +136,7 @@ export default function RejestracjaDodatkowa() {
       <label className="block mb-2">Płeć</label>
       <select
         value={gender}
-        onChange={(e) => setGender(e.target.value)}
+        onChange={(e) => setGender(e.target.value as "M" | "K")}
         className="w-full p-2 border rounded mb-4"
       >
         <option value="M">Mężczyzna</option>
@@ -86,7 +147,7 @@ export default function RejestracjaDodatkowa() {
       <input
         type="number"
         value={height}
-        onChange={(e) => setHeight(parseInt(e.target.value))}
+        onChange={(e) => setHeight(parseInt(e.target.value) || 170)}
         className="w-full p-2 border rounded mb-4"
       />
 
@@ -94,13 +155,61 @@ export default function RejestracjaDodatkowa() {
       <input
         type="number"
         value={weight}
-        onChange={(e) => setWeight(parseFloat(e.target.value))}
+        onChange={(e) => setWeight(parseFloat(e.target.value) || 70)}
         className="w-full p-2 border rounded mb-4"
       />
 
+      <label className="block mb-2">Poziom aktywności fizycznej</label>
+      <select
+        value={activityLevel}
+        onChange={(e) =>
+          setActivityLevel(e.target.value as "niski" | "umiarkowany" | "wysoki")
+        }
+        className="w-full p-2 border rounded mb-4"
+      >
+        <option value="niski">Niski (brak regularnego ruchu)</option>
+        <option value="umiarkowany">
+          Umiarkowany (np. spacery, lekki sport)
+        </option>
+        <option value="wysoki">Wysoki (regularny sport, treningi)</option>
+      </select>
+
+      <label className="block mb-2">Stan zdrowia</label>
+      <div className="mb-4">
+        <label className="flex items-center">
+          <input
+            type="checkbox"
+            checked={conditions.includes("cukrzyca")}
+            onChange={() => handleConditionChange("cukrzyca")}
+            className="mr-2"
+          />
+          Cukrzyca
+        </label>
+        <label className="flex items-center">
+          <input
+            type="checkbox"
+            checked={conditions.includes("nadciśnienie")}
+            onChange={() => handleConditionChange("nadciśnienie")}
+            className="mr-2"
+          />
+          Nadciśnienie
+        </label>
+        {gender === "K" && (
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={conditions.includes("ciąża")}
+              onChange={() => handleConditionChange("ciąża")}
+              className="mr-2"
+            />
+            Ciąża
+          </label>
+        )}
+      </div>
+
       <button
         onClick={handleSubmit}
-        className="bg-green-600 text-white py-2 px-4 rounded"
+        className="bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700"
       >
         Zapisz i przejdź dalej
       </button>

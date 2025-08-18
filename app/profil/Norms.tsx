@@ -1,5 +1,8 @@
-import { useState, ChangeEvent } from "react";
+"use client";
+
 import toast from "react-hot-toast";
+import { ChangeEvent } from "react";
+import { useState } from "react";
 
 interface NormsProps {
   norms: Record<string, number>;
@@ -13,6 +16,8 @@ const fieldLabels: Record<string, string> = {
   diastolicMax: "Ciśnienie rozkurczowe (max)",
   glucoseFastingMin: "Glukoza na czczo (min)",
   glucoseFastingMax: "Glukoza na czczo (max)",
+  glucosePrediabetesFastingMin: "Glukoza przedcukrzycowa (min)",
+  glucosePrediabetesFastingMax: "Glukoza przedcukrzycowa (max)",
   glucosePostMealMax: "Glukoza po posiłku (max)",
   weightMin: "Waga (min)",
   weightMax: "Waga (max)",

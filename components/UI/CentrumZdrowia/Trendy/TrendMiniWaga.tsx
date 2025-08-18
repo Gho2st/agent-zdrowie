@@ -14,7 +14,6 @@ import {
 import annotationPlugin from "chartjs-plugin-annotation";
 import useHealthChartData from "@/app/hooks/useHealthChartData";
 
-// ✅ Zarejestruj wszystkie potrzebne pluginy
 ChartJS.register(
   LineElement,
   PointElement,
@@ -23,7 +22,7 @@ ChartJS.register(
   Tooltip,
   Filler,
   Legend,
-  annotationPlugin // 👈 to musi być, nawet jeśli nie używasz linii
+  annotationPlugin
 );
 
 export default function TrendMiniWaga({ refreshKey }: { refreshKey?: number }) {

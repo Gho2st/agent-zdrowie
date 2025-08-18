@@ -6,20 +6,21 @@ import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Medications from "./Medications";
-import Norms from "./Norms";
+import MedicationsAndConditions from "./Medications";
 import Age from "./Age";
+import Norms from "./Norms";
 import toast from "react-hot-toast";
 import { Hand, LogOut } from "lucide-react";
 
-// 🔹 Typ łączony dla wszystkich komponentów
+// Typ dla danych profilu
 type CombinedNorms = {
   birthdate: string | Date;
   height: number;
   weight: number;
   bmi?: number;
   medications?: string;
-  conditions?: string;
+  conditions?: string; // Ciąg z bazy (np. "cukrzyca,astma")
+  activityLevel?: string; // "niski", "umiarkowany", "wysoki"
   systolicMin?: number;
   systolicMax?: number;
   diastolicMin?: number;
@@ -27,17 +28,19 @@ type CombinedNorms = {
   glucoseFastingMin?: number;
   glucoseFastingMax?: number;
   glucosePostMealMax?: number;
+  glucosePrediabetesFastingMin?: number;
+  glucosePrediabetesFastingMax?: number;
   weightMin?: number;
   weightMax?: number;
   pulseMin?: number;
   pulseMax?: number;
-  [key: string]: string | number | Date | undefined;
 };
 
-// 🔹 Typ do Medications
+// Typ dla MedicationsAndConditions
 type NormsState = {
   medications?: string;
-  conditions?: string;
+  conditions: string[]; // Tablica dla interfejsu
+  activityLevel?: string;
 };
 
 export default function Profil() {
@@ -53,18 +56,30 @@ export default function Profil() {
     weight: 0,
     medications: "",
     conditions: "",
+    activityLevel: "",
   });
 
-  // 🔧 Lokalne dostosowanie setNorms dla Medications
+  // Konwersja conditions na tablicę dla MedicationsAndConditions
+  const medicationNorms: NormsState = {
+    medications: norms.medications,
+    conditions: norms.conditions
+      ? norms.conditions.split(",").filter(Boolean)
+      : [],
+    activityLevel: norms.activityLevel,
+  };
+
+  // Dostosowanie setNorms dla MedicationsAndConditions
   const setMedicationNorms: React.Dispatch<React.SetStateAction<NormsState>> = (
     action
   ) => {
     setNorms((prev) => {
-      const result = typeof action === "function" ? action(prev) : action;
+      const result =
+        typeof action === "function" ? action(medicationNorms) : action;
       return {
         ...prev,
         medications: result.medications ?? "",
-        conditions: result.conditions ?? "",
+        conditions: result.conditions.join(","),
+        activityLevel: result.activityLevel ?? "",
       };
     });
   };
@@ -75,6 +90,8 @@ export default function Profil() {
       if (res.ok) {
         const data: CombinedNorms = await res.json();
         setNorms(data);
+      } else {
+        toast.error("Błąd pobierania danych profilu");
       }
       setIsLoading(false);
     };
@@ -87,9 +104,7 @@ export default function Profil() {
     setNorms((prev) => ({
       ...prev,
       [name]:
-        name === "weight" || name === "height"
-          ? parseInt(value)
-          : parseFloat(value),
+        name === "height" || name === "weight" ? parseFloat(value) || 0 : value,
     }));
   };
 
@@ -107,6 +122,8 @@ export default function Profil() {
         toast.success("Zaktualizowano wzrost");
         setEditingHeight(false);
       }
+    } else {
+      toast.error("Błąd aktualizacji wzrostu");
     }
   };
 
@@ -124,6 +141,8 @@ export default function Profil() {
         toast.success("Zaktualizowano wagę");
         setEditingWeight(false);
       }
+    } else {
+      toast.error("Błąd aktualizacji wagi");
     }
   };
 
@@ -158,22 +177,18 @@ export default function Profil() {
                 <p className="font-bold">{session.user?.name}</p>
               </div>
             </div>
-
-            <div>
-              <button
-                onClick={() => signOut()}
-                className="text-red-500 underline cursor-pointer"
-              >
-                <LogOut className="md:w-10 md:h-10 2xl:w-12 2xl:h-12" />
-              </button>
-            </div>
+            <button
+              onClick={() => signOut()}
+              className="text-red-500 underline cursor-pointer"
+            >
+              <LogOut className="md:w-10 md:h-10 2xl:w-12 2xl:h-12" />
+            </button>
           </div>
         </>
       )}
 
       <div className="grid sm:grid-cols-2 gap-8 mt-10">
         <div className="bg-white/30 backdrop-blur-lg border border-white/20 p-6 shadow-lg rounded-2xl">
-          {/* 🔹 Sekcja: Wiek, wzrost, waga */}
           <Age
             norms={{
               birthdate: norms.birthdate,
@@ -190,16 +205,11 @@ export default function Profil() {
           />
         </div>
 
-        {/* 🔹 Sekcja: Leki i choroby */}
-        <Medications
-          norms={{
-            medications: norms.medications,
-            conditions: norms.conditions,
-          }}
+        <MedicationsAndConditions
+          norms={medicationNorms}
           setNorms={setMedicationNorms}
         />
 
-        {/* 🔹 Sekcja: Normy liczbowo */}
         <Norms
           norms={
             Object.fromEntries(

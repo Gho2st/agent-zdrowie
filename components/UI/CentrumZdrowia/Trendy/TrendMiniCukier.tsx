@@ -11,10 +11,9 @@ import {
   Filler,
   Legend,
 } from "chart.js";
-import annotationPlugin from "chartjs-plugin-annotation"; // ✅ IMPORT
+import annotationPlugin from "chartjs-plugin-annotation";
 import useHealthChartData from "@/app/hooks/useHealthChartData";
 
-// ✅ REJESTRACJA WSZYSTKICH PLUGINÓW
 ChartJS.register(
   LineElement,
   PointElement,

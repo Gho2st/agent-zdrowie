@@ -18,7 +18,7 @@ ChartJS.register(
   LinearScale,
   CategoryScale,
   Tooltip,
-  annotationPlugin // ✅ Dodano plugin
+  annotationPlugin
 );
 
 interface CisnienieData {
@@ -65,16 +65,6 @@ export default function TrendMiniCisnienie({
 
     fetchData();
   }, [effectiveRefreshKey]);
-
-  if (!data || data.length === 0) {
-    return (
-      <div className="bg-white/30 rounded-xl shadow p-4 h-40 flex items-center justify-center">
-        <span className="text-gray-500 text-sm">
-          Brak danych do wyświetlenia
-        </span>
-      </div>
-    );
-  }
 
   return (
     <div className="bg-white/30 rounded-xl shadow p-4">

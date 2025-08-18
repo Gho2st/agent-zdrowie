@@ -29,9 +29,10 @@ model User {
   glucosePrediabetesFastingMax Int?
   glucosePrediabetesFastingMin Int?
   bmi                          Float?
-  medications                  Json?
+  medications                  String?
   birthdate                    DateTime?
-  conditions                   Json?
+  activityLevel                String?   // "niski", "umiarkowany", "wysoki"
+  conditions                   String?   // np. "cukrzyca,nadciśnienie,ciąża"
   pulseMax                     Int?
   pulseMin                     Int?
   dailyCheckins                DailyCheckin[]

@@ -136,6 +136,7 @@ export default function Pomiary() {
   const fetchAgentAdvice = async () => {
     try {
       await append({
+        id: "feedback",
         role: "user",
         content:
           "Oceń konkretnie ostatni pomiar — ten najnowszy pod względem daty i czasu. Uwzględnij ewentualne notatki pozostawione przez użytkownika. Jeśli ich nie ma, nie musisz nic o nich pisać. Nie musisz podawać dokładnej godziny, jeśli pomiar został dodany przed chwilą. Szerszą historię użytkownika analizuj tylko wtedy, gdy widzisz ku temu istotne powody.",
@@ -564,45 +565,57 @@ export default function Pomiary() {
         </div>
       </div>
 
-      {gptResponse && (
-        <section className="mt-10 p-5 bg-white/30 border border-blue-200 rounded-lg shadow-md">
-          <header className="flex items-center justify-between mb-2">
-            <h3 className="text-lg xl:text-2xl font-semibold text-blue-800">
-              Feedback od Agenta Zdrowie
-            </h3>
-            <time className="text-xs text-blue-700/70">
-              {new Date().toLocaleString("pl-PL")}
-            </time>
-          </header>
-          {isLoading && (
-            <div
-              className="flex mb-6 items-center justify-center gap-2 text-sm text-blue-700  rounded-lg py-3 px-4"
-              aria-live="polite"
-            >
-              <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-              <span className="font-medium">
-                Generowanie porady zdrowotnej...
-              </span>
-            </div>
-          )}
-          <p className="text-blue-900 whitespace-pre-line">{gptResponse}</p>
-          <div className="mt-3 text-right">
-            <button
-              type="button"
-              className="px-3 py-1.5 text-sm rounded-md border cursor-pointer border-blue-300 text-blue-800 bg-white/60 hover:bg-blue-100"
-              onClick={() =>
-                append({
-                  role: "user",
-                  content:
-                    "Podpowiedz mi plan na dziś na podstawie tego wyniku.",
-                })
-              }
-            >
-              Poproś o plan na dziś
-            </button>
+      <section
+        className="mt-10 p-5 bg-white/30 border border-blue-200 rounded-lg shadow-md"
+        aria-live="polite"
+      >
+        <header className="flex items-center justify-between mb-2">
+          <h3 className="text-lg xl:text-2xl font-semibold text-blue-800">
+            Feedback od Agenta Zdrowie
+          </h3>
+          <time className="text-xs text-blue-700/70">
+            {new Date().toLocaleString("pl-PL")}
+          </time>
+        </header>
+
+        {isLoading ? (
+          <div className="flex mb-6 items-center justify-center gap-2 text-sm text-blue-700 rounded-lg py-3 px-4">
+            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+            <span className="font-medium">
+              Generowanie porady zdrowotnej...
+            </span>
           </div>
-        </section>
-      )}
+        ) : gptResponse ? (
+          <p className="text-blue-900 whitespace-pre-line">{gptResponse}</p>
+        ) : (
+          <p className="text-blue-900/80 italic">
+            Dodaj nowy pomiar, a Agent Zdrowie przeanalizuje go i udzieli
+            porady.
+          </p>
+        )}
+
+        <div className="mt-3 text-right">
+          <button
+            type="button"
+            className="px-3 py-1.5 text-sm rounded-md border cursor-pointer border-blue-300 text-blue-800 bg-white/60 hover:bg-blue-100 disabled:opacity-50"
+            onClick={() => {
+              if (!gptResponse || isLoading) {
+                toast.error(
+                  "Najpierw dodaj pomiar, aby otrzymać feedback i prosić o plan na dziś."
+                );
+                return;
+              }
+              append({
+                role: "user",
+                content: "Podpowiedz mi plan na dziś na podstawie tego wyniku.",
+              });
+            }}
+            disabled={isLoading}
+          >
+            Poproś o plan na dziś
+          </button>
+        </div>
+      </section>
 
       <ListaPomiarow
         measurements={measurements}
