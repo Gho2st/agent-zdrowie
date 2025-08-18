@@ -210,7 +210,7 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
           </div>
           {norms.conditions.length > 0 && (
             <div className="mt-2">
-              <p className="font-semibold">Zapisane choroby:</p>
+              <p className="font-semibold">Zapisane:</p>
               <ul className="list-disc pl-5">
                 {norms.conditions.map((condition) => (
                   <li

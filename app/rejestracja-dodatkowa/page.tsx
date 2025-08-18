@@ -1,5 +1,4 @@
-"use client";
-
+'use client'
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -10,6 +9,7 @@ export default function RejestracjaDodatkowa() {
   const [gender, setGender] = useState<"M" | "K">("M");
   const [height, setHeight] = useState(170);
   const [weight, setWeight] = useState(70);
+  const [inputWeight, setInputWeight] = useState("70"); // Nowy stan dla wartości w polu input
   const [activityLevel, setActivityLevel] = useState<
     "niski" | "umiarkowany" | "wysoki"
   >("umiarkowany");
@@ -62,6 +62,14 @@ export default function RejestracjaDodatkowa() {
         ? prev.filter((c) => c !== condition)
         : [...prev, condition]
     );
+  };
+
+  const handleWeightChange = (value: string) => {
+    setInputWeight(value); // Aktualizuj wartość w polu input
+    const parsedWeight = parseFloat(value);
+    if (!isNaN(parsedWeight)) {
+      setWeight(parsedWeight); // Aktualizuj stan weight tylko dla prawidłowych wartości
+    }
   };
 
   const handleSubmit = async () => {
@@ -153,9 +161,9 @@ export default function RejestracjaDodatkowa() {
 
       <label className="block mb-2">Waga (kg)</label>
       <input
-        type="number"
-        value={weight}
-        onChange={(e) => setWeight(parseFloat(e.target.value) || 70)}
+        type="text" // Zmieniono na text, aby umożliwić puste wartości
+        value={inputWeight}
+        onChange={(e) => handleWeightChange(e.target.value)}
         className="w-full p-2 border rounded mb-4"
       />
 
