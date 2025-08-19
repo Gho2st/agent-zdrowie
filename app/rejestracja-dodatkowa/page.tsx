@@ -1,4 +1,5 @@
-'use client'
+"use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -9,21 +10,22 @@ export default function RejestracjaDodatkowa() {
   const [gender, setGender] = useState<"M" | "K">("M");
   const [height, setHeight] = useState(170);
   const [weight, setWeight] = useState(70);
-  const [inputWeight, setInputWeight] = useState("70"); // Nowy stan dla wartości w polu input
+  const [inputWeight, setInputWeight] = useState("70");
   const [activityLevel, setActivityLevel] = useState<
     "niski" | "umiarkowany" | "wysoki"
   >("umiarkowany");
   const [conditions, setConditions] = useState<string[]>([]);
+  const [pregnancy, setPregnancy] = useState(false); // Nowe pole dla ciąży
   const [checking, setChecking] = useState(true);
   const router = useRouter();
   const { status, update } = useSession();
 
   // Usuwanie ciąży przy zmianie płci na mężczyznę
   useEffect(() => {
-    if (gender === "M" && conditions.includes("ciąża")) {
-      setConditions((prev) => prev.filter((c) => c !== "ciąża"));
+    if (gender === "M" && pregnancy) {
+      setPregnancy(false);
     }
-  }, [gender, conditions]);
+  }, [gender, pregnancy]);
 
   useEffect(() => {
     const verify = async () => {
@@ -64,11 +66,15 @@ export default function RejestracjaDodatkowa() {
     );
   };
 
+  const handlePregnancyChange = () => {
+    setPregnancy((prev) => !prev);
+  };
+
   const handleWeightChange = (value: string) => {
-    setInputWeight(value); // Aktualizuj wartość w polu input
+    setInputWeight(value);
     const parsedWeight = parseFloat(value);
     if (!isNaN(parsedWeight)) {
-      setWeight(parsedWeight); // Aktualizuj stan weight tylko dla prawidłowych wartości
+      setWeight(parsedWeight);
     }
   };
 
@@ -90,12 +96,12 @@ export default function RejestracjaDodatkowa() {
       toast.error("Wybierz prawidłowy poziom aktywności");
       return;
     }
-    if (gender === "M" && conditions.includes("ciąża")) {
+    if (gender === "M" && pregnancy) {
       toast.error("Ciąża możliwa tylko dla kobiet");
-      setConditions((prev) => prev.filter((c) => c !== "ciąża"));
+      setPregnancy(false);
       return;
     }
-    if (conditions.includes("ciąża")) {
+    if (pregnancy) {
       const age = new Date().getFullYear() - new Date(birthdate).getFullYear();
       if (age < 15 || age > 50) {
         toast.error("Ciąża możliwa tylko dla kobiet w wieku 15-50 lat");
@@ -113,6 +119,7 @@ export default function RejestracjaDodatkowa() {
         weight,
         activityLevel,
         conditions: conditions.join(","),
+        pregnancy, // Nowe pole w payload
       }),
     });
 
@@ -161,7 +168,7 @@ export default function RejestracjaDodatkowa() {
 
       <label className="block mb-2">Waga (kg)</label>
       <input
-        type="text" // Zmieniono na text, aby umożliwić puste wartości
+        type="text"
         value={inputWeight}
         onChange={(e) => handleWeightChange(e.target.value)}
         className="w-full p-2 border rounded mb-4"
@@ -202,18 +209,22 @@ export default function RejestracjaDodatkowa() {
           />
           Nadciśnienie
         </label>
-        {gender === "K" && (
+      </div>
+
+      {gender === "K" && (
+        <div className="mb-4">
+          <label className="block mb-2">Ciąża</label>
           <label className="flex items-center">
             <input
               type="checkbox"
-              checked={conditions.includes("ciąża")}
-              onChange={() => handleConditionChange("ciąża")}
+              checked={pregnancy}
+              onChange={handlePregnancyChange}
               className="mr-2"
             />
-            Ciąża
+            Jestem w ciąży
           </label>
-        )}
-      </div>
+        </div>
+      )}
 
       <button
         onClick={handleSubmit}

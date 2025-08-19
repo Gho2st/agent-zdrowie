@@ -33,6 +33,7 @@ export async function GET() {
         weight: true,
         activityLevel: true,
         conditions: true,
+        pregnancy: true, // Dodano pregnancy
         medications: true,
         systolicMin: true,
         systolicMax: true,
@@ -79,7 +80,14 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { medications, conditions, activityLevel, height, weight } = body;
+    const {
+      medications,
+      conditions,
+      activityLevel,
+      height,
+      weight,
+      pregnancy,
+    } = body;
 
     // Walidacja danych
     if (medications && medications.length > 500) {
@@ -93,14 +101,14 @@ export async function PATCH(req: NextRequest) {
       const user = await prisma.user.findUnique({
         where: { email: session.user.email },
       });
-      if (user?.gender === "M" && conditionsArray.includes("ciąża")) {
+      if (user?.gender === "M" && pregnancy) {
         return NextResponse.json(
           { error: "Ciąża możliwa tylko dla kobiet" },
           { status: 400 }
         );
       }
-      if (conditionsArray.includes("ciąża")) {
-        const age = user?.birthdate ? calculateAge(user.birthdate) : 0;
+      if (pregnancy && user?.birthdate) {
+        const age = calculateAge(user.birthdate);
         if (age < 15 || age > 50) {
           return NextResponse.json(
             { error: "Ciąża możliwa tylko dla kobiet w wieku 15-50 lat" },
@@ -153,13 +161,18 @@ export async function PATCH(req: NextRequest) {
         weight: true,
         activityLevel: true,
         conditions: true,
+        pregnancy: true, // Dodano pregnancy
       },
     });
 
     // Obliczenie norm, jeśli zmieniono istotne dane
     let norms = {};
     const changingRelevantData =
-      height || weight || conditions || activityLevel;
+      height ||
+      weight ||
+      conditions ||
+      activityLevel ||
+      pregnancy !== undefined;
     if (
       changingRelevantData &&
       user?.birthdate &&
@@ -175,6 +188,8 @@ export async function PATCH(req: NextRequest) {
       const newConditions = conditions
         ? conditions.split(",").filter(Boolean)
         : user.conditions?.split(",") ?? [];
+      const newPregnancy =
+        pregnancy !== undefined ? pregnancy : user.pregnancy ?? false;
 
       const normsResult = getHealthNorms(
         age,
@@ -182,9 +197,10 @@ export async function PATCH(req: NextRequest) {
         newHeight,
         newWeight,
         newActivityLevel,
-        newConditions
+        newConditions,
+        newPregnancy // Przekazanie ciąży jako osobnego parametru
       );
-      if ("error" in normsResult) {
+      if ("System: error" in normsResult) {
         return NextResponse.json({ error: normsResult.error }, { status: 400 });
       }
       norms = normsResult;
@@ -199,6 +215,7 @@ export async function PATCH(req: NextRequest) {
         activityLevel: activityLevel ?? undefined,
         height,
         weight,
+        pregnancy: pregnancy ?? undefined, // Dodano pregnancy
         ...norms,
       },
     });
@@ -213,6 +230,7 @@ export async function PATCH(req: NextRequest) {
         weight: true,
         activityLevel: true,
         conditions: true,
+        pregnancy: true, // Dodano pregnancy
         medications: true,
         systolicMin: true,
         systolicMax: true,

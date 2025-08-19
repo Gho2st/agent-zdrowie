@@ -6,7 +6,8 @@
  * @param height Wzrost użytkownika (cm)
  * @param weight Masa ciała użytkownika (kg)
  * @param activityLevel Poziom aktywności fizycznej ("niski", "umiarkowany", "wysoki")
- * @param conditions Choroby przewlekłe (np. "cukrzyca", "nadciśnienie") lub "ciąża"
+ * @param conditions Choroby przewlekłe (np. "cukrzyca", "nadciśnienie")
+ * @param pregnancy Czy użytkownik jest w ciąży (true/false)
  * @returns Obiekt z normami lub błąd
  */
 export function getHealthNorms(
@@ -15,7 +16,8 @@ export function getHealthNorms(
   height: number,
   weight: number,
   activityLevel: "niski" | "umiarkowany" | "wysoki" = "umiarkowany",
-  conditions: string[] = []
+  conditions: string[] = [],
+  pregnancy: boolean = false
 ): { [key: string]: number } | { error: string } {
   // Walidacja danych wejściowych
   if (age < 0 || age > 120)
@@ -26,6 +28,8 @@ export function getHealthNorms(
     return { error: "Masa ciała musi być między 20 a 300 kg" };
   if (!["M", "K"].includes(gender))
     return { error: "Płeć musi być 'M' lub 'K'" };
+  if (pregnancy && gender === "M")
+    return { error: "Ciąża możliwa tylko dla kobiet" };
 
   // Obliczenie BMI (WHO, 2023)
   const heightMeters = height / 100;
@@ -49,7 +53,7 @@ export function getHealthNorms(
     systolicMax += 10; // Wyższe normy dla osób z nadciśnieniem
     diastolicMax += 10;
   }
-  if (conditions.includes("ciąża") && gender === "K") {
+  if (pregnancy && gender === "K") {
     systolicMax = 130; // Specjalne normy dla ciąży (ACOG, 2023)
     diastolicMax = 85;
   }
@@ -63,7 +67,7 @@ export function getHealthNorms(
 
   // Normy BMI (WHO, 2023)
   const bmiMin = 18.5;
-  const bmiMax = conditions.includes("ciąża") ? 28 : 24.9; // Wyższe dla ciąży
+  const bmiMax = pregnancy ? 28 : 24.9; // Wyższe dla ciąży
   const weightMin = parseFloat((bmiMin * heightMeters ** 2).toFixed(1));
   const weightMax = parseFloat((bmiMax * heightMeters ** 2).toFixed(1));
 

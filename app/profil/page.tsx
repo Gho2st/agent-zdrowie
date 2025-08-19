@@ -19,6 +19,8 @@ type CombinedNorms = {
   weight: number;
   bmi?: number;
   medications?: string;
+  gender?: string;
+  pregnancy?: boolean; // Nowe pole dla ciąży
   conditions?: string; // Ciąg z bazy (np. "cukrzyca,astma")
   activityLevel?: string; // "niski", "umiarkowany", "wysoki"
   systolicMin?: number;
@@ -41,6 +43,7 @@ type NormsState = {
   medications?: string;
   conditions: string[]; // Tablica dla interfejsu
   activityLevel?: string;
+  pregnancy?: boolean;
 };
 
 export default function Profil() {
@@ -57,6 +60,7 @@ export default function Profil() {
     medications: "",
     conditions: "",
     activityLevel: "",
+    pregnancy: false,
   });
 
   // Konwersja conditions na tablicę dla MedicationsAndConditions
@@ -66,6 +70,7 @@ export default function Profil() {
       ? norms.conditions.split(",").filter(Boolean)
       : [],
     activityLevel: norms.activityLevel,
+    pregnancy: norms.pregnancy,
   };
 
   // Dostosowanie setNorms dla MedicationsAndConditions
@@ -80,6 +85,7 @@ export default function Profil() {
         medications: result.medications ?? "",
         conditions: result.conditions.join(","),
         activityLevel: result.activityLevel ?? "",
+        pregnancy: result.pregnancy ?? false,
       };
     });
   };
@@ -208,6 +214,7 @@ export default function Profil() {
         <MedicationsAndConditions
           norms={medicationNorms}
           setNorms={setMedicationNorms}
+          gender={norms.gender}
         />
 
         <Norms

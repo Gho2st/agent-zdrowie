@@ -32,7 +32,8 @@ model User {
   medications                  String?
   birthdate                    DateTime?
   activityLevel                String?   // "niski", "umiarkowany", "wysoki"
-  conditions                   String?   // np. "cukrzyca,nadciśnienie,ciąża"
+  pregnancy                    Boolean? // tak / nie ciąza
+  conditions                   String?   // np. "cukrzyca,nadciśnienie"
   pulseMax                     Int?
   pulseMin                     Int?
   dailyCheckins                DailyCheckin[]

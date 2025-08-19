@@ -6,28 +6,33 @@ import { Save, X } from "lucide-react";
 
 interface NormsState {
   medications?: string;
-  conditions: string[]; // Tablica chorób w interfejsie
+  conditions: string[]; // Tablica chorób (bez ciąży)
   activityLevel?: string; // "niski", "umiarkowany", "wysoki"
+  pregnancy?: boolean; // Pole dla ciąży
 }
 
 interface Props {
   norms: NormsState;
   setNorms: Dispatch<SetStateAction<NormsState>>;
+  gender: string | undefined;
 }
 
-export default function MedicationsAndConditions({ norms, setNorms }: Props) {
-  const [gender] = useState<"M" | "K" | null>(null);
+export default function MedicationsAndConditions({
+  norms,
+  setNorms,
+  gender,
+}: Props) {
   const [customCondition, setCustomCondition] = useState("");
 
   // Dodawanie niestandardowej kondycji
   const handleAddCustomCondition = () => {
     const trimmedCondition = customCondition.trim();
     if (!trimmedCondition) {
-      toast.error("Wpisz nazwę kondycji");
+      toast.error("Wpisz nazwę stanu zdrowia");
       return;
     }
     if (norms.conditions.includes(trimmedCondition)) {
-      toast.error("Ta choroba już istnieje");
+      toast.error("Ten stan zdrowia już istnieje");
       return;
     }
     setNorms((prev) => ({
@@ -37,7 +42,7 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
     setCustomCondition("");
   };
 
-  // Usuwanie
+  // Usuwanie kondycji
   const handleRemoveCondition = (condition: string) => {
     setNorms((prev) => ({
       ...prev,
@@ -55,11 +60,24 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
     }));
   };
 
+  // Zmiana stanu ciąży
+  const handlePregnancyChange = () => {
+    if (gender !== "K") {
+      toast.error("Ciąża możliwa tylko dla kobiet");
+      return;
+    }
+    setNorms((prev) => ({
+      ...prev,
+      pregnancy: !prev.pregnancy,
+    }));
+  };
+
+  // Zapis danych
   const handleSave = async (field: keyof NormsState) => {
     let value = norms[field];
     if (field === "conditions") {
       if (!norms.conditions.length) {
-        toast.error("Wybierz lub wpisz co najmniej jedną kondycję");
+        toast.error("Wybierz lub wpisz co najmniej jeden stan zdrowia");
         return;
       }
       value = norms.conditions.join(","); // Konwersja na ciąg dla bazy
@@ -68,6 +86,9 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
       return;
     } else if (field === "activityLevel" && !value) {
       toast.error("Wybierz poziom aktywności");
+      return;
+    } else if (field === "pregnancy" && gender !== "K") {
+      toast.error("Ciąża możliwa tylko dla kobiet");
       return;
     }
 
@@ -81,15 +102,32 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
 
     if (res.ok) {
       toast.success("Zapisano!");
+      // Odśwież dane po zapisaniu
+      const refreshed = await fetch("/api/user/norms");
+      if (refreshed.ok) {
+        const updatedData = await refreshed.json();
+        setNorms((prev) => ({
+          ...prev,
+          medications: updatedData.medications ?? "",
+          conditions: updatedData.conditions
+            ? updatedData.conditions.split(",").filter(Boolean)
+            : [],
+          activityLevel: updatedData.activityLevel ?? "",
+          pregnancy: updatedData.pregnancy ?? false,
+        }));
+      }
     } else {
       toast.error("Wystąpił błąd przy zapisie.");
     }
   };
 
+  // Czyszczenie danych
   const handleClear = async (field: keyof NormsState) => {
     const hasData =
       field === "conditions"
         ? norms.conditions.length > 0
+        : field === "pregnancy"
+        ? norms.pregnancy
         : Boolean(norms[field]?.toString().trim());
     if (!hasData) {
       toast("Brak danych do usunięcia.");
@@ -99,13 +137,14 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
     const res = await fetch("/api/user/norms", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [field]: null }),
+      body: JSON.stringify({ [field]: field === "pregnancy" ? false : null }),
     });
 
     if (res.ok) {
       setNorms((prev) => ({
         ...prev,
-        [field]: field === "conditions" ? [] : "",
+        [field]:
+          field === "conditions" ? [] : field === "pregnancy" ? false : "",
       }));
       toast.success("Usunięto dane.");
     } else {
@@ -160,7 +199,7 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
         </div>
       </div>
 
-      {/* Kod */}
+      {/* Stan zdrowia */}
       <div>
         <label className="font-semibold block mb-1">🩺 Stan zdrowia</label>
         <div className="space-y-2">
@@ -182,23 +221,12 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
             />
             Nadciśnienie
           </label>
-          {gender === "K" && (
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={norms.conditions.includes("ciąża")}
-                onChange={() => handleConditionChange("ciąża")}
-                className="mr-2"
-              />
-              Ciąża
-            </label>
-          )}
           <div className="flex items-center gap-2">
             <input
               type="text"
               value={customCondition}
               onChange={(e) => setCustomCondition(e.target.value)}
-              placeholder="Wpisz własną kondycję (np. astma)"
+              placeholder="Wpisz własny stan zdrowia (np. astma)"
               className="w-full border rounded px-3 py-2 text-sm"
             />
             <button
@@ -210,7 +238,7 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
           </div>
           {norms.conditions.length > 0 && (
             <div className="mt-2">
-              <p className="font-semibold">Zapisane:</p>
+              <p className="font-semibold">Zapisane choroby:</p>
               <ul className="list-disc pl-5">
                 {norms.conditions.map((condition) => (
                   <li
@@ -247,6 +275,38 @@ export default function MedicationsAndConditions({ norms, setNorms }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Ciąża */}
+      {gender === "K" && (
+        <div>
+          <label className="font-semibold block mb-1">🤰 Ciąża</label>
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={norms.pregnancy || false}
+              onChange={handlePregnancyChange}
+              className="mr-2"
+            />
+            Jestem w ciąży
+          </label>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => handleSave("pregnancy")}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/70"
+            >
+              <Save className="h-4 w-4" />
+              Zapisz
+            </button>
+            <button
+              onClick={() => handleClear("pregnancy")}
+              className="inline-flex items-center gap-2 bg-red-100 rounded-lg border border-red-200 px-3.5 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/60"
+            >
+              <X className="h-4 w-4" />
+              Wyczyść
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Leki */}
       <div>

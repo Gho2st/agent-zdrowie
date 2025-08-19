@@ -24,8 +24,15 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
-    const { birthdate, gender, height, weight, activityLevel, conditions } =
-      await req.json();
+    const {
+      birthdate,
+      gender,
+      height,
+      weight,
+      activityLevel,
+      conditions,
+      pregnancy,
+    } = await req.json();
 
     // Walidacja danych wejściowych
     if (!birthdate || isNaN(new Date(birthdate).getTime())) {
@@ -61,14 +68,14 @@ export async function PATCH(req: NextRequest) {
     const conditionsArray = conditions
       ? conditions.split(",").filter(Boolean)
       : [];
-    if (gender === "M" && conditionsArray.includes("ciąża")) {
+    if (gender === "M" && pregnancy) {
       return NextResponse.json(
         { error: "Ciąża możliwa tylko dla kobiet" },
         { status: 400 }
       );
     }
     const age = calculateAge(birthdate);
-    if (conditionsArray.includes("ciąża") && (age < 15 || age > 50)) {
+    if (pregnancy && (age < 15 || age > 50)) {
       return NextResponse.json(
         { error: "Ciąża możliwa tylko dla kobiet w wieku 15-50 lat" },
         { status: 400 }
@@ -94,7 +101,8 @@ export async function PATCH(req: NextRequest) {
       height,
       weight,
       activityLevel,
-      conditionsArray
+      conditionsArray,
+      pregnancy // Przekazanie ciąży jako osobnego parametru
     );
     if ("error" in norms) {
       return NextResponse.json({ error: norms.error }, { status: 400 });
@@ -110,6 +118,7 @@ export async function PATCH(req: NextRequest) {
         weight,
         activityLevel,
         conditions: conditionsArray.join(","),
+        pregnancy, // Nowe pole
         ...norms,
       },
     });

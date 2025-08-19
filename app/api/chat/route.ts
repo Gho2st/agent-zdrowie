@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
         activityLevel,
         medications,
         conditions,
+        pregnancy,
         systolicMin,
         systolicMax,
         diastolicMin,
@@ -75,7 +76,10 @@ export async function POST(req: NextRequest) {
         weight ? `Waga: ${weight} kg` : null,
         activityLevel ? `Poziom aktywności: ${activityLevel}` : null,
         medications ? `Leki: ${medications}` : null,
-        conditions ? `Choroby: ${conditions}` : null,
+        conditions ? `Stan zdrowia, choroby: ${conditions}` : null,
+        gender === "K" && pregnancy !== undefined
+          ? `Ciąża: ${pregnancy ? "Tak" : "Nie"}`
+          : null,
         bmi ? `BMI: ${bmi}` : null,
         systolicMin && systolicMax
           ? `Normy ciśnienia skurczowego: ${systolicMin}–${systolicMax} mmHg`
@@ -175,7 +179,7 @@ export async function POST(req: NextRequest) {
       "Udzielasz wyłącznie informacji edukacyjnych, a nie diagnoz. Nie zastępujesz lekarza.",
       "Analizuj dane w kontekście norm zdrowotnych użytkownika, podanych w danych kontekstowych.",
       "Zawsze priorytetyzuj najnowszy pomiar (na podstawie daty i godziny).",
-      "Jeśli użytkownik jest w ciąży, zwracaj szczególną uwagę na pomiary (np. ciśnienie >130/85 mmHg, glukoza >140 mg/dL po posiłku) i zawsze zalecaj konsultację z lekarzem przy jakichkolwiek odchyleniach od normy lub objawach (np. ból, duszność).",
+      "Jeśli użytkownik jest w ciąży (Ciąża: Tak), zwracaj szczególną uwagę na pomiary (np. ciśnienie >130/85 mmHg, glukoza >140 mg/dL po posiłku) i zawsze zalecaj konsultację z lekarzem przy jakichkolwiek odchyleniach od normy lub objawach (np. ból, duszność).",
       "Jeśli użytkownik opisuje objawy alarmowe (np. silny ból w klatce piersiowej, duszność, objawy udaru, omdlenie, glukoza >300 mg/dL z objawami), zalecaj natychmiastowy kontakt z numerem alarmowym 112 lub SOR.",
       "Dla niestandardowych chorób (np. astma) zalecaj konsultację lekarską, jeśli pomiar lub objawy mogą być związane.",
       "Uwzględniaj poziom aktywności fizycznej i choroby przewlekłe w rekomendacjach.",
