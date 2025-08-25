@@ -328,10 +328,15 @@ export default function Pomiary() {
   // Autopodpowiedź wartości dla cukru (drobny UX)
   useEffect(() => {
     if (type !== "cukier") return;
-    if (value !== "") return;
-    if (glucoseTime === "przed posiłkiem") setValue("85");
-    else if (glucoseTime === "po posiłku") setValue("110");
-  }, [glucoseTime, type, value]);
+    if (value !== "") return; // Ustawiamy domyślną wartość tylko, gdy pole jest puste
+    if (glucoseTime === "przed posiłkiem") {
+      setValue("85");
+    } else if (glucoseTime === "po posiłku") {
+      setValue("110");
+    } else {
+      setValue(""); // Dla innych opcji (rano, wieczorem) czyścimy pole
+    }
+  }, [glucoseTime, type]);
 
   // Rerender jednostki przy zmianie typu
   useEffect(() => {
