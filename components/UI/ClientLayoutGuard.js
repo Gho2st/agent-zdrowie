@@ -1,0 +1,53 @@
+"use client";
+
+import { useSession } from "next-auth/react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
+
+export default function ClientLayoutGuard({ children }) {
+  const { status } = useSession();
+  const pathname = usePathname();
+  const router = useRouter();
+  const [checkingProfile, setCheckingProfile] = useState(false);
+
+  // Sprawdzanie autoryzacji i kompletności profilu użytkownika
+  useEffect(() => {
+    if (pathname === "/") return;
+    if (status === "unauthenticated") {
+      router.replace("/logowanie");
+      return;
+    }
+
+    const checkProfile = async () => {
+      if (status !== "authenticated") return;
+
+      try {
+        setCheckingProfile(true);
+        const res = await fetch("/api/user/profile-complete");
+        const data = await res.json();
+
+        if (!data.complete && pathname !== "/rejestracja-dodatkowa") {
+          router.replace("/rejestracja-dodatkowa");
+        }
+      } catch (err) {
+        console.error("❌ Błąd sprawdzania profilu:", err);
+      } finally {
+        setCheckingProfile(false);
+      }
+    };
+
+    checkProfile();
+  }, [status, pathname, router]);
+
+  // Renderowanie loadera podczas sprawdzania
+  if (status === "loading" || checkingProfile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
