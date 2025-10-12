@@ -5,7 +5,6 @@ import Header from "@/components/UI/Headers/Header";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import MedicationsAndConditions from "./Medications";
 import Age from "./Age";
 import Norms from "./Norms";
@@ -14,7 +13,6 @@ import { Hand, LogOut } from "lucide-react";
 
 export default function Profil() {
   const { data: session } = useSession();
-  const router = useRouter();
   const [editingHeight, setEditingHeight] = useState(false);
   const [editingWeight, setEditingWeight] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

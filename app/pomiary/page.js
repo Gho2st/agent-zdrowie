@@ -13,7 +13,7 @@ import TrendMiniWaga from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniWaga";
 import ListaPomiarow from "./ListaPomiarów";
 import { Loader2 } from "lucide-react";
 
-// --- Helpers ---
+// Stałe domyślne jednostki
 const defaults = {
   ciśnienie: "mmHg",
   cukier: "mg/dL",
@@ -21,15 +21,18 @@ const defaults = {
   tętno: "bpm",
 };
 
+// Parsowanie ciśnienia w formacie "120/80"
 function asBP(v) {
   const m = v.replace(/\s+/g, "").match(/^(\d{2,3})\/(\d{2,3})$/);
   return m ? { sys: Number(m[1]), dia: Number(m[2]) } : null;
 }
 
+// Sprawdzanie, czy część wiadomości to tekst
 function isTextPart(p) {
   return p.type === "text" && typeof p.text === "string";
 }
 
+// Sprawdzanie norm dla pomiarów
 function checkNorms(t, v, n, unit, timing) {
   if (!n) return { out: false };
   if (t === "cukier") {
@@ -80,7 +83,6 @@ function checkNorms(t, v, n, unit, timing) {
 export default function Pomiary() {
   const { status } = useSession();
 
-  // --- State ---
   const [type, setType] = useState("ciśnienie");
   const [value, setValue] = useState("");
   const [unit, setUnit] = useState(defaults["ciśnienie"]);
@@ -105,6 +107,7 @@ export default function Pomiary() {
     id: chatId,
   });
 
+  // Pobieranie porady od AI dla najnowszego pomiaru
   const fetchAgentAdvice = async () => {
     try {
       await append({
@@ -118,6 +121,7 @@ export default function Pomiary() {
     }
   };
 
+  // Przetwarzanie odpowiedzi AI
   const gptResponse = useMemo(() => {
     const lastAssistant = [...messages]
       .reverse()
@@ -137,7 +141,8 @@ export default function Pomiary() {
 
     return undefined;
   }, [messages]);
-  // Fetch danych po zalogowaniu
+
+  // Pobieranie danych pomiarów i norm użytkownika
   useEffect(() => {
     if (status !== "authenticated") return;
     (async () => {
@@ -159,7 +164,25 @@ export default function Pomiary() {
     })();
   }, [status]);
 
-  // Helpers UI
+  // Ustawianie domyślnych wartości dla cukru
+  useEffect(() => {
+    if (type !== "cukier") return;
+    if (value !== "") return;
+    if (glucoseTime === "przed posiłkiem") {
+      setValue("85");
+    } else if (glucoseTime === "po posiłku") {
+      setValue("110");
+    } else {
+      setValue("");
+    }
+  }, [glucoseTime, type, value]);
+
+  // Aktualizacja jednostki przy zmianie typu
+  useEffect(() => {
+    setUnit(defaults[type]);
+  }, [type]);
+
+  // Usuwanie pomiaru
   const requestDelete = (id) => setConfirmDeleteId(id);
 
   const confirmDelete = async () => {
@@ -181,7 +204,7 @@ export default function Pomiary() {
     }
   };
 
-  // Submit
+  // Obsługa wysyłania formularza z pomiarem
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (status !== "authenticated") {
@@ -294,24 +317,6 @@ export default function Pomiary() {
     }
   };
 
-  // Autopodpowiedź wartości dla cukru (drobny UX)
-  useEffect(() => {
-    if (type !== "cukier") return;
-    if (value !== "") return;
-    if (glucoseTime === "przed posiłkiem") {
-      setValue("85");
-    } else if (glucoseTime === "po posiłku") {
-      setValue("110");
-    } else {
-      setValue("");
-    }
-  }, [glucoseTime, type]);
-
-  // Rerender jednostki przy zmianie typu
-  useEffect(() => {
-    setUnit(defaults[type]);
-  }, [type]);
-
   if (status === "loading") {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -322,6 +327,7 @@ export default function Pomiary() {
 
   const glucoseTimings = ["przed posiłkiem", "po posiłku", "rano", "wieczorem"];
 
+  // Renderowanie formularza i komponentów trendów
   return (
     <Container>
       <Header text="Pomiary" />
@@ -330,7 +336,6 @@ export default function Pomiary() {
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Formularz dodawania */}
         <form
           onSubmit={handleSubmit}
           aria-busy={isSubmitting}
@@ -339,7 +344,6 @@ export default function Pomiary() {
             (isSubmitting ? " opacity-80" : "")
           }
         >
-          {/* Typ */}
           <div>
             <label
               htmlFor="type"
@@ -364,7 +368,6 @@ export default function Pomiary() {
             </select>
           </div>
 
-          {/* Wartość */}
           <div>
             <label
               htmlFor="value"
@@ -405,7 +408,6 @@ export default function Pomiary() {
             )}
           </div>
 
-          {/* Jednostka jako badge */}
           <div className="text-sm text-gray-700">
             Jednostka:
             <span className="ml-2 px-2 py-1 rounded-md bg-green-100 text-green-800 border border-green-200 align-middle">
@@ -413,7 +415,6 @@ export default function Pomiary() {
             </span>
           </div>
 
-          {/* Pola kontekstowe */}
           {type === "cukier" && (
             <>
               <label
@@ -515,7 +516,6 @@ export default function Pomiary() {
           </button>
         </form>
 
-        {/* Trendy */}
         <div className="space-y-6">
           <div className={type !== "ciśnienie" ? "hidden" : ""}>
             <TrendMiniCisnienie refreshKey={refreshKey} />

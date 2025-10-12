@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 
+// Obsługa żądania GET dla statystyk
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -16,20 +17,18 @@ export async function GET() {
       orderBy: { createdAt: "asc" },
     });
 
+    // Grupowanie danych według miesiąca
     const groupByMonth = (data, field) => {
       const result = {};
       data.forEach((m) => {
         const value = m[field];
-        // Upewnij się, że wartość jest traktowana jako liczba, jeśli jest to Decimal/String z Prismic
         if (value === undefined || value === null) return;
 
         let numericValue;
-        // Konwersja BigInt/Decimal z Prismic na Number w JS
         try {
           numericValue = Number(value.toString());
-        } catch (e) {
-          // Jeśli konwersja się nie powiedzie, pomiń
-          return;
+        } catch {
+          return; // Pomijamy, jeśli konwersja się nie powiedzie
         }
 
         const date = new Date(m.createdAt);
@@ -42,6 +41,7 @@ export async function GET() {
       return result;
     };
 
+    // Obliczanie statystyk dla zgrupowanych danych
     const calculateStats = (grouped) =>
       Object.entries(grouped).map(([month, values]) => {
         const avg = values.reduce((a, b) => a + b, 0) / values.length;
@@ -76,7 +76,6 @@ export async function GET() {
     const cisnienie = Object.entries(
       groupByMonth(cisnienieData, "systolic")
     ).map(([month, systolicVals]) => {
-      // Ponieważ groupByMonth na ciśnieniu używa systolic, musimy jawnie zebrać diastolic dla tego samego miesiąca
       const diastolicGrouped = groupByMonth(cisnienieData, "diastolic");
       const diastolicVals = diastolicGrouped[month] || [];
 
