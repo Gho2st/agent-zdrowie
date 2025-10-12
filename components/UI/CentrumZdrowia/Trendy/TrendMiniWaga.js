@@ -14,6 +14,7 @@ import {
 import annotationPlugin from "chartjs-plugin-annotation";
 import useHealthChartData from "@/app/hooks/useHealthChartData";
 
+// Rejestracja komponentów Chart.js i wtyczki adnotacji
 ChartJS.register(
   LineElement,
   PointElement,
@@ -25,22 +26,26 @@ ChartJS.register(
   annotationPlugin
 );
 
-export default function TrendMiniWaga({ refreshKey }: { refreshKey?: number }) {
+export default function TrendMiniWaga({ refreshKey }) {
+  // Pobieranie danych wagi za pomocą hooka
   const { prepared } = useHealthChartData("waga", refreshKey);
   console.log("prepared waga:", prepared);
 
   if (!prepared || prepared.length === 0) return null;
 
+  // Przygotowanie etykiet na podstawie dat
   const labels = prepared
     .slice()
     .reverse()
     .map((m) => m.date.toISOString().slice(5, 10));
 
+  // Przygotowanie danych wagi
   const data = prepared
     .slice()
     .reverse()
     .map((m) => m.value);
 
+  // Renderowanie wykresu wagi
   return (
     <div className="bg-white/30 rounded-xl shadow p-4">
       <h4 className="font-semibold text-sm mb-2">⚖️ Waga – ostatnie 7 dni</h4>
@@ -64,9 +69,7 @@ export default function TrendMiniWaga({ refreshKey }: { refreshKey?: number }) {
             maintainAspectRatio: false,
             plugins: {
               legend: { display: false },
-              annotation: {
-                annotations: {},
-              },
+              annotation: { annotations: {} },
             },
             scales: {
               y: { beginAtZero: false },
