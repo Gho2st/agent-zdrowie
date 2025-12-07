@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 
 export default function useCheckinTrends(refreshKey) {
-  // TypeScript typy zostały usunięte. 'refreshKey' jest niejawnie typu 'any' lub 'undefined'.
-
-  // Stan przechowuje obiekty, które odpowiadają interfejsowi CheckinTrend (ale bez jawnej deklaracji typu)
+  // Stan przechowuje obiekty, które odpowiadają interfejsowi CheckinTrend
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -12,7 +10,6 @@ export default function useCheckinTrends(refreshKey) {
     const fetchTrends = async () => {
       try {
         setLoading(true);
-        // Użycie backticków i template stringów jest standardowe w JS
         const res = await fetch("/api/checkin-trends?days=7", {
           cache: "no-store",
         });
@@ -26,7 +23,6 @@ export default function useCheckinTrends(refreshKey) {
           setTrends([]); // fallback, gdyby coś poszło nie tak
         }
       } catch (err) {
-        // err jest typu 'any' w JS
         setError("Nie udało się pobrać trendów");
         console.error(err);
         setTrends([]); // zabezpieczenie
@@ -36,7 +32,7 @@ export default function useCheckinTrends(refreshKey) {
     };
 
     fetchTrends();
-  }, [refreshKey]); // Zależność 'refreshKey' pozostaje
+  }, [refreshKey]);
 
   return { trends, loading, error };
 }

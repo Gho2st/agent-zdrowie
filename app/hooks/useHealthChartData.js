@@ -37,13 +37,13 @@ export default function useHealthChartData(type, refreshKey) {
     };
 
     fetchData();
-  }, [type, refreshKey]); // Zależności pozostały
+  }, [type, refreshKey]);
 
   // Przetwarzanie danych poza useEffect
   const prepared = data
     .map((m) => {
       const date = new Date(m.createdAt);
-      let value; // Deklaracja bez typu
+      let value;
 
       if (
         type === "ciśnienie" &&

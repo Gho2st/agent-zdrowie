@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { useState } from "react";
 import { Save, X } from "lucide-react";
 
-export default function MedicationsAndConditions({ norms, setNorms, gender }) {
+export default function MedicationsAndConditions({ norms, setNorms }) {
   const [customCondition, setCustomCondition] = useState("");
 
   const handleAddCustomCondition = () => {
@@ -40,35 +40,21 @@ export default function MedicationsAndConditions({ norms, setNorms, gender }) {
     }));
   };
 
-  // Zmiana stanu ciąży
-  const handlePregnancyChange = () => {
-    if (gender !== "K") {
-      toast.error("Ciąża możliwa tylko dla kobiet");
-      return;
-    }
-    setNorms((prev) => ({
-      ...prev,
-      pregnancy: !prev.pregnancy,
-    }));
-  };
-
   // Zapis danych
   const handleSave = async (field) => {
     let value = norms[field];
+
     if (field === "conditions") {
       if (!norms.conditions.length) {
         toast.error("Wybierz lub wpisz co najmniej jeden stan zdrowia");
         return;
       }
-      value = norms.conditions.join(","); // Konwersja na ciąg dla bazy
+      value = norms.conditions.join(",");
     } else if (field === "medications" && !value?.toString().trim()) {
       toast.error("Wprowadź leki lub wyczyść pole");
       return;
     } else if (field === "activityLevel" && !value) {
       toast.error("Wybierz poziom aktywności");
-      return;
-    } else if (field === "pregnancy" && gender !== "K") {
-      toast.error("Ciąża możliwa tylko dla kobiet");
       return;
     }
 
@@ -82,6 +68,7 @@ export default function MedicationsAndConditions({ norms, setNorms, gender }) {
 
     if (res.ok) {
       toast.success("Zapisano!");
+
       // Odśwież dane po zapisaniu
       const refreshed = await fetch("/api/user/norms");
       if (refreshed.ok) {
@@ -93,11 +80,9 @@ export default function MedicationsAndConditions({ norms, setNorms, gender }) {
             ? updatedData.conditions.split(",").filter(Boolean)
             : [],
           activityLevel: updatedData.activityLevel ?? "",
-          pregnancy: updatedData.pregnancy ?? false,
         }));
       }
     } else {
-      // Obsługa błędu z backendu
       const data = await res.json().catch(() => ({}));
       toast.error(data.error || "Wystąpił błąd przy zapisie.");
     }
@@ -108,21 +93,19 @@ export default function MedicationsAndConditions({ norms, setNorms, gender }) {
     const hasData =
       field === "conditions"
         ? norms.conditions.length > 0
-        : field === "pregnancy"
-        ? norms.pregnancy
         : Boolean(norms[field]?.toString().trim());
+
     if (!hasData) {
       toast("Brak danych do usunięcia.");
       return;
     }
 
-    // Dla 'conditions' i 'medications' używamy null, dla 'pregnancy' false
     const clearValue =
       field === "conditions" ||
       field === "medications" ||
       field === "activityLevel"
-        ? null // null w tym kontekście w patchu usunie wartość z DB
-        : false;
+        ? null
+        : "";
 
     const res = await fetch("/api/user/norms", {
       method: "PATCH",
@@ -131,11 +114,9 @@ export default function MedicationsAndConditions({ norms, setNorms, gender }) {
     });
 
     if (res.ok) {
-      // Aktualizacja stanu UI
       setNorms((prev) => ({
         ...prev,
-        [field]:
-          field === "conditions" ? [] : field === "pregnancy" ? false : "",
+        [field]: field === "conditions" ? [] : "",
       }));
       toast.success("Usunięto dane.");
     } else {
@@ -148,7 +129,7 @@ export default function MedicationsAndConditions({ norms, setNorms, gender }) {
       {/* Poziom aktywności fizycznej */}
       <div>
         <label className="font-semibold block mb-1">
-          🏃 Poziom aktywności fizycznej
+          Poziom aktywności fizycznej
         </label>
         <select
           value={norms.activityLevel || ""}
@@ -189,7 +170,7 @@ export default function MedicationsAndConditions({ norms, setNorms, gender }) {
 
       {/* Stan zdrowia */}
       <div>
-        <label className="font-semibold block mb-1">🩺 Stan zdrowia</label>
+        <label className="font-semibold block mb-1">Stan zdrowia</label>
         <div className="space-y-2">
           <label className="flex items-center">
             <input
@@ -264,42 +245,10 @@ export default function MedicationsAndConditions({ norms, setNorms, gender }) {
         </div>
       </div>
 
-      {/* Ciąża */}
-      {gender === "K" && (
-        <div>
-          <label className="font-semibold block mb-1">🤰 Ciąża</label>
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              checked={norms.pregnancy || false}
-              onChange={handlePregnancyChange}
-              className="mr-2"
-            />
-            Jestem w ciąży
-          </label>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => handleSave("pregnancy")}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/70"
-            >
-              <Save className="h-4 w-4" />
-              Zapisz
-            </button>
-            <button
-              onClick={() => handleClear("pregnancy")}
-              className="inline-flex items-center gap-2 bg-red-100 rounded-lg border border-red-200 px-3.5 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/60"
-            >
-              <X className="h-4 w-4" />
-              Wyczyść
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Leki */}
       <div>
         <label className="font-semibold block mb-1">
-          💊 Jakie leki obecnie przyjmujesz? (opcjonalne)
+          Jakie leki obecnie przyjmujesz? (opcjonalne)
         </label>
         <textarea
           rows={2}

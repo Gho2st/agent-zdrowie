@@ -21,7 +21,6 @@ It features an AI chatbot with access to user data, a daily check-in system, and
 ## 🧰 Tech Stack
 
 - **Next.js (App Router)** – full-stack framework
-- **TypeScript** – type-safe development
 - **Tailwind CSS** – styling
 - **OpenAI API** – AI chatbot for personalized suggestions
 - **Neon (PostgreSQL)** – database

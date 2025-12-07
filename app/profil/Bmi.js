@@ -1,7 +1,5 @@
 "use client";
 
-import React from "react";
-
 export default function BMICompact({ bmi }) {
   const minScale = 14;
   const maxScale = 40;

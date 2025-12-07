@@ -24,15 +24,8 @@ export async function PATCH(req) {
       );
     }
 
-    const {
-      birthdate,
-      gender,
-      height,
-      weight,
-      activityLevel,
-      conditions,
-      pregnancy,
-    } = await req.json();
+    const { birthdate, gender, height, weight, activityLevel, conditions } =
+      await req.json();
 
     // Walidacja danych wejściowych
     if (!birthdate || isNaN(new Date(birthdate).getTime())) {
@@ -65,22 +58,11 @@ export async function PATCH(req) {
         { status: 400 }
       );
     }
+
     const conditionsArray = conditions
       ? conditions.split(",").filter(Boolean)
       : [];
-    if (gender === "M" && pregnancy) {
-      return NextResponse.json(
-        { error: "Ciąża możliwa tylko dla kobiet" },
-        { status: 400 }
-      );
-    }
-    const age = calculateAge(birthdate);
-    if (pregnancy && (age < 15 || age > 50)) {
-      return NextResponse.json(
-        { error: "Ciąża możliwa tylko dla kobiet w wieku 15-50 lat" },
-        { status: 400 }
-      );
-    }
+
     if (conditionsArray.some((c) => !c.trim())) {
       return NextResponse.json(
         { error: "Puste choroby są niedozwolone" },
@@ -94,16 +76,17 @@ export async function PATCH(req) {
       );
     }
 
-    // Obliczenie norm
+    // Obliczenie norm (bez parametru ciąży)
+    const age = calculateAge(birthdate);
     const norms = getHealthNorms(
       age,
       gender,
       height,
       weight,
       activityLevel,
-      conditionsArray,
-      pregnancy // Przekazanie ciąży jako osobnego parametru
+      conditionsArray
     );
+
     if ("error" in norms) {
       return NextResponse.json({ error: norms.error }, { status: 400 });
     }
@@ -118,14 +101,13 @@ export async function PATCH(req) {
         weight,
         activityLevel,
         conditions: conditionsArray.join(","),
-        pregnancy, // Nowe pole
         ...norms,
       },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("❌ Błąd aktualizacji profilu:", error);
+    console.error("Błąd aktualizacji profilu:", error);
     return NextResponse.json(
       { error: "Wewnętrzny błąd serwera" },
       { status: 500 }

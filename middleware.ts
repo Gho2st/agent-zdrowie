@@ -7,7 +7,6 @@ const publicPaths = ["/", "/logowanie"];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Zezwól na statyczne zasoby i API
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||

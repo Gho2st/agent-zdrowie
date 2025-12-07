@@ -8,7 +8,7 @@ export default function Audience() {
     {
       emoji: "👨‍⚕️",
       label: "Pacjenci przewlekli",
-      desc: "Cukrzyca, nadciśnienie, cholesterol – Agent wspiera monitorowanie.",
+      desc: "Cukrzyca, nadciśnienie – Agent wspiera monitorowanie.",
     },
     {
       emoji: "👩‍💻",

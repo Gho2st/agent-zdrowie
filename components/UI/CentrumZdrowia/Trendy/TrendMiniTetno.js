@@ -14,7 +14,6 @@ import {
 import useHealthChartData from "@/app/hooks/useHealthChartData";
 import annotationPlugin from "chartjs-plugin-annotation";
 
-// Rejestracja komponentów Chart.js i wtyczki adnotacji
 ChartJS.register(
   LineElement,
   PointElement,

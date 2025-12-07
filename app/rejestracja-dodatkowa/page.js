@@ -13,17 +13,9 @@ export default function RejestracjaDodatkowa() {
   const [inputWeight, setInputWeight] = useState("70");
   const [activityLevel, setActivityLevel] = useState("umiarkowany");
   const [conditions, setConditions] = useState([]);
-  const [pregnancy, setPregnancy] = useState(false);
   const [checking, setChecking] = useState(true);
   const router = useRouter();
   const { status, update } = useSession();
-
-  // Usuwanie ciąży przy zmianie płci na mężczyznę
-  useEffect(() => {
-    if (gender === "M" && pregnancy) {
-      setPregnancy(false);
-    }
-  }, [gender, pregnancy]);
 
   useEffect(() => {
     const verify = async () => {
@@ -45,7 +37,7 @@ export default function RejestracjaDodatkowa() {
             return;
           }
         } catch (e) {
-          console.error("❌ Błąd pobierania danych profilu:", e);
+          console.error("Błąd pobierania danych profilu:", e);
           toast.error("Błąd weryfikacji profilu");
         }
       }
@@ -62,10 +54,6 @@ export default function RejestracjaDodatkowa() {
         ? prev.filter((c) => c !== condition)
         : [...prev, condition]
     );
-  };
-
-  const handlePregnancyChange = () => {
-    setPregnancy((prev) => !prev);
   };
 
   const handleWeightChange = (value) => {
@@ -94,18 +82,6 @@ export default function RejestracjaDodatkowa() {
       toast.error("Wybierz prawidłowy poziom aktywności");
       return;
     }
-    if (gender === "M" && pregnancy) {
-      toast.error("Ciąża możliwa tylko dla kobiet");
-      setPregnancy(false);
-      return;
-    }
-    if (pregnancy) {
-      const age = new Date().getFullYear() - new Date(birthdate).getFullYear();
-      if (age < 15 || age > 50) {
-        toast.error("Ciąża możliwa tylko dla kobiet w wieku 15-50 lat");
-        return;
-      }
-    }
 
     const res = await fetch("/api/user/setup", {
       method: "PATCH",
@@ -117,7 +93,6 @@ export default function RejestracjaDodatkowa() {
         weight,
         activityLevel,
         conditions: conditions.join(","),
-        pregnancy,
       }),
     });
 
@@ -206,21 +181,6 @@ export default function RejestracjaDodatkowa() {
           Nadciśnienie
         </label>
       </div>
-
-      {gender === "K" && (
-        <div className="mb-4">
-          <label className="block mb-2">Ciąża</label>
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              checked={pregnancy}
-              onChange={handlePregnancyChange}
-              className="mr-2"
-            />
-            Jestem w ciąży
-          </label>
-        </div>
-      )}
 
       <button
         onClick={handleSubmit}

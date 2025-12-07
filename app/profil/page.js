@@ -54,9 +54,6 @@ export default function Profil() {
 
   useEffect(() => {
     const fetchUserNorms = async () => {
-      // Weryfikacja sesji jest pominięta, ponieważ useSession() zarządza stanem
-      // a komponent jest chroniony przez autoryzację na poziomie Next.js.
-
       const res = await fetch("/api/user/norms");
       if (res.ok) {
         const data = await res.json();
@@ -78,7 +75,6 @@ export default function Profil() {
     }
   }, [session]); // Zależność od sesji, aby pobrać dane po zalogowaniu
 
-  // Obsługa zmian w polach numerycznych norm (używane przez Norms)
   const handleChange = (e) => {
     const { name, value } = e.target;
     // Sprawdzanie, czy pole jest numeryczne i konwersja, jeśli to konieczne

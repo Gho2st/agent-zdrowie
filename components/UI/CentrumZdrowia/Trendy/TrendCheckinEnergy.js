@@ -1,8 +1,6 @@
 "use client";
 
-// Importowanie komponentu Line z react-chartjs-2
 import { Line } from "react-chartjs-2";
-// Importowanie potrzebnych komponentów Chart.js
 import {
   Chart as ChartJS,
   LineElement,
@@ -13,12 +11,9 @@ import {
   Filler,
   Legend,
 } from "chart.js";
-// Importowanie wtyczki adnotacji
 import annotationPlugin from "chartjs-plugin-annotation";
-// Importowanie hooka do pobierania trendów
 import useCheckinTrends from "@/app/hooks/useCheckinTrends";
 
-// Rejestracja komponentów Chart.js i wtyczki adnotacji
 ChartJS.register(
   LineElement,
   PointElement,
@@ -29,11 +24,6 @@ ChartJS.register(
   Legend,
   annotationPlugin
 );
-
-// Definicja typów dla emoji (konwersja z TypeScript na komentarze)
-/* Typy dla snu: "🛌 Dobrze spałem" | "😴 Średnio" | "😵 Prawie nie spałem" */
-/* Typy dla stresu: "😌 Niski" | "😬 Średni" | "😣 Wysoki" */
-/* Typy dla energii: "⚡️ Wysoka" | "🔋 Średnia" | "🪫 Niska" */
 
 export default function TrendCheckinEnergy({ refreshKey }) {
   // Pobieranie trendów za pomocą hooka

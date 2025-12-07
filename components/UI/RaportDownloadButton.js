@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 export default function RaportDownloadButton() {
   const { status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState();
+  const [error, setError] = useState(null);
 
   const handleDownload = async () => {
     if (status !== "authenticated") {
@@ -31,20 +31,32 @@ export default function RaportDownloadButton() {
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
 
+      // 1. Pobieramy dzisiejszą datę w formacie RRRR-MM-DD
+      const date = new Date().toISOString().slice(0, 10);
+
+      // 2. Tworzymy dynamiczną nazwę pliku
+      const fileName = `Raport_Medyczny_${date}.pdf`;
+
       const link = document.createElement("a");
       link.href = url;
-      link.download = "raport-zdrowotny.pdf";
+      // 3. Przypisujemy dynamiczną nazwę
+      link.download = fileName;
+
       document.body.appendChild(link);
       link.click();
       link.remove();
 
       window.URL.revokeObjectURL(url);
+
+      toast.success("Raport został pobrany!");
     } catch (err) {
+      console.error(err);
       if (err instanceof Error) {
         setError(err.message);
       } else {
         setError("Błąd pobierania raportu.");
       }
+      toast.error("Wystąpił błąd podczas pobierania.");
     } finally {
       setIsLoading(false);
     }

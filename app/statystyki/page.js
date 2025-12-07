@@ -47,7 +47,6 @@ export default function Statistics() {
             fetch("/api/statistics"),
           ]);
 
-          // Dodajemy proste sprawdzenie ok, by uniknąć problemów z .json()
           const measurements = mRes.ok ? await mRes.json() : [];
           const norms = nRes.ok ? await nRes.json() : null;
           const stats = sRes.ok ? await sRes.json() : null;
@@ -57,7 +56,6 @@ export default function Statistics() {
           setStats(stats);
         } catch (error) {
           console.error("Błąd ładowania statystyk:", error);
-          // Można dodać toast.error tutaj, jeśli jest to potrzebne
         }
       };
       fetchData();
@@ -75,10 +73,6 @@ export default function Statistics() {
       }))
       .sort((a, b) => a.date.getTime() - b.date.getTime());
 
-    // Używamy date-fns adaptera, więc data powinna być obiektem Date lub ISO stringiem.
-    // Używanie tylko daty bez czasu ('T')[0]) może powodować problemy z TimeScale,
-    // ale zachowujemy oryginalną logikę mapowania na stringa, aby była zgodna z ChartJS adapterem
-    // jeśli ten oczekuje czystego stringa daty dla lepszej prezentacji na osi X.
     const labels = filtered.map((m) => m.date);
 
     let datasets;
@@ -137,8 +131,6 @@ export default function Statistics() {
       ];
     }
 
-    // W Chart.js TimeScale działa najlepiej, gdy dane są w formacie {x: data, y: wartość}.
-    // Zmieniamy strukturę danych dla lepszej kompatybilności z TimeScale, jeśli `labels` to daty.
     if (labels.length > 0 && datasets && datasets.length > 0) {
       datasets = datasets.map((dataset) => ({
         ...dataset,

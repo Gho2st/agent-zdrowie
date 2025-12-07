@@ -34,7 +34,6 @@ export async function GET() {
         weight: true,
         activityLevel: true,
         conditions: true,
-        pregnancy: true,
         medications: true,
         systolicMin: true,
         systolicMax: true,
@@ -62,7 +61,7 @@ export async function GET() {
 
     return NextResponse.json(user);
   } catch (error) {
-    console.error("❌ Błąd pobierania danych:", error);
+    console.error("Błąd pobierania danych:", error);
     return NextResponse.json(
       { error: "Wewnętrzny błąd serwera" },
       { status: 500 }
@@ -81,16 +80,9 @@ export async function PATCH(req) {
     }
 
     const body = await req.json();
-    const {
-      medications,
-      conditions,
-      activityLevel,
-      height,
-      weight,
-      pregnancy,
-    } = body;
+    const { medications, conditions, activityLevel, height, weight } = body;
 
-    // Walidacja danych
+    // Walidacja leków
     if (medications && medications.length > 500) {
       return NextResponse.json(
         { error: "Lista leków za długa" },
@@ -98,43 +90,21 @@ export async function PATCH(req) {
       );
     }
 
-    // Walidacja warunków i ciąży
-    if (conditions || pregnancy !== undefined) {
-      const user = await prisma.user.findUnique({
-        where: { email: session.user.email },
-      });
+    // Walidacja warunków zdrowotnych
+    if (conditions) {
+      const conditionsArray = conditions.split(",").filter(Boolean);
 
-      if (user?.gender === "M" && pregnancy) {
+      if (conditionsArray.some((c) => !c.trim())) {
         return NextResponse.json(
-          { error: "Ciąża możliwa tylko dla kobiet" },
+          { error: "Puste choroby są niedozwolone" },
           { status: 400 }
         );
       }
-      if (pregnancy && user?.birthdate) {
-        const age = calculateAge(user.birthdate);
-        if (age < 15 || age > 50) {
-          return NextResponse.json(
-            { error: "Ciąża możliwa tylko dla kobiet w wieku 15-50 lat" },
-            { status: 400 }
-          );
-        }
-      }
-
-      if (conditions) {
-        const conditionsArray = conditions.split(",").filter(Boolean);
-
-        if (conditionsArray.some((c) => !c.trim())) {
-          return NextResponse.json(
-            { error: "Puste choroby są niedozwolone" },
-            { status: 400 }
-          );
-        }
-        if (new Set(conditionsArray).size !== conditionsArray.length) {
-          return NextResponse.json(
-            { error: "Choroby muszą być unikalne" },
-            { status: 400 }
-          );
-        }
+      if (new Set(conditionsArray).size !== conditionsArray.length) {
+        return NextResponse.json(
+          { error: "Choroby muszą być unikalne" },
+          { status: 400 }
+        );
       }
     }
 
@@ -160,7 +130,7 @@ export async function PATCH(req) {
       );
     }
 
-    // Pobieranie danych użytkownika do obliczenia norm
+    // Pobieranie aktualnych danych użytkownika
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: {
@@ -170,18 +140,16 @@ export async function PATCH(req) {
         weight: true,
         activityLevel: true,
         conditions: true,
-        pregnancy: true,
       },
     });
 
-    // Obliczenie norm, jeśli zmieniono istotne dane
+    // Obliczenie norm przy zmianie istotnych danych
     let norms = {};
     const changingRelevantData =
       height !== undefined ||
       weight !== undefined ||
       conditions !== undefined ||
-      activityLevel !== undefined ||
-      pregnancy !== undefined;
+      activityLevel !== undefined;
 
     if (
       changingRelevantData &&
@@ -198,10 +166,7 @@ export async function PATCH(req) {
       const newConditions = conditions
         ? conditions.split(",").filter(Boolean)
         : user.conditions?.split(",") ?? [];
-      const newPregnancy =
-        pregnancy !== undefined ? pregnancy : user.pregnancy ?? false;
 
-      // Sprawdzenie, czy wszystkie wymagane pola są dostępne po ewentualnych aktualizacjach
       if (newHeight && newWeight) {
         const normsResult = getHealthNorms(
           age,
@@ -209,11 +174,10 @@ export async function PATCH(req) {
           newHeight,
           newWeight,
           newActivityLevel,
-          newConditions,
-          newPregnancy
+          newConditions
         );
 
-        if (normsResult && "System: error" in normsResult) {
+        if (normsResult && "error" in normsResult) {
           return NextResponse.json(
             { error: normsResult.error },
             { status: 400 }
@@ -223,7 +187,7 @@ export async function PATCH(req) {
       }
     }
 
-    // Aktualizacja danych w bazie
+    // Aktualizacja danych użytkownika
     await prisma.user.update({
       where: { email: session.user.email },
       data: {
@@ -232,12 +196,11 @@ export async function PATCH(req) {
         activityLevel: activityLevel ?? undefined,
         height: height ?? undefined,
         weight: weight ?? undefined,
-        pregnancy: pregnancy ?? undefined,
         ...norms,
       },
     });
 
-    // Pobieranie zaktualizowanych danych
+    // Zwrócenie zaktualizowanych danych
     const updated = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: {
@@ -247,7 +210,6 @@ export async function PATCH(req) {
         weight: true,
         activityLevel: true,
         conditions: true,
-        pregnancy: true,
         medications: true,
         systolicMin: true,
         systolicMax: true,
@@ -268,7 +230,7 @@ export async function PATCH(req) {
 
     return NextResponse.json(updated);
   } catch (error) {
-    console.error("❌ Błąd aktualizacji danych:", error);
+    console.error("Błąd aktualizacji danych:", error);
     return NextResponse.json(
       { error: "Wewnętrzny błąd serwera" },
       { status: 500 }

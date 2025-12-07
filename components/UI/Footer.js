@@ -1,4 +1,3 @@
-// components/UI/Footer/Footer.tsx
 import { Heart, Github, Mail } from "lucide-react";
 
 export default function Footer() {

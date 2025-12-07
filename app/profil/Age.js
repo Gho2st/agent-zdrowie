@@ -38,7 +38,6 @@ export default function Age({
   setEditingHeight,
 }) {
   const age = calculateAge(norms.birthdate);
-  // Używamy null do inicjalizacji, jeśli norms.weight jest null lub undefined
   const [tempWeight, setTempWeight] = useState(norms.weight ?? null);
   const [tempHeight, setTempHeight] = useState(norms.height ?? null);
   const [weightError, setWeightError] = useState("");

@@ -27,7 +27,7 @@ export default function Navigation() {
 
   return (
     <>
-      {/* 🔧 TO: Przycisk HAMBURGERA – zawsze widoczny na mobile */}
+      {/* hamburger button */}
       <button
         className={`md:hidden fixed top-4 left-4 z-50 p-2 rounded transition-all ${
           showBar
@@ -39,7 +39,6 @@ export default function Navigation() {
         {open ? <X /> : <Menu />}
       </button>
 
-      {/* 🔧 TO: MENU */}
       <div
         className={`fixed top-0 left-0 h-screen w-64 2xl:w-72 bg-white px-8 py-10 z-40 flex flex-col justify-between transform transition-transform duration-300 ${
           open ? "translate-x-0" : "-translate-x-full"
