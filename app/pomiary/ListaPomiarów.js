@@ -1,5 +1,18 @@
 "use client";
 
+// Słownik tłumaczeń: ENUM z bazy -> Polska nazwa
+const TYPE_LABELS = {
+  BLOOD_PRESSURE: "Ciśnienie",
+  GLUCOSE: "Cukier",
+  WEIGHT: "Waga",
+  HEART_RATE: "Tętno",
+  // Fallback dla starych danych (jeśli jakieś zostały)
+  ciśnienie: "Ciśnienie",
+  cukier: "Cukier",
+  waga: "Waga",
+  tętno: "Tętno",
+};
+
 export default function ListaPomiarow({
   measurements,
   filterType,
@@ -9,6 +22,7 @@ export default function ListaPomiarow({
   setConfirmDeleteId,
   confirmDelete,
 }) {
+  // Filtrowanie działa teraz na podstawie Enumów (np. filterType = "BLOOD_PRESSURE")
   const filteredMeasurements = measurements.filter((m) =>
     filterType === "all" ? true : m.type === filterType
   );
@@ -24,11 +38,12 @@ export default function ListaPomiarow({
           onChange={(e) => setFilterType(e.target.value)}
           className="w-full p-3 border shadow-2xl bg-white/30 border-gray-300 rounded-lg"
         >
+          {/* Wartości value muszą pasować do tego, co przychodzi z API (Enumy) */}
           <option value="all">Wszystkie</option>
-          <option value="ciśnienie">Ciśnienie</option>
-          <option value="cukier">Cukier</option>
-          <option value="waga">Waga</option>
-          <option value="tętno">Tętno</option>
+          <option value="BLOOD_PRESSURE">Ciśnienie</option>
+          <option value="GLUCOSE">Cukier</option>
+          <option value="WEIGHT">Waga</option>
+          <option value="HEART_RATE">Tętno</option>
         </select>
       </div>
 
@@ -40,33 +55,44 @@ export default function ListaPomiarow({
           </p>
         ) : (
           <ul className="space-y-3 grid md:grid-cols-3 gap-4">
-            {filteredMeasurements.map((m) => (
-              <li
-                key={m.id}
-                className="p-4 bg-white/30 rounded-lg shadow-md text-gray-700 relative"
-              >
-                <strong className="capitalize">{m.type}</strong>:{" "}
-                {m.type === "ciśnienie" && m.systolic && m.diastolic
-                  ? `${m.systolic}/${m.diastolic} ${m.unit}`
-                  : `${m.amount} ${m.unit}`}{" "}
-                – {new Date(m.createdAt).toLocaleString("pl-PL")}
-                {m.type === "cukier" && (
-                  <p className="text-sm text-gray-500">
-                    {m.timing ? `(${m.timing})` : ""}{" "}
-                    {m.context && `– ${m.context}`}
-                  </p>
-                )}
-                {m.type === "ciśnienie" && m.note && (
-                  <p className="text-sm text-gray-500">Notatka: {m.note}</p>
-                )}
-                <button
-                  onClick={() => requestDelete(String(m.id))}
-                  className="absolute top-2 right-2 text-red-600 hover:text-red-800 text-sm"
+            {filteredMeasurements.map((m) => {
+              // Sprawdzamy typ używając Enuma lub starej nazwy
+              const isBP =
+                m.type === "BLOOD_PRESSURE" || m.type === "ciśnienie";
+              const isSugar = m.type === "GLUCOSE" || m.type === "cukier";
+
+              return (
+                <li
+                  key={m.id}
+                  className="p-4 bg-white/30 rounded-lg shadow-md text-gray-700 relative"
                 >
-                  ✖
-                </button>
-              </li>
-            ))}
+                  {/* Wyświetlamy polską nazwę ze słownika */}
+                  <strong className="capitalize">
+                    {TYPE_LABELS[m.type] || m.type}
+                  </strong>
+                  :{" "}
+                  {isBP && m.systolic && m.diastolic
+                    ? `${m.systolic}/${m.diastolic} ${m.unit}`
+                    : `${m.amount} ${m.unit}`}{" "}
+                  – {new Date(m.createdAt).toLocaleString("pl-PL")}
+                  {isSugar && (
+                    <p className="text-sm text-gray-500">
+                      {m.timing ? `(${m.timing})` : ""}{" "}
+                      {m.context && `– ${m.context}`}
+                    </p>
+                  )}
+                  {isBP && m.note && (
+                    <p className="text-sm text-gray-500">Notatka: {m.note}</p>
+                  )}
+                  <button
+                    onClick={() => requestDelete(String(m.id))}
+                    className="absolute top-2 right-2 text-red-600 hover:text-red-800 text-sm"
+                  >
+                    ✖
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

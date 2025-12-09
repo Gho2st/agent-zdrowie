@@ -28,29 +28,37 @@ export default function TrendMiniCisnienie({ refreshKey }) {
   // Pobieranie i przetwarzanie danych ciśnienia z API
   useEffect(() => {
     const fetchData = async () => {
-      const res = await fetch("/api/measurement");
-      const measurements = await res.json();
+      try {
+        const res = await fetch("/api/measurement");
+        if (!res.ok) return;
+        const measurements = await res.json();
 
-      const cisnienieData = measurements
-        .filter((m) => m.type === "ciśnienie")
-        .sort(
-          (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        )
-        .slice(-7)
-        .map((m) => ({
-          date: new Date(m.createdAt).toISOString().slice(5, 10),
-          systolic: m.systolic,
-          diastolic: m.diastolic,
-        }));
+        const cisnienieData = measurements
+          // 1. NAPRAWA: Filtrujemy po nowym Enumie (BLOOD_PRESSURE) LUB starej nazwie
+          .filter((m) => m.type === "BLOOD_PRESSURE" || m.type === "ciśnienie")
+          .sort(
+            (a, b) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          )
+          .slice(-7)
+          .map((m) => ({
+            date: new Date(m.createdAt).toISOString().slice(5, 10),
+            // 2. NAPRAWA: Jeśli API nie zwraca 'systolic', bierzemy 'value'
+            systolic: m.systolic ?? m.value,
+            // 3. NAPRAWA: Jeśli API nie zwraca 'diastolic', bierzemy 'value2'
+            diastolic: m.diastolic ?? m.value2,
+          }));
 
-      setData(cisnienieData);
+        setData(cisnienieData);
+      } catch (err) {
+        console.error("Błąd ładowania wykresu ciśnienia:", err);
+      }
     };
 
     fetchData();
   }, [effectiveRefreshKey]);
 
-  // Renderowanie wykresu ciśnienia
+  // Renderowanie wykresu ciśnienia (bez zmian)
   return (
     <div className="bg-white/30 rounded-xl shadow p-4">
       <h4 className="font-semibold text-sm mb-2">

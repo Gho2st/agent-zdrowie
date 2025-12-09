@@ -26,23 +26,19 @@ ChartJS.register(
 );
 
 export default function TrendMiniWaga({ refreshKey }) {
-  // Pobieranie danych wagi za pomocą hooka
+  // Pobieranie danych wagi za pomocą zaktualizowanego hooka
+  // Hook zamieni "waga" na "WEIGHT" i zwróci poprawne 'value'
   const { prepared } = useHealthChartData("waga", refreshKey);
-  console.log("prepared waga:", prepared);
 
   if (!prepared || prepared.length === 0) return null;
 
+  // ZMIANA: Usunięto .slice().reverse() - dane są już posortowane chronologicznie przez hooka
+
   // Przygotowanie etykiet na podstawie dat
-  const labels = prepared
-    .slice()
-    .reverse()
-    .map((m) => m.date.toISOString().slice(5, 10));
+  const labels = prepared.map((m) => m.date.toISOString().slice(5, 10));
 
   // Przygotowanie danych wagi
-  const data = prepared
-    .slice()
-    .reverse()
-    .map((m) => m.value);
+  const data = prepared.map((m) => m.value);
 
   // Renderowanie wykresu wagi
   return (
@@ -71,7 +67,10 @@ export default function TrendMiniWaga({ refreshKey }) {
               annotation: { annotations: {} },
             },
             scales: {
-              y: { beginAtZero: false },
+              y: {
+                beginAtZero: false,
+                // Opcjonalnie: można dodać suggestedMin/Max, żeby wykres nie był zbyt płaski
+              },
               x: { ticks: { maxTicksLimit: 5 } },
             },
           }}

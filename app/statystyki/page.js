@@ -31,6 +31,30 @@ ChartJS.register(
   annotationPlugin
 );
 
+// Konfiguracja mapowania: Nazwa sekcji -> Enum z Bazy -> Klucz w obiekcie stats
+const CONFIG = {
+  ciśnienie: {
+    dbType: "BLOOD_PRESSURE",
+    statsKey: "cisnienie",
+    label: "Ciśnienie",
+  },
+  cukier: {
+    dbType: "GLUCOSE",
+    statsKey: "cukier",
+    label: "Glukoza",
+  },
+  waga: {
+    dbType: "WEIGHT",
+    statsKey: "waga",
+    label: "Waga",
+  },
+  tętno: {
+    dbType: "HEART_RATE",
+    statsKey: "tetno",
+    label: "Tętno",
+  },
+};
+
 export default function Statistics() {
   const { data: session } = useSession();
   const [measurements, setMeasurements] = useState([]);
@@ -47,13 +71,16 @@ export default function Statistics() {
             fetch("/api/statistics"),
           ]);
 
-          const measurements = mRes.ok ? await mRes.json() : [];
-          const norms = nRes.ok ? await nRes.json() : null;
-          const stats = sRes.ok ? await sRes.json() : null;
+          const measurementsData = mRes.ok ? await mRes.json() : [];
+          // Normy mogą być zagnieżdżone w { user: ... } zależnie od endpointu,
+          // ale tutaj zakładamy, że GET /api/user/norms zwraca spłaszczony obiekt lub { user: norms }
+          const normsData = nRes.ok ? await nRes.json() : null;
+          const statsData = sRes.ok ? await sRes.json() : null;
 
-          setMeasurements(measurements);
-          setNorms(norms);
-          setStats(stats);
+          setMeasurements(measurementsData);
+          // Bezpieczne wyciągnięcie norm
+          setNorms(normsData?.user || normsData || null);
+          setStats(statsData);
         } catch (error) {
           console.error("Błąd ładowania statystyk:", error);
         }
@@ -62,26 +89,28 @@ export default function Statistics() {
     }
   }, [session]);
 
-  const prepareChartData = (type) => {
+  const prepareChartData = (category) => {
+    const config = CONFIG[category];
+    if (!config) return { labels: [], datasets: [] };
+
     const filtered = measurements
-      .filter((m) => m.type === type)
+      .filter((m) => m.type === config.dbType) // Filtrujemy po Enumie (np. BLOOD_PRESSURE)
       .map((m) => ({
         date: new Date(m.createdAt),
-        systolic: m.systolic ?? null,
-        diastolic: m.diastolic ?? null,
-        amount: m.amount ?? null,
+        // Mapujemy nowe pola value/value2 na logiczne nazwy
+        value: m.value, // Waga, Cukier, Tętno, Sys
+        value2: m.value2, // Dia
       }))
       .sort((a, b) => a.date.getTime() - b.date.getTime());
 
     const labels = filtered.map((m) => m.date);
+    let datasets = [];
 
-    let datasets;
-
-    if (type === "ciśnienie") {
+    if (category === "ciśnienie") {
       datasets = [
         {
           label: "Skurczowe (mmHg)",
-          data: filtered.map((m) => m.systolic),
+          data: filtered.map((m) => m.value), // value = systolic
           borderColor: "#4bc0c0",
           backgroundColor: "rgba(75, 192, 192, 0.1)",
           fill: false,
@@ -89,40 +118,40 @@ export default function Statistics() {
         },
         {
           label: "Rozkurczowe (mmHg)",
-          data: filtered.map((m) => m.diastolic),
+          data: filtered.map((m) => m.value2), // value2 = diastolic
           borderColor: "#ff6384",
           backgroundColor: "rgba(255, 99, 132, 0.1)",
           fill: false,
           tension: 0.3,
         },
       ];
-    } else if (type === "cukier") {
+    } else if (category === "cukier") {
       datasets = [
         {
           label: "Glukoza (mg/dL)",
-          data: filtered.map((m) => m.amount),
+          data: filtered.map((m) => m.value),
           borderColor: "#4bc0c0",
           backgroundColor: "rgba(75, 192, 192, 0.2)",
           tension: 0.3,
           fill: true,
         },
       ];
-    } else if (type === "waga") {
+    } else if (category === "waga") {
       datasets = [
         {
           label: "Waga (kg)",
-          data: filtered.map((m) => m.amount),
+          data: filtered.map((m) => m.value),
           borderColor: "#36a2eb",
           backgroundColor: "rgba(54, 162, 235, 0.2)",
           tension: 0.3,
           fill: true,
         },
       ];
-    } else if (type === "tętno") {
+    } else if (category === "tętno") {
       datasets = [
         {
           label: "Tętno (bpm)",
-          data: filtered.map((m) => m.amount),
+          data: filtered.map((m) => m.value),
           borderColor: "#f59e0b",
           backgroundColor: "rgba(245, 158, 11, 0.2)",
           tension: 0.3,
@@ -131,26 +160,27 @@ export default function Statistics() {
       ];
     }
 
-    if (labels.length > 0 && datasets && datasets.length > 0) {
+    // Mapowanie danych na format {x, y} dla Chart.js (TimeScale)
+    if (labels.length > 0 && datasets.length > 0) {
       datasets = datasets.map((dataset) => ({
         ...dataset,
-        data: dataset.data.map((amount, index) => ({
-          x: labels[index], // Data jako oś X
-          y: amount,
+        data: dataset.data.map((val, index) => ({
+          x: labels[index],
+          y: val,
         })),
       }));
     }
 
-    return { labels: labels, datasets: datasets ?? [] };
+    return { labels, datasets };
   };
 
-  const getAnnotations = (type) => {
+  const getAnnotations = (category) => {
     if (!norms) return {};
 
     const lines = {};
 
-    // Funkcja pomocnicza do tworzenia linii normy
-    const createLine = (id, yValue, color, labelContent) => ({
+    // Helper do linii
+    const createLine = (yValue, color, labelContent) => ({
       type: "line",
       yMin: yValue,
       yMax: yValue,
@@ -160,98 +190,45 @@ export default function Statistics() {
       scaleID: "y",
     });
 
-    if (type === "ciśnienie") {
+    if (category === "ciśnienie") {
       if (norms.systolicMin)
-        lines.systolicMin = createLine(
-          "systolicMin",
-          norms.systolicMin,
-          "#4bc0c0",
-          "Skurczowe min"
-        );
+        lines.sMin = createLine(norms.systolicMin, "#4bc0c0", "Sys min");
       if (norms.systolicMax)
-        lines.systolicMax = createLine(
-          "systolicMax",
-          norms.systolicMax,
-          "#4bc0c0",
-          "Skurczowe max"
-        );
+        lines.sMax = createLine(norms.systolicMax, "#4bc0c0", "Sys max");
       if (norms.diastolicMin)
-        lines.diastolicMin = createLine(
-          "diastolicMin",
-          norms.diastolicMin,
-          "#ff6384",
-          "Rozkurczowe min"
-        );
+        lines.dMin = createLine(norms.diastolicMin, "#ff6384", "Dia min");
       if (norms.diastolicMax)
-        lines.diastolicMax = createLine(
-          "diastolicMax",
-          norms.diastolicMax,
-          "#ff6384",
-          "Rozkurczowe max"
-        );
+        lines.dMax = createLine(norms.diastolicMax, "#ff6384", "Dia max");
     }
-
-    if (type === "cukier") {
+    if (category === "cukier") {
       if (norms.glucoseFastingMin)
-        lines.glucoseMin = createLine(
-          "glucoseMin",
-          norms.glucoseFastingMin,
-          "#999",
-          "Glukoza min"
-        );
+        lines.gMin = createLine(norms.glucoseFastingMin, "#999", "Min");
       if (norms.glucoseFastingMax)
-        lines.glucoseMax = createLine(
-          "glucoseMax",
-          norms.glucoseFastingMax,
-          "#999",
-          "Glukoza max"
-        );
+        lines.gMax = createLine(norms.glucoseFastingMax, "#999", "Max");
     }
-
-    if (type === "waga") {
+    if (category === "waga") {
       if (norms.weightMin)
-        lines.weightMin = createLine(
-          "weightMin",
-          norms.weightMin,
-          "#999",
-          "Waga min"
-        );
+        lines.wMin = createLine(norms.weightMin, "#999", "Min");
       if (norms.weightMax)
-        lines.weightMax = createLine(
-          "weightMax",
-          norms.weightMax,
-          "#999",
-          "Waga max"
-        );
+        lines.wMax = createLine(norms.weightMax, "#999", "Max");
     }
-
-    if (type === "tętno") {
+    if (category === "tętno") {
       if (norms.pulseMin)
-        lines.pulseMin = createLine(
-          "pulseMin",
-          norms.pulseMin,
-          "#f59e0b",
-          "Tętno min"
-        );
+        lines.pMin = createLine(norms.pulseMin, "#f59e0b", "Min");
       if (norms.pulseMax)
-        lines.pulseMax = createLine(
-          "pulseMax",
-          norms.pulseMax,
-          "#f59e0b",
-          "Tętno max"
-        );
+        lines.pMax = createLine(norms.pulseMax, "#f59e0b", "Max");
     }
 
     return lines;
   };
 
-  const baseOptions = (type) => ({
+  const baseOptions = (category) => ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: { position: "top" },
       tooltip: { mode: "index", intersect: false },
-      annotation: { annotations: getAnnotations(type) },
+      annotation: { annotations: getAnnotations(category) },
     },
     scales: {
       y: { beginAtZero: false, type: "linear" },
@@ -263,7 +240,6 @@ export default function Statistics() {
     },
   });
 
-  // Jeśli dane się ładują, nie renderujemy wykresów
   if (!stats && measurements.length === 0) {
     return (
       <Container>
@@ -279,69 +255,70 @@ export default function Statistics() {
     <Container>
       <Header text="Statystyki zdrowia" />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-8 mt-10">
-        {["ciśnienie", "cukier", "waga", "tętno"].map((type) => (
-          <div
-            key={type}
-            className="bg-white/30 backdrop-blur-lg border border-white/20 p-4 rounded-xl shadow-2xl h-full"
-          >
-            <h3 className="font-bold text-lg mb-4 capitalize">{type}</h3>
-            <div className="space-y-4">
-              {/* Kontener dla wykresu */}
-              <div className="relative h-[300px] sm:h-[400px] md:h-[500px]">
-                {measurements.filter((m) => m.type === type).length > 0 ? (
-                  <Line
-                    data={prepareChartData(type)}
-                    options={baseOptions(type)}
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-                    Brak danych do wyświetlenia wykresu.
-                  </div>
-                )}
-              </div>
+        {/* Iterujemy po kluczach konfiguracji */}
+        {Object.keys(CONFIG).map((category) => {
+          const config = CONFIG[category];
+          const hasData = measurements.some((m) => m.type === config.dbType);
+          const statData = stats ? stats[config.statsKey] : [];
 
-              {/* Statystyki miesięczne */}
-              <div className="text-sm text-gray-700 space-y-1 mt-4">
-                {type === "waga" &&
-                  stats?.waga?.map((item) => (
-                    <p key={item.month}>
-                      📅 {item.month} — Średnia:{" "}
-                      <strong>{item.avg.toFixed(1)}</strong> kg, Min: {item.min}
-                      , Max: {item.max}
+          return (
+            <div
+              key={category}
+              className="bg-white/30 backdrop-blur-lg border border-white/20 p-4 rounded-xl shadow-2xl h-full"
+            >
+              <h3 className="font-bold text-lg mb-4 capitalize">{category}</h3>
+              <div className="space-y-4">
+                {/* WYKRES */}
+                <div className="relative h-[300px] sm:h-[400px] md:h-[500px]">
+                  {hasData ? (
+                    <Line
+                      data={prepareChartData(category)}
+                      options={baseOptions(category)}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-gray-500">
+                      Brak danych do wyświetlenia wykresu.
+                    </div>
+                  )}
+                </div>
+
+                {/* STATYSTYKI MIESIĘCZNE */}
+                {/* Używamy config.statsKey, bo API zwraca klucze bez polskich znaków (np. 'tetno') */}
+                <div className="text-sm text-gray-700 space-y-1 mt-4">
+                  {statData && statData.length > 0 ? (
+                    statData.map((item) => {
+                      if (category === "ciśnienie") {
+                        return (
+                          <p key={item.month}>
+                            📅 {item.month} — Śr.:{" "}
+                            <strong>
+                              {item.avgSystolic?.toFixed(0)}/
+                              {item.avgDiastolic?.toFixed(0)}
+                            </strong>{" "}
+                            mmHg, Min: {item.minSystolic}/{item.minDiastolic},
+                            Max: {item.maxSystolic}/{item.maxDiastolic}
+                          </p>
+                        );
+                      }
+                      // Dla pozostałych typów (waga, cukier, tętno) struktura jest taka sama
+                      return (
+                        <p key={item.month}>
+                          📅 {item.month} — Średnia:{" "}
+                          <strong>{item.avg?.toFixed(1)}</strong>, Min:{" "}
+                          {item.min}, Max: {item.max}
+                        </p>
+                      );
+                    })
+                  ) : (
+                    <p className="text-xs text-gray-400">
+                      Brak statystyk miesięcznych
                     </p>
-                  ))}
-                {type === "cukier" &&
-                  stats?.cukier?.map((item) => (
-                    <p key={item.month}>
-                      📅 {item.month} — Średnia:{" "}
-                      <strong>{item.avg.toFixed(1)}</strong> mg/dL, Min:{" "}
-                      {item.min}, Max: {item.max}
-                    </p>
-                  ))}
-                {type === "ciśnienie" &&
-                  stats?.cisnienie?.map((item) => (
-                    <p key={item.month}>
-                      📅 {item.month} — Śr.:{" "}
-                      <strong>
-                        {item.avgSystolic.toFixed(0)}/
-                        {item.avgDiastolic.toFixed(0)}
-                      </strong>{" "}
-                      mmHg, Min: {item.minSystolic}/{item.minDiastolic}, Max:{" "}
-                      {item.maxSystolic}/{item.maxDiastolic}
-                    </p>
-                  ))}
-                {type === "tętno" &&
-                  stats?.tetno?.map((item) => (
-                    <p key={item.month}>
-                      📅 {item.month} — Średnia:{" "}
-                      <strong>{item.avg.toFixed(1)}</strong> bpm, Min:{" "}
-                      {item.min}, Max: {item.max}
-                    </p>
-                  ))}
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </Container>
   );

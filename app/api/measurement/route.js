@@ -8,7 +8,6 @@ const TYPE_MAP = {
   waga: "WEIGHT",
   cukier: "GLUCOSE",
   tętno: "HEART_RATE",
-  // Obsługa też angielskich nazw, jeśli frontend wyśle
   BLOOD_PRESSURE: "BLOOD_PRESSURE",
   WEIGHT: "WEIGHT",
   GLUCOSE: "GLUCOSE",
@@ -24,12 +23,10 @@ export async function POST(req) {
   }
 
   const body = await req.json();
-  console.log("📥 Otrzymane dane:", body);
 
-  const { amount, type, unit, systolic, diastolic, timing, context, note } =
-    body;
+  const { amount, type, unit, systolic, diastolic, context, note } = body;
 
-  // 2. Mapowanie typu
+  // 2. Mapowanie typu na ENUM
   const dbType = TYPE_MAP[type];
   if (!dbType) {
     return NextResponse.json(
@@ -39,11 +36,10 @@ export async function POST(req) {
   }
 
   // 3. Przygotowanie danych (value / value2)
-  let finalValue = null; // Główne pole (systolic lub amount)
-  let finalValue2 = null; // Dodatkowe pole (diastolic)
+  let finalValue = null;
+  let finalValue2 = null;
 
   if (dbType === "BLOOD_PRESSURE") {
-    // Walidacja dla ciśnienia
     if (typeof systolic !== "number" || typeof diastolic !== "number") {
       return NextResponse.json(
         { error: "Wymagane wartości skurczowe i rozkurczowe" },
@@ -53,7 +49,6 @@ export async function POST(req) {
     finalValue = systolic;
     finalValue2 = diastolic;
   } else {
-    // Walidacja dla reszty (waga, cukier, tętno)
     if (amount === undefined || amount === null || amount === "") {
       return NextResponse.json(
         { error: "Wartość nie może być pusta" },
@@ -70,12 +65,12 @@ export async function POST(req) {
   }
 
   try {
-    // 4. Pobranie usera (potrzebne ID i ewentualnie HealthProfile do BMI)
+    // 4. Pobranie usera
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
         healthProfile: {
-          include: { norms: true }, // Potrzebne, żeby zaktualizować BMI w norms
+          include: { norms: true }, // Pobieramy normy, aby sprawdzić czy istnieją
         },
       },
     });
@@ -84,62 +79,60 @@ export async function POST(req) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // 5. Logika biznesowa dla Wagi (aktualizacja profilu i BMI)
+    // 5. Specjalna logika dla WAGI (aktualizacja profilu i BMI)
     if (dbType === "WEIGHT") {
       const profile = user.healthProfile;
 
-      // Jeśli użytkownik ma profil, aktualizujemy w nim wagę
+      // Aktualizujemy tylko, jeśli użytkownik ma utworzony profil zdrowotny
       if (profile) {
         let updateData = { weight: finalValue };
         let normsUpdate = {};
 
-        // Przeliczanie BMI, jeśli mamy wzrost
+        // Przeliczanie BMI, jeśli mamy wzrost w profilu
         if (profile.height && profile.height > 0) {
           const heightM = profile.height / 100;
           const bmi = parseFloat((finalValue / (heightM * heightM)).toFixed(1));
-          console.log("⚖️ Nowe BMI:", bmi);
 
-          // Przygotowanie update dla tabeli norms
-          // Używamy upsert, bo norms mogą jeszcze nie istnieć
-          normsUpdate = {
-            norms: {
-              upsert: {
-                create: { bmi: bmi }, // Tutaj wstawilibyśmy też domyślne normy, jeśli wymagane
+          // --- NAPRAWA BŁĘDU ---
+          // Aktualizujemy normy TYLKO jeśli już istnieją (profile.norms nie jest null).
+          // Usuwamy 'upsert', ponieważ 'create' wymagałoby podania systolicMax itp., których tu nie mamy.
+          if (profile.norms) {
+            normsUpdate = {
+              norms: {
                 update: { bmi: bmi },
               },
-            },
-          };
+            };
+          }
         }
 
-        // Aktualizacja HealthProfile (waga + relacja do norms)
+        // Aktualizacja HealthProfile
         await prisma.healthProfile.update({
           where: { id: profile.id },
           data: {
             ...updateData,
-            ...normsUpdate,
+            ...normsUpdate, // To wykona się tylko jeśli normsUpdate nie jest puste
           },
         });
       }
     }
 
-    // 6. Zapis pomiaru
+    // 6. Zapis pomiaru w tabeli Measurement
     const measurement = await prisma.measurement.create({
       data: {
-        userId: user.id, // String CUID
-        type: dbType, // Enum
+        userId: user.id,
+        type: dbType,
         unit: unit || "",
-        value: finalValue, // Float
-        value2: finalValue2, // Float (nullable)
+        value: finalValue,
+        value2: finalValue2,
         context: context || undefined,
         note: note || undefined,
-        // timing: timing - usuwamy, jeśli nie ma go w nowej schemie, lub dodajemy do contextu
       },
     });
 
-    console.log("✅ Pomiar zapisany:", measurement);
     return NextResponse.json(measurement, { status: 200 });
   } catch (error) {
-    console.error("❌ Błąd zapisu:", error);
+    console.error("❌ Błąd zapisu pomiaru:", error);
+    // Zwracamy bardziej szczegółowy błąd w konsoli serwera, a ogólny dla klienta
     return NextResponse.json({ error: "Błąd serwera" }, { status: 500 });
   }
 }
@@ -163,13 +156,10 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
-    // Mapowanie powrotne dla Frontendu (aby nie zepsuć widoku)
-    // Frontend oczekuje: amount, systolic, diastolic
     const mappedMeasurements = rawMeasurements.map((m) => {
       const isBP = m.type === "BLOOD_PRESSURE";
       return {
         ...m,
-        // Odtwarzamy stare pola
         amount: isBP ? null : m.value,
         systolic: isBP ? m.value : null,
         diastolic: isBP ? m.value2 : null,

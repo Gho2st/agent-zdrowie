@@ -26,22 +26,19 @@ ChartJS.register(
 );
 
 export default function TrendMiniTetno({ refreshKey }) {
-  // Pobieranie danych tętna za pomocą hooka
+  // Pobieranie danych tętna za pomocą zaktualizowanego hooka
+  // Hook sam zamieni "tętno" na "HEART_RATE" i zwróci poprawne 'value'
   const { prepared } = useHealthChartData("tętno", refreshKey);
 
   if (!prepared || prepared.length === 0) return null;
 
-  // Przygotowanie etykiet na podstawie dat
-  const labels = prepared
-    .slice()
-    .reverse()
-    .map((m) => m.date.toISOString().slice(5, 10));
+  // ZMIANA: Usunięto .slice().reverse(), ponieważ hook zwraca już dane chronologicznie
 
-  // Przygotowanie danych tętna
-  const data = prepared
-    .slice()
-    .reverse()
-    .map((m) => m.value);
+  // Przygotowanie etykiet (Daty)
+  const labels = prepared.map((m) => m.date.toISOString().slice(5, 10));
+
+  // Przygotowanie danych (Wartości)
+  const data = prepared.map((m) => m.value);
 
   // Renderowanie wykresu tętna
   return (
@@ -70,7 +67,12 @@ export default function TrendMiniTetno({ refreshKey }) {
               annotation: { annotations: {} },
             },
             scales: {
-              y: { beginAtZero: false },
+              y: {
+                beginAtZero: false,
+                // Opcjonalnie: Sugerowane min/max dla tętna, żeby wykres był czytelniejszy
+                suggestedMin: 50,
+                suggestedMax: 100,
+              },
               x: { ticks: { maxTicksLimit: 5 } },
             },
           }}

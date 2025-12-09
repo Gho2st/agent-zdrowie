@@ -12,6 +12,7 @@ import {
   Legend,
 } from "chart.js";
 import annotationPlugin from "chartjs-plugin-annotation";
+// Upewnij się, że ścieżka do hooka jest poprawna
 import useHealthChartData from "@/app/hooks/useHealthChartData";
 
 ChartJS.register(
@@ -26,24 +27,17 @@ ChartJS.register(
 );
 
 export default function TrendMiniCukier({ refreshKey }) {
-  // Pobieranie danych glukozy za pomocą hooka
+  // Przekazujemy "cukier", a zaktualizowany hook zamieni to na "GLUCOSE"
   const { prepared } = useHealthChartData("cukier", refreshKey);
 
   if (!prepared || prepared.length === 0) return null;
 
-  // Przygotowanie etykiet na podstawie dat
-  const labels = prepared
-    .slice()
-    .reverse()
-    .map((m) => m.date.toISOString().slice(5, 10));
+  // Przygotowanie etykiet (data)
+  const labels = prepared.map((m) => m.date.toISOString().slice(5, 10));
 
-  // Przygotowanie danych glukozy
-  const data = prepared
-    .slice()
-    .reverse()
-    .map((m) => m.value);
+  // Przygotowanie wartości (glukoza)
+  const data = prepared.map((m) => m.value);
 
-  // Renderowanie wykresu glukozy
   return (
     <div className="bg-white/30 xl:h-full rounded-xl shadow p-4">
       <h4 className="font-semibold text-sm mb-2">
@@ -72,7 +66,12 @@ export default function TrendMiniCukier({ refreshKey }) {
               annotation: { annotations: {} },
             },
             scales: {
-              y: { beginAtZero: false },
+              y: {
+                beginAtZero: false,
+                // Opcjonalnie: sugerowany zakres dla cukru, żeby wykres nie skakał drastycznie
+                suggestedMin: 60,
+                suggestedMax: 140,
+              },
               x: { ticks: { maxTicksLimit: 5 } },
             },
           }}
