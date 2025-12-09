@@ -2,165 +2,183 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 
+// Mapowanie typów z Frontendu (PL) na Bazę (Enums)
+const TYPE_MAP = {
+  ciśnienie: "BLOOD_PRESSURE",
+  waga: "WEIGHT",
+  cukier: "GLUCOSE",
+  tętno: "HEART_RATE",
+  // Obsługa też angielskich nazw, jeśli frontend wyśle
+  BLOOD_PRESSURE: "BLOOD_PRESSURE",
+  WEIGHT: "WEIGHT",
+  GLUCOSE: "GLUCOSE",
+  HEART_RATE: "HEART_RATE",
+};
+
 export async function POST(req) {
   const session = await auth();
-  if (!session?.user?.id) {
-    console.log("❌ Brak sesji lub ID użytkownika");
+
+  // 1. Walidacja sesji
+  if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await req.json();
-  console.log("📥 Otrzymane dane JSON:", body);
+  console.log("📥 Otrzymane dane:", body);
 
   const { amount, type, unit, systolic, diastolic, timing, context, note } =
     body;
 
-  if (!type || !unit || (type !== "ciśnienie" && amount === undefined)) {
-    console.warn("⚠️ Brak wymaganych danych:", { type, unit, amount });
+  // 2. Mapowanie typu
+  const dbType = TYPE_MAP[type];
+  if (!dbType) {
     return NextResponse.json(
-      { error: "Brak wymaganych danych" },
+      { error: "Nieznany typ pomiaru" },
       { status: 400 }
     );
   }
 
-  let numericAmount = null;
-  let finalSystolic = null;
-  let finalDiastolic = null;
+  // 3. Przygotowanie danych (value / value2)
+  let finalValue = null; // Główne pole (systolic lub amount)
+  let finalValue2 = null; // Dodatkowe pole (diastolic)
 
-  if (type === "ciśnienie") {
-    if (typeof systolic === "number" && typeof diastolic === "number") {
-      finalSystolic = systolic;
-      finalDiastolic = diastolic;
-      console.log("🩺 Ciśnienie:", { systolic, diastolic });
-
-      if (isNaN(finalSystolic) || isNaN(finalDiastolic)) {
-        return NextResponse.json(
-          { error: "Niepoprawne wartości ciśnienia" },
-          { status: 400 }
-        );
-      }
-    } else {
-      console.warn("❌ Brak obu wartości ciśnienia:", { systolic, diastolic });
+  if (dbType === "BLOOD_PRESSURE") {
+    // Walidacja dla ciśnienia
+    if (typeof systolic !== "number" || typeof diastolic !== "number") {
       return NextResponse.json(
-        { error: "Ciśnienie wymaga wartości skurczowej i rozkurczowej" },
+        { error: "Wymagane wartości skurczowe i rozkurczowe" },
         { status: 400 }
       );
     }
+    finalValue = systolic;
+    finalValue2 = diastolic;
   } else {
-    console.log("💡 Przetwarzanie amount:", amount, "typ:", typeof amount);
-
-    if (
-      amount === "" ||
-      amount === null ||
-      amount === undefined ||
-      (typeof amount === "string" && amount.trim() === "")
-    ) {
+    // Walidacja dla reszty (waga, cukier, tętno)
+    if (amount === undefined || amount === null || amount === "") {
       return NextResponse.json(
-        { error: "Wartość amount nie może być pusta" },
+        { error: "Wartość nie może być pusta" },
         { status: 400 }
       );
     }
-
-    numericAmount =
-      typeof amount === "number"
-        ? amount
-        : typeof amount === "string"
-        ? parseFloat(amount)
-        : null;
-
-    console.log("🔢 numericAmount:", numericAmount);
-
-    if (numericAmount === null || isNaN(numericAmount)) {
+    finalValue = Number(amount);
+    if (isNaN(finalValue)) {
       return NextResponse.json(
-        { error: `Niepoprawna liczba: ${amount}` },
+        { error: "Niepoprawna liczba" },
         { status: 400 }
       );
-    }
-
-    if (type === "waga") {
-      const user = await prisma.user.findUnique({
-        where: { id: parseInt(session.user.id) },
-        select: { height: true },
-      });
-
-      let bmi = null;
-
-      if (user?.height && user.height > 0) {
-        const heightInMeters = user.height / 100;
-        bmi = parseFloat((numericAmount / heightInMeters ** 2).toFixed(2));
-        console.log("⚖️ BMI obliczone:", bmi);
-      }
-
-      await prisma.user.update({
-        where: { id: parseInt(session.user.id) },
-        data: {
-          weight: numericAmount,
-          ...(bmi !== null && { bmi }),
-        },
-      });
     }
   }
 
   try {
-    console.log("📤 Tworzenie pomiaru z danymi:", {
-      type,
-      unit,
-      amount: numericAmount,
-      userId: parseInt(session.user.id),
-      systolic: finalSystolic,
-      diastolic: finalDiastolic,
-      timing,
-      context,
-      note,
+    // 4. Pobranie usera (potrzebne ID i ewentualnie HealthProfile do BMI)
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: {
+        healthProfile: {
+          include: { norms: true }, // Potrzebne, żeby zaktualizować BMI w norms
+        },
+      },
     });
 
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // 5. Logika biznesowa dla Wagi (aktualizacja profilu i BMI)
+    if (dbType === "WEIGHT") {
+      const profile = user.healthProfile;
+
+      // Jeśli użytkownik ma profil, aktualizujemy w nim wagę
+      if (profile) {
+        let updateData = { weight: finalValue };
+        let normsUpdate = {};
+
+        // Przeliczanie BMI, jeśli mamy wzrost
+        if (profile.height && profile.height > 0) {
+          const heightM = profile.height / 100;
+          const bmi = parseFloat((finalValue / (heightM * heightM)).toFixed(1));
+          console.log("⚖️ Nowe BMI:", bmi);
+
+          // Przygotowanie update dla tabeli norms
+          // Używamy upsert, bo norms mogą jeszcze nie istnieć
+          normsUpdate = {
+            norms: {
+              upsert: {
+                create: { bmi: bmi }, // Tutaj wstawilibyśmy też domyślne normy, jeśli wymagane
+                update: { bmi: bmi },
+              },
+            },
+          };
+        }
+
+        // Aktualizacja HealthProfile (waga + relacja do norms)
+        await prisma.healthProfile.update({
+          where: { id: profile.id },
+          data: {
+            ...updateData,
+            ...normsUpdate,
+          },
+        });
+      }
+    }
+
+    // 6. Zapis pomiaru
     const measurement = await prisma.measurement.create({
       data: {
-        type,
-        unit,
-        amount: numericAmount ?? undefined,
-        userId: parseInt(session.user.id),
-        systolic: finalSystolic ?? undefined,
-        diastolic: finalDiastolic ?? undefined,
-        timing: timing || undefined,
+        userId: user.id, // String CUID
+        type: dbType, // Enum
+        unit: unit || "",
+        value: finalValue, // Float
+        value2: finalValue2, // Float (nullable)
         context: context || undefined,
         note: note || undefined,
+        // timing: timing - usuwamy, jeśli nie ma go w nowej schemie, lub dodajemy do contextu
       },
     });
 
     console.log("✅ Pomiar zapisany:", measurement);
     return NextResponse.json(measurement, { status: 200 });
   } catch (error) {
-    console.error("❌ Błąd podczas zapisywania pomiaru:", error);
-    return NextResponse.json(
-      { error: "Błąd podczas zapisywania pomiaru" },
-      { status: 500 }
-    );
+    console.error("❌ Błąd zapisu:", error);
+    return NextResponse.json({ error: "Błąd serwera" }, { status: 500 });
   }
 }
 
 export async function GET() {
   const session = await auth();
-  if (!session?.user?.id) {
+  if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const measurements = await prisma.measurement.findMany({
-      where: {
-        userId: parseInt(session.user.id),
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
     });
 
-    return NextResponse.json(measurements, { status: 200 });
+    if (!user) return NextResponse.json([], { status: 200 });
+
+    const rawMeasurements = await prisma.measurement.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Mapowanie powrotne dla Frontendu (aby nie zepsuć widoku)
+    // Frontend oczekuje: amount, systolic, diastolic
+    const mappedMeasurements = rawMeasurements.map((m) => {
+      const isBP = m.type === "BLOOD_PRESSURE";
+      return {
+        ...m,
+        // Odtwarzamy stare pola
+        amount: isBP ? null : m.value,
+        systolic: isBP ? m.value : null,
+        diastolic: isBP ? m.value2 : null,
+      };
+    });
+
+    return NextResponse.json(mappedMeasurements, { status: 200 });
   } catch (error) {
-    console.error("Błąd podczas pobierania pomiarów:", error);
-    return NextResponse.json(
-      { error: "Błąd podczas pobierania pomiarów" },
-      { status: 500 }
-    );
+    console.error("Błąd pobierania:", error);
+    return NextResponse.json({ error: "Błąd serwera" }, { status: 500 });
   }
 }

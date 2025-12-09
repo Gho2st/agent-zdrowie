@@ -1,68 +1,126 @@
+// prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
+// --- ENUMY (Słowniki) ---
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum ActivityLevel {
+  LOW
+  MODERATE
+  HIGH
+}
+
+enum MeasurementType {
+  BLOOD_PRESSURE
+  GLUCOSE
+  WEIGHT
+  HEART_RATE
+}
+
+// --- MODELE ---
+
+// 1. Użytkownik i Autoryzacja
 model User {
-  id                           Int            @id @default(autoincrement())
-  email                        String         @unique
-  name                         String?
-  image                        String?
-  createdAt                    DateTime       @default(now())
-  updatedAt                    DateTime       @updatedAt
-  gender                       String?
-  height                       Int?
-  weight                       Float?
-  diastolicMax                 Int?
-  diastolicMin                 Int?
-  systolicMax                  Int?
-  systolicMin                  Int?
-  weightMax                    Float?
-  weightMin                    Float?
-  glucoseFastingMax            Int?
-  glucoseFastingMin            Int?
-  glucosePostMealMax           Int?
-  glucosePrediabetesFastingMax Int?
-  glucosePrediabetesFastingMin Int?
-  bmi                          Float?
-  medications                  String?
-  birthdate                    DateTime?
-  activityLevel                String?   // "niski", "umiarkowany", "wysoki"
-  conditions                   String?   // np. "cukrzyca,nadciśnienie"
-  pulseMax                     Int?
-  pulseMin                     Int?
-  dailyCheckins                DailyCheckin[]
-  measurements                 Measurement[]
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  healthProfile HealthProfile?
+  measurements  Measurement[]
+  dailyCheckins DailyCheckin[]
 }
 
+// 2. Profil Medyczny
+model HealthProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  birthdate     DateTime
+  gender        Gender
+  height        Int
+  weight        Float
+  activityLevel ActivityLevel
+
+  conditions  Condition[]
+  medications String?
+
+  norms HealthNorms?
+}
+
+// 3. Słownik Chorób
+model Condition {
+  id       Int             @id @default(autoincrement())
+  name     String          @unique
+  profiles HealthProfile[]
+}
+
+// 4. Wyliczone Normy
+model HealthNorms {
+  id        String        @id @default(cuid())
+  profileId String        @unique
+  profile   HealthProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  systolicMax  Int
+  systolicMin  Int
+  diastolicMax Int
+  diastolicMin Int
+
+  glucoseFastingMax  Int
+  glucoseFastingMin  Int
+  glucosePostMealMax Int
+
+  weightMin Float
+  weightMax Float
+  bmi       Float
+
+  pulseMin Int
+  pulseMax Int
+}
+
+// 5. Pomiary
 model Measurement {
-  createdAt DateTime @default(now())
-  userId    Int
-  id        Int      @id @default(autoincrement())
-  type      String
-  unit      String
-  diastolic Int?
-  systolic  Int?
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type MeasurementType
+  unit String
+
+  value  Float
+  value2 Float?
+
   context   String?
   note      String?
-  timing    String?
-  amount    Float?
-  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
 }
 
+// 6. Dziennik Samopoczucia
 model DailyCheckin {
-  id        Int      @id @default(autoincrement())
-  date      DateTime
-  mood      String?
-  sleep     String?
-  energy    String?
-  stress    String?
-  userId    Int
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id])
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  date DateTime @default(now())
+
+  mood   Int  @default(3)
+  sleep  Int?
+  energy Int  @default(3)
+  stress Int  @default(3)
+
   @@unique([userId, date])
 }

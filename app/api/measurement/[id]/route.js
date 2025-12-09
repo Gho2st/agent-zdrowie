@@ -2,26 +2,39 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 
-export async function DELETE(req) {
+export async function DELETE(req, { params }) {
+  // 1. Next.js automatycznie wyciąga "id" z nazwy folderu [id]
+  const { id } = params;
+
   const session = await auth();
 
-  const idParam = req.nextUrl.pathname.split("/").pop(); // np. "10"
-  const id = parseInt(idParam || "");
-
-  if (!session?.user?.id) {
+  // 2. Walidacja sesji
+  if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (isNaN(id)) {
-    return NextResponse.json(
-      { error: "Nieprawidłowe ID pomiaru" },
-      { status: 400 }
-    );
+  if (!id) {
+    return NextResponse.json({ error: "Brak ID pomiaru" }, { status: 400 });
   }
 
   try {
+    // 3. Pobranie ID zalogowanego użytkownika (String CUID)
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Użytkownik nie istnieje" },
+        { status: 404 }
+      );
+    }
+
+    // 4. Pobranie pomiaru w celu weryfikacji właściciela
     const measurement = await prisma.measurement.findUnique({
-      where: { id },
+      where: { id }, // id to String
+      select: { userId: true },
     });
 
     if (!measurement) {
@@ -31,10 +44,12 @@ export async function DELETE(req) {
       );
     }
 
-    if (measurement.userId !== parseInt(session.user.id)) {
+    // 5. Sprawdzenie czy pomiar należy do użytkownika
+    if (measurement.userId !== user.id) {
       return NextResponse.json({ error: "Brak uprawnień" }, { status: 403 });
     }
 
+    // 6. Usunięcie rekordu
     await prisma.measurement.delete({
       where: { id },
     });

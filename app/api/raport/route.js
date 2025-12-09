@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 
 // === POMOCNICZE FUNKCJE ===
 
-// 1. Łamanie tekstu
+// 1. Łamanie tekstu (bez zmian)
 const breakTextIntoLines = (text, font, size, maxWidth) => {
   if (!text) return [];
   const words = text.split(" ");
@@ -33,7 +33,7 @@ const breakTextIntoLines = (text, font, size, maxWidth) => {
   return lines;
 };
 
-// 2. Obliczanie wieku (zgodnie ze schematem pole to 'birthdate')
+// 2. Obliczanie wieku (bez zmian logicznych)
 const calculateAge = (birthDate) => {
   if (!birthDate) return null;
   const today = new Date();
@@ -46,292 +46,348 @@ const calculateAge = (birthDate) => {
   return age;
 };
 
-// 3. Helper do budowania tekstu norm z bazy
-const getUserNorms = (user) => {
-  const norms = [];
+// 3. Helper do budowania tekstu norm z obiektu HealthNorms
+const getNormsText = (normsObj) => {
+  const list = [];
+  if (!normsObj) {
+    list.push("• Brak zdefiniowanych indywidualnych norm w profilu.");
+    list.push("  (Analiza oparta o standardowe wytyczne medyczne)");
+    return list;
+  }
 
   // Ciśnienie
-  if (user.systolicMax || user.diastolicMax) {
-    const sys =
-      user.systolicMin && user.systolicMax
-        ? `${user.systolicMin}-${user.systolicMax}`
-        : `< ${user.systolicMax || "?"}`;
-    const dia =
-      user.diastolicMin && user.diastolicMax
-        ? `${user.diastolicMin}-${user.diastolicMax}`
-        : `< ${user.diastolicMax || "?"}`;
-    norms.push(`• Ciśnienie docelowe: ${sys} / ${dia} mmHg`);
+  if (normsObj.systolicMax || normsObj.diastolicMax) {
+    const sys = normsObj.systolicMax
+      ? `${normsObj.systolicMin || 90}-${normsObj.systolicMax}`
+      : "< ?";
+    const dia = normsObj.diastolicMax
+      ? `${normsObj.diastolicMin || 60}-${normsObj.diastolicMax}`
+      : "< ?";
+    list.push(`• Ciśnienie docelowe: ${sys} / ${dia} mmHg`);
   }
 
   // Tętno
-  if (user.pulseMin || user.pulseMax) {
-    norms.push(
-      `• Tętno: ${user.pulseMin || "?"} – ${user.pulseMax || "?"} ud./min`
+  if (normsObj.pulseMin || normsObj.pulseMax) {
+    list.push(
+      `• Tętno: ${normsObj.pulseMin || 60} – ${
+        normsObj.pulseMax || 100
+      } ud./min`
     );
   }
 
   // Glukoza
-  if (user.glucoseFastingMax) {
-    norms.push(
-      `• Glukoza (na czczo): ${user.glucoseFastingMin || 70} – ${
-        user.glucoseFastingMax
+  if (normsObj.glucoseFastingMax) {
+    list.push(
+      `• Glukoza (na czczo): ${normsObj.glucoseFastingMin || 70} – ${
+        normsObj.glucoseFastingMax
       } mg/dL`
     );
   }
-  if (user.glucosePostMealMax) {
-    norms.push(`• Glukoza (po posiłku): < ${user.glucosePostMealMax} mg/dL`);
+  if (normsObj.glucosePostMealMax) {
+    list.push(`• Glukoza (po posiłku): < ${normsObj.glucosePostMealMax} mg/dL`);
   }
 
   // Waga
-  if (user.weightMin || user.weightMax) {
-    norms.push(
-      `• Waga docelowa: ${user.weightMin || "?"} – ${user.weightMax || "?"} kg`
+  if (normsObj.weightMin || normsObj.weightMax) {
+    list.push(
+      `• Waga docelowa: ${normsObj.weightMin || "?"} – ${
+        normsObj.weightMax || "?"
+      } kg`
     );
   }
 
-  // Jeśli nie ma żadnych ustawień w bazie
-  if (norms.length === 0) {
-    norms.push("• Brak zdefiniowanych indywidualnych norm w profilu pacjenta.");
-    norms.push("  (Zastosowano domyślne normy WHO do analizy AI)");
-  }
-
-  return norms;
+  return list;
 };
 
 export async function POST() {
-  const session = await auth();
-  if (!session?.user?.email)
-    return new Response("Unauthorized", { status: 401 });
+  try {
+    const session = await auth();
+    if (!session?.user?.email)
+      return new Response("Unauthorized", { status: 401 });
 
-  // Pobieramy usera ze wszystkimi polami norm
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: {
-      measurements: {
-        take: 30, // Więcej pomiarów dla lepszej analizy
-        orderBy: { createdAt: "desc" },
+    // 1. POBRANIE DANYCH (Nowa struktura)
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: {
+        // Pomiary są podpięte bezpośrednio pod Usera (wg Twojej schemy)
+        measurements: {
+          take: 30,
+          orderBy: { createdAt: "desc" },
+        },
+        // Profil zdrowotny i normy są w relacji
+        healthProfile: {
+          include: {
+            norms: true,
+            conditions: true,
+          },
+        },
       },
-    },
-  });
-
-  if (!user) return new Response("User not found", { status: 404 });
-
-  const context = buildPersonalizedContext(user);
-
-  // === PROMPT DO AI ===
-  // Przekazujemy AI informację o zdefiniowanych normach użytkownika, aby analiza była spójna z tym co wydrukujemy
-  const { text: summary } = await generateText({
-    model: openai("gpt-4o"),
-    temperature: 0.2,
-    prompt: `Jesteś asystentem medycznym AI przygotowującym raport dla lekarza.
-    NIE udawaj lekarza. Pisz technicznie i zwięźle.
-    
-    DANE PACJENTA:
-    ${context}
-
-    ZADANIE:
-    1. Przeanalizuj ostatnie pomiary w odniesieniu do indywidualnych norm pacjenta (jeśli są podane w kontekście) lub norm ogólnych.
-    2. Wykryj trendy (wzrostowe/spadkowe).
-    3. Wskaż pomiary przekraczające zdefiniowane limity (np. systolicMax).
-    4. Nie używaj Markdown.
-    `,
-  });
-
-  // === GENEROWANIE PDF ===
-  const pdfDoc = await PDFDocument.create();
-  pdfDoc.registerFontkit(fontkit);
-
-  // Załaduj font (upewnij się, że plik istnieje w public/fonts)
-  const fontBytes = await fs.readFile(
-    path.join(process.cwd(), "public/fonts/Roboto-Regular.ttf")
-  );
-  const font = await pdfDoc.embedFont(fontBytes);
-
-  let page = pdfDoc.addPage([595.28, 841.89]);
-  const { width, height } = page.getSize();
-  const margin = 50;
-  const contentWidth = width - margin * 2;
-
-  let yPosition = height - 120;
-
-  // Funkcja rysująca linię
-  const drawLine = (text, fontSize = 11, color = rgb(0, 0, 0)) => {
-    const lines = breakTextIntoLines(text, font, fontSize, contentWidth);
-    const lineHeight = fontSize * 1.5;
-
-    lines.forEach((line) => {
-      if (yPosition < 50) {
-        page = pdfDoc.addPage([595.28, 841.89]);
-        yPosition = height - 50;
-      }
-      page.drawText(line, {
-        x: margin,
-        y: yPosition,
-        size: fontSize,
-        font,
-        color,
-      });
-      yPosition -= lineHeight;
     });
-    yPosition -= 3;
-  };
 
-  // 1. NAGŁÓWEK
-  page.drawRectangle({
-    x: 0,
-    y: height - 100,
-    width,
-    height: 100,
-    color: rgb(0.07, 0.45, 0.85),
-  });
+    if (!user) return new Response("User not found", { status: 404 });
 
-  page.drawText("Raport Zdrowotny Pacjenta", {
-    x: margin,
-    y: height - 50,
-    size: 22,
-    font,
-    color: rgb(1, 1, 1),
-  });
+    // Przygotowanie zmiennych skrótowych dla czytelności
+    const profile = user.healthProfile || {};
+    const norms = profile.norms || null;
+    const conditionsList = profile.conditions
+      ? profile.conditions.map((c) => c.name).join(", ")
+      : "Brak";
 
-  const today = new Date().toLocaleDateString("pl-PL", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+    // Budowanie kontekstu dla AI
+    // (Zakładam, że buildPersonalizedContext jest dostosowany lub przekazujemy mu obiekt w starym stylu)
+    // Tutaj tworzę 'mock' obiektu usera w starym stylu, żeby nie psuć funkcji w lib/ai-context,
+    // jeśli nie została zaktualizowana.
+    const contextUserMock = {
+      ...user,
+      birthdate: profile.birthdate,
+      gender: profile.gender,
+      height: profile.height,
+      weight: profile.weight,
+      conditions: conditionsList,
+      ...norms, // Rozpakowujemy normy (systolicMax itp.)
+    };
 
-  page.drawText(`Data generowania: ${today}`, {
-    x: margin,
-    y: height - 80,
-    size: 10,
-    font,
-    color: rgb(0.9, 0.9, 0.9),
-  });
+    const context = buildPersonalizedContext(contextUserMock);
 
-  // 2. DANE OSOBOWE I BIOMETRIA
-  drawLine("Dane identyfikacyjne:", 14, rgb(0.07, 0.45, 0.85));
-  yPosition -= 5;
+    // === 2. GENEROWANIE ANALIZY AI ===
+    const { text: summary } = await generateText({
+      model: openai("gpt-4o"),
+      temperature: 0.2,
+      prompt: `Jesteś asystentem medycznym AI. Generujesz raport PDF.
+      
+      DANE PACJENTA:
+      ${context}
 
-  const age = calculateAge(user.birthdate); // Używam pola 'birthdate' ze schematu
-  let headerInfo = `• Pacjent: ${user.name || user.email}`;
-  if (age) headerInfo += `   • Wiek: ${age} lat`;
-  if (user.gender) headerInfo += `   • Płeć: ${user.gender}`;
-
-  drawLine(headerInfo, 11);
-
-  let bioInfo = "";
-  if (user.height) bioInfo += `• Wzrost: ${user.height} cm   `;
-  if (user.weight) bioInfo += `• Waga obecna: ${user.weight} kg   `;
-  if (user.bmi) bioInfo += `• BMI: ${user.bmi.toFixed(1)}`; // Zakładam, że BMI jest wyliczane przy zapisie usera
-
-  if (bioInfo) drawLine(bioInfo, 11);
-  if (user.conditions) drawLine(`• Choroby przewlekłe: ${user.conditions}`, 11);
-  if (user.medications) drawLine(`• Leki: ${user.medications}`, 11);
-
-  yPosition -= 15;
-
-  // 3. INDYWIDUALNE NORMY (Z BAZY)
-  drawLine("Indywidualne cele terapeutyczne:", 12, rgb(0.07, 0.45, 0.85));
-  yPosition -= 2;
-
-  const userNorms = getUserNorms(user);
-  userNorms.forEach((norm) => {
-    // Rysujemy na szaro, żeby odróżnić od wyników
-    drawLine(norm, 10, rgb(0.3, 0.3, 0.3));
-  });
-
-  yPosition -= 15;
-
-  // 4. ANALIZA AI
-  drawLine("Analiza trendów (AI):", 14, rgb(0.07, 0.45, 0.85));
-  yPosition -= 5;
-
-  if (summary) {
-    const paragraphs = summary.split("\n").filter((l) => l.trim().length > 0);
-    paragraphs.forEach((p) => {
-      const clean = p.replace(/\*\*/g, "").replace(/\*/g, "-");
-      drawLine(clean, 11);
+      ZADANIE:
+      1. Przeanalizuj ostatnie 30 pomiarów pod kątem trendów i przekroczeń norm (normy: ${JSON.stringify(
+        norms
+      )}).
+      2. Bądź konkretny. Używaj liczb.
+      3. Nie używaj Markdown (pogrubień, nagłówków #), tylko czysty tekst podzielony na akapity.
+      `,
     });
-  } else {
-    drawLine("Brak danych do analizy.", 11);
-  }
 
-  yPosition -= 20;
+    // === 3. RYSOWANIE PDF ===
+    const pdfDoc = await PDFDocument.create();
+    pdfDoc.registerFontkit(fontkit);
 
-  // 5. TABELA POMIARÓW
-  drawLine("Ostatnie pomiary:", 14, rgb(0.07, 0.45, 0.85));
-  yPosition -= 5;
+    const fontPath = path.join(
+      process.cwd(),
+      "public/fonts/Roboto-Regular.ttf"
+    );
+    const fontBytes = await fs.readFile(fontPath);
+    const font = await pdfDoc.embedFont(fontBytes);
 
-  if (user.measurements.length > 0) {
-    user.measurements.forEach((m) => {
-      const mDate = new Date(m.createdAt).toLocaleDateString("pl-PL", {
-        day: "2-digit",
-        month: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+    let page = pdfDoc.addPage([595.28, 841.89]);
+    const { width, height } = page.getSize();
+    const margin = 50;
+    const contentWidth = width - margin * 2;
+    let yPosition = height - 120;
 
-      let lineText = `• ${mDate} | ${m.type.toUpperCase()}: `;
-      let isAlarming = false;
+    // Helper do rysowania linii i nowej strony
+    const drawLine = (text, fontSize = 11, color = rgb(0, 0, 0)) => {
+      const lines = breakTextIntoLines(text, font, fontSize, contentWidth);
+      const lineHeight = fontSize * 1.5;
 
-      // Formatowanie wartości w zależności od typu
-      if (m.type === "ciśnienie" || (m.systolic && m.diastolic)) {
-        lineText += `${m.systolic}/${m.diastolic} mmHg`;
-        // Sprawdzanie przekroczeń względem norm usera (jeśli są)
-        if (user.systolicMax && m.systolic > user.systolicMax)
-          isAlarming = true;
-        if (user.diastolicMax && m.diastolic > user.diastolicMax)
-          isAlarming = true;
-      } else if (m.amount) {
-        lineText += `${m.amount} ${m.unit}`;
-
-        // Logika dla glukozy
-        if (
-          m.type === "glukoza" &&
-          user.glucoseFastingMax &&
-          m.amount > user.glucoseFastingMax
-        ) {
-          isAlarming = true;
+      lines.forEach((line) => {
+        if (yPosition < 50) {
+          page = pdfDoc.addPage([595.28, 841.89]);
+          yPosition = height - 50;
         }
-      }
+        page.drawText(line, {
+          x: margin,
+          y: yPosition,
+          size: fontSize,
+          font,
+          color,
+        });
+        yPosition -= lineHeight;
+      });
+      yPosition -= 3;
+    };
 
-      if (m.context) lineText += ` (${m.context})`;
-
-      // Jeśli wynik jest alarmujący, dodajemy wykrzyknik i ewentualnie zmieniamy kolor (pdf-lib wymaga zmiany koloru dla całego drawText, więc tu dodamy tylko tekst)
-      if (isAlarming) {
-        lineText += " (!)";
-        drawLine(lineText, 10, rgb(0.8, 0, 0)); // Czerwony dla ostrzeżeń
-      } else {
-        drawLine(lineText, 10);
-      }
+    // -- NAGŁÓWEK --
+    page.drawRectangle({
+      x: 0,
+      y: height - 100,
+      width,
+      height: 100,
+      color: rgb(0.07, 0.45, 0.85),
     });
-  } else {
-    drawLine("Brak zapisanych pomiarów.", 11);
-  }
 
-  // STOPKA
-  const footerY = 30;
-  page.drawText(
-    "Dokument wygenerowany automatycznie przez system Agent Zdrowie.",
-    {
+    page.drawText("Raport Zdrowotny Pacjenta", {
       x: margin,
-      y: footerY,
-      size: 8,
+      y: height - 50,
+      size: 22,
       font,
-      color: rgb(0.6, 0.6, 0.6),
+      color: rgb(1, 1, 1),
+    });
+
+    const todayStr = new Date().toLocaleDateString("pl-PL", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    page.drawText(`Data generowania: ${todayStr}`, {
+      x: margin,
+      y: height - 80,
+      size: 10,
+      font,
+      color: rgb(0.9, 0.9, 0.9),
+    });
+
+    // -- DANE OSOBOWE --
+    drawLine("Dane identyfikacyjne:", 14, rgb(0.07, 0.45, 0.85));
+    yPosition -= 5;
+
+    const age = calculateAge(profile.birthdate);
+    let headerInfo = `• Pacjent: ${user.name || user.email}`;
+    if (age) headerInfo += `   • Wiek: ${age} lat`;
+    if (profile.gender) {
+      // Mapowanie Enuma na PL
+      const genderPL =
+        profile.gender === "MALE"
+          ? "Mężczyzna"
+          : profile.gender === "FEMALE"
+          ? "Kobieta"
+          : profile.gender;
+      headerInfo += `   • Płeć: ${genderPL}`;
     }
-  );
 
-  const pdfBytes = await pdfDoc.save();
+    drawLine(headerInfo, 11);
 
-  // Generujemy bezpieczną nazwę pliku z datą (RRRR-MM-DD)
-  const safeDate = new Date().toISOString().slice(0, 10);
-  const fileName = `Raport_Medyczny_${safeDate}.pdf`;
+    let bioInfo = "";
+    if (profile.height) bioInfo += `• Wzrost: ${profile.height} cm   `;
+    if (profile.weight) bioInfo += `• Waga obecna: ${profile.weight} kg   `;
+    // BMI mamy w tabeli norms, jeśli istnieje
+    if (norms && norms.bmi) bioInfo += `• BMI (cel/norma): ${norms.bmi}`;
 
-  return new Response(pdfBytes, {
-    headers: {
-      "Content-Type": "application/pdf",
-      // Używamy backticków (`), aby wstawić zmienną do ciągu znaku
-      "Content-Disposition": `attachment; filename="${fileName}"`,
-    },
-  });
+    if (bioInfo) drawLine(bioInfo, 11);
+    if (conditionsList !== "Brak")
+      drawLine(`• Choroby przewlekłe: ${conditionsList}`, 11);
+    if (profile.medications) drawLine(`• Leki: ${profile.medications}`, 11);
+
+    yPosition -= 15;
+
+    // -- NORMY --
+    drawLine("Indywidualne cele terapeutyczne:", 12, rgb(0.07, 0.45, 0.85));
+    yPosition -= 2;
+
+    const normsTextLines = getNormsText(norms);
+    normsTextLines.forEach((t) => drawLine(t, 10, rgb(0.3, 0.3, 0.3)));
+
+    yPosition -= 15;
+
+    // -- ANALIZA AI --
+    drawLine("Analiza trendów (AI):", 14, rgb(0.07, 0.45, 0.85));
+    yPosition -= 5;
+
+    if (summary) {
+      const paragraphs = summary.split("\n").filter((l) => l.trim().length > 0);
+      paragraphs.forEach((p) => {
+        const clean = p.replace(/\*\*/g, "").replace(/\*/g, "-");
+        drawLine(clean, 11);
+      });
+    } else {
+      drawLine("Brak danych do analizy.", 11);
+    }
+
+    yPosition -= 20;
+
+    // -- LISTA POMIARÓW --
+    drawLine("Ostatnie pomiary:", 14, rgb(0.07, 0.45, 0.85));
+    yPosition -= 5;
+
+    if (user.measurements.length > 0) {
+      user.measurements.forEach((m) => {
+        const mDate = new Date(m.createdAt).toLocaleDateString("pl-PL", {
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        // Mapowanie typów i wartości (Nowa Schema)
+        let lineText = "";
+        let isAlarming = false;
+
+        switch (m.type) {
+          case "BLOOD_PRESSURE":
+            const sys = m.value;
+            const dia = m.value2;
+            lineText = `• ${mDate} | Ciśnienie: ${sys}/${dia} mmHg`;
+            if (norms && norms.systolicMax && sys > norms.systolicMax)
+              isAlarming = true;
+            if (norms && norms.diastolicMax && dia > norms.diastolicMax)
+              isAlarming = true;
+            break;
+
+          case "GLUCOSE":
+            lineText = `• ${mDate} | Glukoza: ${m.value} mg/dL`;
+            // Jeśli mamy kontekst (np. "Na czczo"), sprawdzamy odpowiednią normę
+            // Tutaj uproszczenie: sprawdzamy max na czczo jako bezpiecznik
+            if (
+              norms &&
+              norms.glucoseFastingMax &&
+              m.value > norms.glucoseFastingMax
+            ) {
+              // Można dodać sprawdzanie m.context jeśli istnieje
+              isAlarming = true;
+            }
+            break;
+
+          case "WEIGHT":
+            lineText = `• ${mDate} | Waga: ${m.value} kg`;
+            break;
+
+          case "HEART_RATE":
+            lineText = `• ${mDate} | Tętno: ${m.value} ud./min`;
+            if (norms && norms.pulseMax && m.value > norms.pulseMax)
+              isAlarming = true;
+            break;
+
+          default:
+            lineText = `• ${mDate} | ${m.type}: ${m.value}`;
+        }
+
+        if (m.context) lineText += ` (${m.context})`;
+        if (m.note) lineText += ` - ${m.note}`;
+
+        if (isAlarming) {
+          lineText += " (!)";
+          drawLine(lineText, 10, rgb(0.8, 0, 0));
+        } else {
+          drawLine(lineText, 10);
+        }
+      });
+    } else {
+      drawLine("Brak zapisanych pomiarów.", 11);
+    }
+
+    // Stopka
+    page.drawText(
+      "Dokument wygenerowany automatycznie przez system Agent Zdrowie.",
+      {
+        x: margin,
+        y: 30,
+        size: 8,
+        font,
+        color: rgb(0.6, 0.6, 0.6),
+      }
+    );
+
+    const pdfBytes = await pdfDoc.save();
+    const safeDate = new Date().toISOString().slice(0, 10);
+    const fileName = `Raport_Medyczny_${safeDate}.pdf`;
+
+    return new Response(pdfBytes, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${fileName}"`,
+      },
+    });
+  } catch (error) {
+    console.error("PDF Generation Error:", error);
+    return new Response("Internal Server Error", { status: 500 });
+  }
 }

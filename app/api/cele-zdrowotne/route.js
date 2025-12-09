@@ -4,46 +4,79 @@ import prisma from "@/lib/prisma";
 
 export async function GET() {
   const session = await auth();
-  if (!session?.user?.id) {
+
+  // 1. Walidacja sesji
+  if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = parseInt(session.user.id);
-
   try {
+    // 2. Pobranie Usera wraz z Normami (zagnieżdżone)
+    // Szukamy po emailu dla bezpieczeństwa
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { email: session.user.email },
       select: {
-        weightMin: true,
-        weightMax: true,
-        systolicMin: true,
-        systolicMax: true,
-        glucoseFastingMin: true,
-        glucoseFastingMax: true,
-        pulseMin: true,
-        pulseMax: true,
+        id: true, // Potrzebne do pobrania pomiarów
+        healthProfile: {
+          select: {
+            norms: {
+              select: {
+                weightMin: true,
+                weightMax: true,
+                systolicMin: true,
+                systolicMax: true,
+                glucoseFastingMin: true,
+                glucoseFastingMax: true,
+                pulseMin: true,
+                pulseMax: true,
+              },
+            },
+          },
+        },
       },
     });
 
-    const last = await prisma.measurement.findMany({
-      where: { userId },
+    if (!user) {
+      return NextResponse.json(
+        { error: "Użytkownik nie istnieje" },
+        { status: 404 }
+      );
+    }
+
+    // 3. Pobranie ostatnich pomiarów
+    // Pobieramy trochę więcej (20), żeby mieć pewność, że trafimy na każdy typ
+    const lastMeasurements = await prisma.measurement.findMany({
+      where: { userId: user.id }, // user.id jest Stringiem (CUID)
       orderBy: { createdAt: "desc" },
-      take: 10,
+      take: 20,
     });
 
-    const lastWeight = last.find((m) => m.type === "waga")?.amount;
-    const lastPressure = last.find((m) => m.type === "ciśnienie");
-    const lastGlucose = last.find((m) => m.type === "cukier")?.amount;
-    const lastPulse = last.find((m) => m.type === "tętno")?.amount;
+    // 4. Mapowanie ostatnich wartości (Enumy + value/value2)
+    const findMeasurement = (type) =>
+      lastMeasurements.find((m) => m.type === type);
+
+    const weightM = findMeasurement("WEIGHT");
+    const pressureM = findMeasurement("BLOOD_PRESSURE");
+    const glucoseM = findMeasurement("GLUCOSE");
+    const pulseM = findMeasurement("HEART_RATE");
+
+    // 5. Przygotowanie spłaszczonego obiektu norm (zgodność z frontendem)
+    // Jeśli user nie ma profilu/norm, zwracamy pusty obiekt lub null
+    const norms = user.healthProfile?.norms || {};
 
     return NextResponse.json({
-      user,
+      // Frontend oczekuje obiektu "user" z polami weightMin, systolicMax itp.
+      user: norms,
+
       values: {
-        weight: lastWeight ? Number(lastWeight.toString()) : null,
-        systolic: lastPressure?.systolic ?? null,
-        diastolic: lastPressure?.diastolic ?? null,
-        glucose: lastGlucose ? Number(lastGlucose.toString()) : null,
-        pulse: lastPulse ? Number(lastPulse.toString()) : null,
+        weight: weightM ? weightM.value : null,
+
+        // Ciśnienie ma value (skurczowe) i value2 (rozkurczowe)
+        systolic: pressureM ? pressureM.value : null,
+        diastolic: pressureM ? pressureM.value2 : null,
+
+        glucose: glucoseM ? glucoseM.value : null,
+        pulse: pulseM ? pulseM.value : null,
       },
     });
   } catch (err) {

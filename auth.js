@@ -1,31 +1,7 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import { PrismaClient } from "@prisma/client";
-
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string;
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-    };
-    profileComplete?: boolean;
-  }
-
-  interface User {
-    id: string;
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    id: string;
-    profileComplete?: boolean;
-  }
-}
-
-const prisma = new PrismaClient();
+// WAŻNE: Importujemy instancję z Twojego pliku lib/prisma, a nie tworzymy nowej!
+import prisma from "@/lib/prisma";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.AUTH_SECRET,
@@ -37,8 +13,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   providers: [
     Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     }),
   ],
   callbacks: {
@@ -46,7 +22,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (!user.email) return false;
 
       try {
-        let dbUser = await prisma.user.findUnique({
+        const dbUser = await prisma.user.findUnique({
           where: { email: user.email },
         });
 
@@ -59,8 +35,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             },
           });
           console.log("✅ Utworzono nowego użytkownika:", user.email);
-        } else {
-          console.log("ℹ️ Użytkownik już istnieje:", user.email);
         }
 
         return true;
@@ -73,36 +47,38 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token }) {
       if (!token?.email) return token;
 
-      // 🔹 Zawsze pobieramy aktualne dane użytkownika z bazy
+      // 🔹 Pobieramy użytkownika WRAZ z jego profilem medycznym
       const dbUser = await prisma.user.findUnique({
         where: { email: token.email },
         select: {
           id: true,
-          birthdate: true,
-          gender: true,
-          height: true,
-          weight: true,
+          // Pobieramy powiązany profil medyczny
+          healthProfile: {
+            select: {
+              id: true,
+            },
+          },
         },
       });
 
       if (dbUser) {
-        token.id = String(dbUser.id);
-        token.profileComplete =
-          dbUser.birthdate instanceof Date &&
-          (dbUser.gender === "M" || dbUser.gender === "K") &&
-          typeof dbUser.height === "number" &&
-          dbUser.height > 0 &&
-          typeof dbUser.weight === "number" &&
-          dbUser.weight > 0;
+        token.id = dbUser.id;
+
+        // Sprawdzamy, czy użytkownik ma uzupełniony profil medyczny.
+        // W nowej bazie, jeśli rekord healthProfile istnieje, to znaczy że jest uzupełniony
+        // (bo pola w HealthProfile są wymagane, np. waga, wzrost).
+        token.profileComplete = !!dbUser.healthProfile;
       } else {
         token.profileComplete = false;
       }
 
       return token;
     },
+
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id;
+        // Przekazujemy flagę do frontendu, żeby wiedzieć czy przekierować na /profil
         session.profileComplete = token.profileComplete;
       }
       return session;

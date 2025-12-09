@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 
-// Helpers (bez zależności)
+// Helpers (bez zależności) - pozostawiamy bez zmian, są dobre
 function dayISOInTZ(date, tz) {
   // 'sv-SE' => YYYY-MM-DD. Używamy opcji timeZone.
   return tz
@@ -18,23 +18,43 @@ function daysAgoISO(offset, tz) {
 
 export async function GET() {
   const session = await auth();
-  if (!session?.user?.id) {
+
+  // 1. Sprawdzenie sesji po emailu (tak jak w poprzednich plikach)
+  if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Używamy Number(session.user.id) zamiast parseInt(String(session.user.id), 10)
-  // dla prostoty w JS, chociaż pierwotny kod jest poprawny. Trzymamy się pierwotnej logiki.
-  const userId = parseInt(String(session.user.id), 10);
-  const userTimeZone = "Europe/Warsaw";
-
   try {
-    // weźmy zapas, żeby streak >30 też działał.
+    // 2. Pobranie ID użytkownika na podstawie emaila
+    // Musimy to zrobić, bo session.user.id może nie być dostępne lub różnić się od bazy
+    // w zależności od konfiguracji NextAuth.
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true }, // Pobieramy String (CUID)
+    });
+
+    if (!user) {
+      return NextResponse.json({
+        streakCount: 0,
+        lastEntryDate: null,
+        history: [],
+      });
+    }
+
+    const userId = user.id; // To jest teraz String, nie Int!
+    const userTimeZone = "Europe/Warsaw";
+
+    // 3. Pobieranie pomiarów
+    // weźmy zapas 90 dni, żeby streak >30 też działał.
     const lookbackDays = 90;
     const since = new Date();
     since.setDate(since.getDate() - lookbackDays);
 
     const measurements = await prisma.measurement.findMany({
-      where: { userId, createdAt: { gte: since } },
+      where: {
+        userId: userId, // Prisma oczekuje tutaj Stringa (CUID)
+        createdAt: { gte: since },
+      },
       orderBy: { createdAt: "desc" },
       select: { createdAt: true },
     });
@@ -46,6 +66,8 @@ export async function GET() {
         history: [],
       });
     }
+
+    // 4. Logika obliczania (bez zmian, operuje na datach)
 
     // Zbiór unikalnych dni (YYYY-MM-DD) w TZ użytkownika
     const daySet = new Set();
@@ -89,7 +111,7 @@ export async function GET() {
     return NextResponse.json({
       streakCount,
       lastEntryDate,
-      history, // np. ["2025-08-11","2025-08-10", ...]
+      history,
     });
   } catch (err) {
     console.error("Błąd podczas obliczania streaka:", err);
