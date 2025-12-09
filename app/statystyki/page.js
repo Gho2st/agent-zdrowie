@@ -14,11 +14,11 @@ import {
 import annotationPlugin from "chartjs-plugin-annotation";
 import { Line } from "react-chartjs-2";
 import "chartjs-adapter-date-fns";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Container from "@/components/UI/Container/Container";
 import Header from "@/components/UI/Headers/Header";
-import { ArrowDown, ArrowUp, Activity, Percent, Calendar } from "lucide-react"; // Upewnij się, że masz lucide-react
+import { ArrowDown, ArrowUp, Activity, Percent } from "lucide-react";
 
 ChartJS.register(
   LineElement,
