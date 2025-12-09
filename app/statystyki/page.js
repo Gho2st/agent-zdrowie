@@ -14,10 +14,11 @@ import {
 import annotationPlugin from "chartjs-plugin-annotation";
 import { Line } from "react-chartjs-2";
 import "chartjs-adapter-date-fns";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import Container from "@/components/UI/Container/Container";
 import Header from "@/components/UI/Headers/Header";
+import { ArrowDown, ArrowUp, Activity, Percent, Calendar } from "lucide-react"; // Upewnij się, że masz lucide-react
 
 ChartJS.register(
   LineElement,
@@ -31,295 +32,325 @@ ChartJS.register(
   annotationPlugin
 );
 
-// Konfiguracja mapowania: Nazwa sekcji -> Enum z Bazy -> Klucz w obiekcie stats
 const CONFIG = {
   ciśnienie: {
     dbType: "BLOOD_PRESSURE",
-    statsKey: "cisnienie",
     label: "Ciśnienie",
+    unit: "mmHg",
+    color: "blue",
   },
   cukier: {
     dbType: "GLUCOSE",
-    statsKey: "cukier",
     label: "Glukoza",
+    unit: "mg/dL",
+    color: "teal",
   },
   waga: {
     dbType: "WEIGHT",
-    statsKey: "waga",
     label: "Waga",
+    unit: "kg",
+    color: "cyan",
   },
   tętno: {
     dbType: "HEART_RATE",
-    statsKey: "tetno",
     label: "Tętno",
+    unit: "bpm",
+    color: "amber",
   },
+};
+
+// Helper: Sprawdza czy wartość jest w normie
+const checkIsNormal = (val, val2, type, norms) => {
+  if (!norms) return null;
+  if (type === "ciśnienie") {
+    // Dla ciśnienia oba muszą być w normie
+    const sOk =
+      val >= (norms.systolicMin || 0) && val <= (norms.systolicMax || 999);
+    const dOk =
+      val2 >= (norms.diastolicMin || 0) && val2 <= (norms.diastolicMax || 999);
+    return sOk && dOk;
+  }
+  if (type === "cukier") {
+    // Uproszczenie: sprawdzamy ogólny zakres (np. na czczo max)
+    return (
+      val <= (norms.glucosePostMealMax || 180) &&
+      val >= (norms.glucoseFastingMin || 60)
+    );
+  }
+  if (type === "waga") {
+    return val >= (norms.weightMin || 0) && val <= (norms.weightMax || 999);
+  }
+  if (type === "tętno") {
+    return val >= (norms.pulseMin || 0) && val <= (norms.pulseMax || 999);
+  }
+  return true;
 };
 
 export default function Statistics() {
   const { data: session } = useSession();
   const [measurements, setMeasurements] = useState([]);
   const [norms, setNorms] = useState(null);
-  const [stats, setStats] = useState(null);
+  const [timeRange, setTimeRange] = useState("30"); // 7, 30, 90, all
 
   useEffect(() => {
     if (session?.user?.id) {
       const fetchData = async () => {
         try {
-          const [mRes, nRes, sRes] = await Promise.all([
+          const [mRes, nRes] = await Promise.all([
             fetch("/api/measurement"),
             fetch("/api/user/norms"),
-            fetch("/api/statistics"),
           ]);
-
-          const measurementsData = mRes.ok ? await mRes.json() : [];
-          // Normy mogą być zagnieżdżone w { user: ... } zależnie od endpointu,
-          // ale tutaj zakładamy, że GET /api/user/norms zwraca spłaszczony obiekt lub { user: norms }
-          const normsData = nRes.ok ? await nRes.json() : null;
-          const statsData = sRes.ok ? await sRes.json() : null;
-
-          setMeasurements(measurementsData);
-          // Bezpieczne wyciągnięcie norm
-          setNorms(normsData?.user || normsData || null);
-          setStats(statsData);
+          setMeasurements(mRes.ok ? await mRes.json() : []);
+          const nData = nRes.ok ? await nRes.json() : null;
+          setNorms(nData?.user || nData || null);
         } catch (error) {
-          console.error("Błąd ładowania statystyk:", error);
+          console.error("Błąd danych:", error);
         }
       };
       fetchData();
     }
   }, [session]);
 
-  const prepareChartData = (category) => {
+  // --- OBLICZANIE STATYSTYK W LOCIE ---
+  const getStats = (category) => {
     const config = CONFIG[category];
-    if (!config) return { labels: [], datasets: [] };
+    const now = new Date();
 
-    const filtered = measurements
-      .filter((m) => m.type === config.dbType) // Filtrujemy po Enumie (np. BLOOD_PRESSURE)
-      .map((m) => ({
-        date: new Date(m.createdAt),
-        // Mapujemy nowe pola value/value2 na logiczne nazwy
-        value: m.value, // Waga, Cukier, Tętno, Sys
-        value2: m.value2, // Dia
-      }))
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
+    // 1. Filtrowanie po typie i dacie
+    const filtered = measurements.filter((m) => {
+      if (m.type !== config.dbType) return false;
+      if (timeRange === "all") return true;
+      const date = new Date(m.createdAt);
+      const diffDays = (now - date) / (1000 * 60 * 60 * 24);
+      return diffDays <= Number(timeRange);
+    });
 
-    const labels = filtered.map((m) => m.date);
+    if (filtered.length === 0) return null;
+
+    // 2. Wyciąganie wartości
+    const values1 = filtered.map((m) => m.value); // Sys, Waga, Cukier
+    const values2 =
+      category === "ciśnienie" ? filtered.map((m) => m.value2) : [];
+
+    // 3. Obliczenia matematyczne
+    const avg1 = values1.reduce((a, b) => a + b, 0) / values1.length;
+    const min1 = Math.min(...values1);
+    const max1 = Math.max(...values1);
+
+    let avg2 = 0,
+      min2 = 0,
+      max2 = 0;
+    if (category === "ciśnienie") {
+      avg2 = values2.reduce((a, b) => a + b, 0) / values2.length;
+      min2 = Math.min(...values2);
+      max2 = Math.max(...values2);
+    }
+
+    // 4. Analiza Norm (% poprawnych wyników)
+    const inNormCount = filtered.filter((m) =>
+      checkIsNormal(m.value, m.value2, category, norms)
+    ).length;
+    const normPercentage = Math.round((inNormCount / filtered.length) * 100);
+
+    return {
+      count: filtered.length,
+      avg:
+        category === "ciśnienie"
+          ? `${avg1.toFixed(0)}/${avg2.toFixed(0)}`
+          : avg1.toFixed(1),
+      min: category === "ciśnienie" ? `${min1}/${min2}` : min1,
+      max: category === "ciśnienie" ? `${max1}/${max2}` : max1,
+      normPercentage,
+      dataForChart: filtered.sort(
+        (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+      ),
+    };
+  };
+
+  // --- PRZYGOTOWANIE DANYCH DO WYKRESU ---
+  const prepareChartData = (category, data) => {
+    const labels = data.map((m) => new Date(m.createdAt));
     let datasets = [];
 
     if (category === "ciśnienie") {
       datasets = [
         {
-          label: "Skurczowe (mmHg)",
-          data: filtered.map((m) => m.value), // value = systolic
-          borderColor: "#4bc0c0",
-          backgroundColor: "rgba(75, 192, 192, 0.1)",
-          fill: false,
+          label: "Skurczowe",
+          data: data.map((m) => ({ x: new Date(m.createdAt), y: m.value })),
+          borderColor: "#3b82f6",
+          backgroundColor: "rgba(59, 130, 246, 0.1)",
           tension: 0.3,
         },
         {
-          label: "Rozkurczowe (mmHg)",
-          data: filtered.map((m) => m.value2), // value2 = diastolic
-          borderColor: "#ff6384",
-          backgroundColor: "rgba(255, 99, 132, 0.1)",
-          fill: false,
+          label: "Rozkurczowe",
+          data: data.map((m) => ({ x: new Date(m.createdAt), y: m.value2 })),
+          borderColor: "#ef4444",
+          backgroundColor: "rgba(239, 68, 68, 0.1)",
           tension: 0.3,
         },
       ];
-    } else if (category === "cukier") {
+    } else {
+      // Kolory dla reszty
+      const color =
+        category === "cukier"
+          ? "#14b8a6"
+          : category === "waga"
+          ? "#06b6d4"
+          : "#f59e0b";
       datasets = [
         {
-          label: "Glukoza (mg/dL)",
-          data: filtered.map((m) => m.value),
-          borderColor: "#4bc0c0",
-          backgroundColor: "rgba(75, 192, 192, 0.2)",
-          tension: 0.3,
+          label: CONFIG[category].label,
+          data: data.map((m) => ({ x: new Date(m.createdAt), y: m.value })),
+          borderColor: color,
+          backgroundColor: color + "20", // przezroczystość
           fill: true,
-        },
-      ];
-    } else if (category === "waga") {
-      datasets = [
-        {
-          label: "Waga (kg)",
-          data: filtered.map((m) => m.value),
-          borderColor: "#36a2eb",
-          backgroundColor: "rgba(54, 162, 235, 0.2)",
           tension: 0.3,
-          fill: true,
-        },
-      ];
-    } else if (category === "tętno") {
-      datasets = [
-        {
-          label: "Tętno (bpm)",
-          data: filtered.map((m) => m.value),
-          borderColor: "#f59e0b",
-          backgroundColor: "rgba(245, 158, 11, 0.2)",
-          tension: 0.3,
-          fill: true,
         },
       ];
     }
-
-    // Mapowanie danych na format {x, y} dla Chart.js (TimeScale)
-    if (labels.length > 0 && datasets.length > 0) {
-      datasets = datasets.map((dataset) => ({
-        ...dataset,
-        data: dataset.data.map((val, index) => ({
-          x: labels[index],
-          y: val,
-        })),
-      }));
-    }
-
     return { labels, datasets };
   };
 
-  const getAnnotations = (category) => {
-    if (!norms) return {};
-
-    const lines = {};
-
-    // Helper do linii
-    const createLine = (yValue, color, labelContent) => ({
-      type: "line",
-      yMin: yValue,
-      yMax: yValue,
-      borderColor: color,
-      borderDash: [6, 4],
-      label: { content: labelContent, position: "start", enabled: true, z: 10 },
-      scaleID: "y",
-    });
-
-    if (category === "ciśnienie") {
-      if (norms.systolicMin)
-        lines.sMin = createLine(norms.systolicMin, "#4bc0c0", "Sys min");
-      if (norms.systolicMax)
-        lines.sMax = createLine(norms.systolicMax, "#4bc0c0", "Sys max");
-      if (norms.diastolicMin)
-        lines.dMin = createLine(norms.diastolicMin, "#ff6384", "Dia min");
-      if (norms.diastolicMax)
-        lines.dMax = createLine(norms.diastolicMax, "#ff6384", "Dia max");
-    }
-    if (category === "cukier") {
-      if (norms.glucoseFastingMin)
-        lines.gMin = createLine(norms.glucoseFastingMin, "#999", "Min");
-      if (norms.glucoseFastingMax)
-        lines.gMax = createLine(norms.glucoseFastingMax, "#999", "Max");
-    }
-    if (category === "waga") {
-      if (norms.weightMin)
-        lines.wMin = createLine(norms.weightMin, "#999", "Min");
-      if (norms.weightMax)
-        lines.wMax = createLine(norms.weightMax, "#999", "Max");
-    }
-    if (category === "tętno") {
-      if (norms.pulseMin)
-        lines.pMin = createLine(norms.pulseMin, "#f59e0b", "Min");
-      if (norms.pulseMax)
-        lines.pMax = createLine(norms.pulseMax, "#f59e0b", "Max");
-    }
-
-    return lines;
-  };
-
-  const baseOptions = (category) => ({
+  const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: "top" },
+      legend: { display: false },
       tooltip: { mode: "index", intersect: false },
-      annotation: { annotations: getAnnotations(category) },
     },
     scales: {
-      y: { beginAtZero: false, type: "linear" },
       x: {
         type: "time",
-        time: { unit: "day", tooltipFormat: "d.MM.yyyy" },
-        title: { display: false },
+        time: {
+          unit: timeRange === "7" ? "day" : "month",
+          displayFormats: { day: "d MMM", month: "MMM" },
+        },
+        grid: { display: false },
       },
     },
-  });
+  };
 
-  if (!stats && measurements.length === 0) {
+  if (measurements.length === 0) {
     return (
       <Container>
-        <Header text="Statystyki zdrowia" />
-        <div className="mt-10 text-center text-gray-500">
-          Ładowanie danych...
-        </div>
+        <Header text="Statystyki" />
+        <p className="mt-10 text-center text-gray-500">Brak danych...</p>
       </Container>
     );
   }
 
   return (
     <Container>
-      <Header text="Statystyki zdrowia" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-8 mt-10">
-        {/* Iterujemy po kluczach konfiguracji */}
+      <Header text="Szczegółowe Statystyki" />
+
+      {/* Przełącznik Czasu */}
+      <div className="flex justify-center gap-2 mt-6 mb-8">
+        {[
+          { label: "7 dni", val: "7" },
+          { label: "30 dni", val: "30" },
+          { label: "90 dni", val: "90" },
+          { label: "Wszystko", val: "all" },
+        ].map((opt) => (
+          <button
+            key={opt.val}
+            onClick={() => setTimeRange(opt.val)}
+            className={`px-4 py-1.5 text-sm rounded-full transition-all ${
+              timeRange === opt.val
+                ? "bg-blue-600 text-white shadow-md font-medium"
+                : "bg-white text-gray-600 border hover:bg-gray-50"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
         {Object.keys(CONFIG).map((category) => {
+          const stats = getStats(category);
           const config = CONFIG[category];
-          const hasData = measurements.some((m) => m.type === config.dbType);
-          const statData = stats ? stats[config.statsKey] : [];
+
+          if (!stats) return null; // Ukryj, jeśli brak danych w tym okresie
 
           return (
             <div
               key={category}
-              className="bg-white/30 backdrop-blur-lg border border-white/20 p-4 rounded-xl shadow-2xl h-full"
+              className="bg-white/40 backdrop-blur-md border border-white/30 rounded-2xl shadow-lg p-6 flex flex-col h-full"
             >
-              <h3 className="font-bold text-lg mb-4 capitalize">{category}</h3>
-              <div className="space-y-4">
-                {/* WYKRES */}
-                <div className="relative h-[300px] sm:h-[400px] md:h-[500px]">
-                  {hasData ? (
-                    <Line
-                      data={prepareChartData(category)}
-                      options={baseOptions(category)}
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-                      Brak danych do wyświetlenia wykresu.
-                    </div>
-                  )}
-                </div>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  {category === "ciśnienie" && "💓"}
+                  {category === "cukier" && "🍭"}
+                  {category === "waga" && "⚖️"}
+                  {category === "tętno" && "❤️"}
+                  {config.label}
+                </h3>
+                <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded text-gray-500">
+                  {stats.count} pomiarów
+                </span>
+              </div>
 
-                {/* STATYSTYKI MIESIĘCZNE */}
-                {/* Używamy config.statsKey, bo API zwraca klucze bez polskich znaków (np. 'tetno') */}
-                <div className="text-sm text-gray-700 space-y-1 mt-4">
-                  {statData && statData.length > 0 ? (
-                    statData.map((item) => {
-                      if (category === "ciśnienie") {
-                        return (
-                          <p key={item.month}>
-                            📅 {item.month} — Śr.:{" "}
-                            <strong>
-                              {item.avgSystolic?.toFixed(0)}/
-                              {item.avgDiastolic?.toFixed(0)}
-                            </strong>{" "}
-                            mmHg, Min: {item.minSystolic}/{item.minDiastolic},
-                            Max: {item.maxSystolic}/{item.maxDiastolic}
-                          </p>
-                        );
-                      }
-                      // Dla pozostałych typów (waga, cukier, tętno) struktura jest taka sama
-                      return (
-                        <p key={item.month}>
-                          📅 {item.month} — Średnia:{" "}
-                          <strong>{item.avg?.toFixed(1)}</strong>, Min:{" "}
-                          {item.min}, Max: {item.max}
-                        </p>
-                      );
-                    })
-                  ) : (
-                    <p className="text-xs text-gray-400">
-                      Brak statystyk miesięcznych
-                    </p>
-                  )}
-                </div>
+              {/* STATYSTYKI W KAFELKACH */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                <StatCard
+                  label="Średnia"
+                  value={stats.avg}
+                  unit={config.unit}
+                  icon={<Activity className="w-3 h-3" />}
+                />
+                <StatCard
+                  label="Minimum"
+                  value={stats.min}
+                  unit={config.unit}
+                  icon={<ArrowDown className="w-3 h-3" />}
+                />
+                <StatCard
+                  label="Maksimum"
+                  value={stats.max}
+                  unit={config.unit}
+                  icon={<ArrowUp className="w-3 h-3" />}
+                />
+                <StatCard
+                  label="W normie"
+                  value={`${stats.normPercentage}%`}
+                  unit=""
+                  color={
+                    stats.normPercentage > 80
+                      ? "text-green-600"
+                      : "text-amber-600"
+                  }
+                  icon={<Percent className="w-3 h-3" />}
+                />
+              </div>
+
+              {/* WYKRES */}
+              <div className="grow min-h-[250px] bg-white/50 rounded-xl p-2 border border-white/20">
+                <Line
+                  data={prepareChartData(category, stats.dataForChart)}
+                  options={chartOptions}
+                />
               </div>
             </div>
           );
         })}
       </div>
     </Container>
+  );
+}
+
+// Mini komponent do kafelków
+function StatCard({ label, value, unit, icon, color = "text-gray-800" }) {
+  return (
+    <div className="bg-white/60 p-3 rounded-xl border border-white/40 shadow-sm flex flex-col justify-center">
+      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-gray-500 mb-1">
+        {icon} {label}
+      </div>
+      <div className={`font-bold text-lg leading-none ${color}`}>
+        {value}
+        <span className="text-[10px] text-gray-400 ml-1 font-normal">
+          {unit}
+        </span>
+      </div>
+    </div>
   );
 }
