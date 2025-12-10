@@ -10,8 +10,6 @@ const fieldLabels = {
   diastolicMax: "Ciśnienie rozkurczowe (max)",
   glucoseFastingMin: "Glukoza na czczo (min)",
   glucoseFastingMax: "Glukoza na czczo (max)",
-  glucosePrediabetesFastingMin: "Glukoza przedcukrzycowa (min)",
-  glucosePrediabetesFastingMax: "Glukoza przedcukrzycowa (max)",
   glucosePostMealMax: "Glukoza po posiłku (max)",
   weightMin: "Waga (min)",
   weightMax: "Waga (max)",
@@ -22,6 +20,7 @@ const fieldLabels = {
 export default function Norms({ norms, handleChange }) {
   const [editingNorms, setEditingNorms] = useState(false);
 
+  // Zmienna fields będzie teraz zawierać tylko te klucze, które pozostały w fieldLabels
   const fields = Object.keys(fieldLabels);
 
   return (

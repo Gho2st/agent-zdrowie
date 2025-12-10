@@ -3,12 +3,11 @@ import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 
 export async function DELETE(req, { params }) {
-  // 1. Next.js automatycznie wyciąga "id" z nazwy folderu [id]
   const { id } = params;
 
   const session = await auth();
 
-  // 2. Walidacja sesji
+  // 1. Walidacja sesji
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -18,7 +17,7 @@ export async function DELETE(req, { params }) {
   }
 
   try {
-    // 3. Pobranie ID zalogowanego użytkownika (String CUID)
+    // 2. Pobranie ID zalogowanego użytkownika
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: { id: true },
@@ -31,29 +30,58 @@ export async function DELETE(req, { params }) {
       );
     }
 
-    // 4. Pobranie pomiaru w celu weryfikacji właściciela
-    const measurement = await prisma.measurement.findUnique({
-      where: { id }, // id to String
-      select: { userId: true },
+    // 3. Pobranie pomiaru w celu weryfikacji właściciela ORAZ sprawdzenia typu
+    const measurementToDelete = await prisma.measurement.findUnique({
+      where: { id },
+      select: { userId: true, type: true, value: true },
     });
 
-    if (!measurement) {
+    if (!measurementToDelete) {
       return NextResponse.json(
         { error: "Pomiar nie istnieje" },
         { status: 404 }
       );
     }
 
-    // 5. Sprawdzenie czy pomiar należy do użytkownika
-    if (measurement.userId !== user.id) {
+    // 4. Sprawdzenie czy pomiar należy do użytkownika
+    if (measurementToDelete.userId !== user.id) {
       return NextResponse.json({ error: "Brak uprawnień" }, { status: 403 });
     }
 
-    // 6. Usunięcie rekordu
+    // 5. Usunięcie rekordu
     await prisma.measurement.delete({
       where: { id },
     });
 
+    // 6. LOGIKA AKTUALIZACJI WAGI W HealthProfile
+    if (measurementToDelete.type === "WEIGHT") {
+      // A. Znajdź najnowszy pozostały pomiar wagi
+      const latestRemainingWeight = await prisma.measurement.findMany({
+        where: {
+          userId: user.id,
+          type: "WEIGHT",
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 1,
+      });
+
+      let newWeightValue = 0; // Ustaw 0 lub inną domyślną wartość, jeśli waga jest wymagana
+
+      if (latestRemainingWeight.length > 0) {
+        // B. Jeśli znaleziono, użyj jego wartości
+        newWeightValue = latestRemainingWeight[0].value;
+      }
+
+      // C. Zaktualizuj HealthProfile użytkownika
+      await prisma.healthProfile.update({
+        where: { userId: user.id },
+        data: { weight: newWeightValue },
+      });
+    }
+
+    // 7. Zwrócenie odpowiedzi
     return NextResponse.json({ message: "Pomiar usunięty" }, { status: 200 });
   } catch (error) {
     console.error("❌ Błąd podczas usuwania pomiaru:", error);

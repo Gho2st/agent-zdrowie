@@ -167,11 +167,13 @@ export default function Statistics() {
     };
   };
 
-  // --- PRZYGOTOWANIE DANYCH DO WYKRESU ---
+  // --- PRZYGOTOWANIE DANYCH DO WYKRESU I NORM (Adnotacji) ---
   const prepareChartData = (category, data) => {
     const labels = data.map((m) => new Date(m.createdAt));
     let datasets = [];
+    let annotations = {};
 
+    // 1. DANE (datasets)
     if (category === "ciśnienie") {
       datasets = [
         {
@@ -180,6 +182,7 @@ export default function Statistics() {
           borderColor: "#3b82f6",
           backgroundColor: "rgba(59, 130, 246, 0.1)",
           tension: 0.3,
+          pointRadius: 4,
         },
         {
           label: "Rozkurczowe",
@@ -187,6 +190,7 @@ export default function Statistics() {
           borderColor: "#ef4444",
           backgroundColor: "rgba(239, 68, 68, 0.1)",
           tension: 0.3,
+          pointRadius: 4,
         },
       ];
     } else {
@@ -205,18 +209,97 @@ export default function Statistics() {
           backgroundColor: color + "20", // przezroczystość
           fill: true,
           tension: 0.3,
+          pointRadius: 4,
         },
       ];
     }
-    return { labels, datasets };
+
+    // 2. NORMY (annotations) - Użycie stref tła (box) dla czytelności
+    const NORM_COLOR = "rgba(16, 185, 129, 0.1)"; // Jasnozielony dla strefy normy
+
+    if (norms) {
+      if (category === "ciśnienie" && norms.systolicMin && norms.systolicMax) {
+        // Strefa normy dla ciśnienia skurczowego (Górna linia)
+        annotations.systolicNormArea = {
+          type: "box",
+          yMin: norms.systolicMin,
+          yMax: norms.systolicMax,
+          backgroundColor: NORM_COLOR,
+          borderWidth: 0,
+          label: {
+            content: "Norma Skurczowe",
+            enabled: true,
+            position: "end",
+            backgroundColor: "rgba(16, 185, 129, 0.5)",
+            yAdjust: 10,
+          },
+        };
+
+        // Strefa normy dla ciśnienia rozkurczowego (Dolna linia)
+        if (norms.diastolicMin && norms.diastolicMax) {
+          annotations.diastolicNormArea = {
+            type: "box",
+            yMin: norms.diastolicMin,
+            yMax: norms.diastolicMax,
+            backgroundColor: NORM_COLOR,
+            borderWidth: 0,
+            label: {
+              content: "Norma Rozkurczowe",
+              enabled: true,
+              position: "start",
+              backgroundColor: "rgba(16, 185, 129, 0.5)",
+              yAdjust: -10,
+            },
+          };
+        }
+      } else if (
+        category === "cukier" &&
+        norms.glucoseFastingMin &&
+        norms.glucosePostMealMax
+      ) {
+        // Norma dla Cukru (jedna strefa)
+        annotations.glucoseNormArea = {
+          type: "box",
+          yMin: norms.glucoseFastingMin,
+          yMax: norms.glucosePostMealMax,
+          backgroundColor: NORM_COLOR,
+          borderWidth: 0,
+        };
+      } else if (category === "waga" && norms.weightMin && norms.weightMax) {
+        // Norma dla Wagi (jedna strefa)
+        annotations.weightNormArea = {
+          type: "box",
+          yMin: norms.weightMin,
+          yMax: norms.weightMax,
+          backgroundColor: NORM_COLOR,
+          borderWidth: 0,
+        };
+      } else if (category === "tętno" && norms.pulseMin && norms.pulseMax) {
+        // Norma dla Tętna (jedna strefa)
+        annotations.pulseNormArea = {
+          type: "box",
+          yMin: norms.pulseMin,
+          yMax: norms.pulseMax,
+          backgroundColor: NORM_COLOR,
+          borderWidth: 0,
+        };
+      }
+    }
+
+    return { labels, datasets, annotations };
   };
 
-  const chartOptions = {
+  // --- OPCJE WYKRESU Z OBSŁUGĄ ANNOTATIONS ---
+  const getChartOptions = (annotations) => ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
       tooltip: { mode: "index", intersect: false },
+      annotation: {
+        // Dodajemy konfigurację dla pluginu annotations
+        annotations: annotations,
+      },
     },
     scales: {
       x: {
@@ -227,8 +310,11 @@ export default function Statistics() {
         },
         grid: { display: false },
       },
+      y: {
+        beginAtZero: false,
+      },
     },
-  };
+  });
 
   if (measurements.length === 0) {
     return (
@@ -271,6 +357,9 @@ export default function Statistics() {
           const config = CONFIG[category];
 
           if (!stats) return null; // Ukryj, jeśli brak danych w tym okresie
+
+          // Pobierz dane i adnotacje
+          const chartData = prepareChartData(category, stats.dataForChart);
 
           return (
             <div
@@ -326,8 +415,8 @@ export default function Statistics() {
               {/* WYKRES */}
               <div className="grow min-h-[250px] bg-white/50 rounded-xl p-2 border border-white/20">
                 <Line
-                  data={prepareChartData(category, stats.dataForChart)}
-                  options={chartOptions}
+                  data={chartData}
+                  options={getChartOptions(chartData.annotations)}
                 />
               </div>
             </div>

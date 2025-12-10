@@ -105,16 +105,14 @@ export async function POST() {
     if (!session?.user?.email)
       return new Response("Unauthorized", { status: 401 });
 
-    // 1. POBRANIE DANYCH (Nowa struktura)
+    // 1. POBRANIE DANYCH
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
-        // Pomiary są podpięte bezpośrednio pod Usera (wg Twojej schemy)
         measurements: {
           take: 30,
           orderBy: { createdAt: "desc" },
         },
-        // Profil zdrowotny i normy są w relacji
         healthProfile: {
           include: {
             norms: true,

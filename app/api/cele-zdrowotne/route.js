@@ -11,12 +11,10 @@ export async function GET() {
   }
 
   try {
-    // 2. Pobranie Usera wraz z Normami (zagnieżdżone)
-    // Szukamy po emailu dla bezpieczeństwa
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: {
-        id: true, // Potrzebne do pobrania pomiarów
+        id: true,
         healthProfile: {
           select: {
             norms: {
@@ -44,9 +42,8 @@ export async function GET() {
     }
 
     // 3. Pobranie ostatnich pomiarów
-    // Pobieramy trochę więcej (20), żeby mieć pewność, że trafimy na każdy typ
     const lastMeasurements = await prisma.measurement.findMany({
-      where: { userId: user.id }, // user.id jest Stringiem (CUID)
+      where: { userId: user.id },
       orderBy: { createdAt: "desc" },
       take: 20,
     });

@@ -5,7 +5,6 @@ import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { buildPersonalizedContext } from "@/lib/ai-context";
 
-// Opcjonalnie: Ustawienie maksymalnego czasu trwania funkcji (dla Vercel)
 export const maxDuration = 30;
 
 export async function POST(req) {
@@ -15,19 +14,19 @@ export async function POST(req) {
 
   const { messages } = await req.json();
 
-  // 1. Pobranie danych z uwzględnieniem nowej, zagnieżdżonej struktury
+  // 1. Pobranie danych
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
     include: {
       measurements: {
-        take: 20, // Zwiększamy liczbę pomiarów dla lepszego kontekstu
+        take: 20,
         orderBy: { createdAt: "desc" },
       },
       dailyCheckins: {
         take: 10,
         orderBy: { date: "desc" },
       },
-      // ZMIANA: Pobieramy profil zdrowotny wraz z normami i chorobami
+      // profil zdrowotny wraz z normami i chorobami
       healthProfile: {
         include: {
           norms: true,
@@ -45,8 +44,6 @@ export async function POST(req) {
   }
 
   // 2. Przygotowanie danych dla buildPersonalizedContext
-  // Musimy "spłaszczyć" strukturę HealthProfile, aby helper (lib/ai-context)
-  // otrzymał dane w formacie, którego się spodziewa.
 
   const profile = user.healthProfile || {};
   const norms = profile.norms || {};
@@ -57,7 +54,7 @@ export async function POST(req) {
     : "Brak zdiagnozowanych chorób";
 
   // Tworzymy "Wirtualnego Usera" dla kontekstu AI
-  // Łączymy dane z tabeli User, HealthProfile i HealthNorms w jeden płaski obiekt
+  // Łączymy dane z tabeli User, HealthProfile i HealthNorms w jeden obiekt
   const contextData = {
     name: user.name,
     email: user.email,

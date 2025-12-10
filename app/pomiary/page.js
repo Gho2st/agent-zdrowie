@@ -164,19 +164,6 @@ export default function Pomiary() {
     })();
   }, [status]);
 
-  // Ustawianie domyślnych wartości dla cukru
-  useEffect(() => {
-    if (type !== "cukier") return;
-    if (value !== "") return;
-    if (glucoseTime === "przed posiłkiem") {
-      setValue("85");
-    } else if (glucoseTime === "po posiłku") {
-      setValue("110");
-    } else {
-      setValue("");
-    }
-  }, [glucoseTime, type, value]);
-
   // Aktualizacja jednostki przy zmianie typu
   useEffect(() => {
     setUnit(defaults[type]);
@@ -297,6 +284,7 @@ export default function Pomiary() {
         return;
       }
 
+      // Wyczyść wartość i kontekst po zapisaniu
       setValue("");
       setGlucoseContext("");
       setGlucoseTime("przed posiłkiem");
@@ -357,6 +345,7 @@ export default function Pomiary() {
               onChange={(e) => {
                 const t = e.target.value;
                 setType(t);
+                // Ustawienie pustej wartości przy zmianie typu, w tym na cukier
                 setValue("");
               }}
               className="w-full p-3 rounded-lg border bg-white/30 border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
@@ -561,27 +550,29 @@ export default function Pomiary() {
           </p>
         )}
 
-        <div className="mt-3 text-right">
-          <button
-            type="button"
-            className="px-3 py-1.5 text-sm rounded-md border cursor-pointer border-blue-300 text-blue-800 bg-white/60 hover:bg-blue-100 disabled:opacity-50"
-            onClick={() => {
-              if (!gptResponse || isLoading) {
-                toast.error(
-                  "Najpierw dodaj pomiar, aby otrzymać feedback i prosić o plan na dziś."
-                );
-                return;
-              }
-              append({
-                role: "user",
-                content: "Podpowiedz mi plan na dziś na podstawie tego wyniku.",
-              });
-            }}
-            disabled={isLoading}
-          >
-            Poproś o plan na dziś
-          </button>
-        </div>
+        {/* --- logika wyswietlania przycisku --- */}
+        {gptResponse && (
+          <div className="mt-3 text-right">
+            <button
+              type="button"
+              className="px-3 py-1.5 text-sm rounded-md border cursor-pointer border-blue-300 text-blue-800 bg-white/60 hover:bg-blue-100 disabled:opacity-50"
+              onClick={() => {
+                if (isLoading) {
+                  toast.error("Trwa generowanie odpowiedzi. Poczekaj chwilę.");
+                  return;
+                }
+                append({
+                  role: "user",
+                  content:
+                    "Podpowiedz mi plan na dziś na podstawie tego wyniku.",
+                });
+              }}
+              disabled={isLoading}
+            >
+              Poproś o plan na dziś
+            </button>
+          </div>
+        )}
       </section>
 
       <ListaPomiarow
@@ -592,6 +583,7 @@ export default function Pomiary() {
         confirmDeleteId={confirmDeleteId}
         setConfirmDeleteId={setConfirmDeleteId}
         confirmDelete={confirmDelete}
+        norms={norms}
       />
     </Container>
   );
