@@ -30,9 +30,7 @@ export default function TrendMiniWaga({ refreshKey }) {
   // Hook zamieni "waga" na "WEIGHT" i zwróci poprawne 'value'
   const { prepared } = useHealthChartData("waga", refreshKey);
 
-  if (!prepared || prepared.length === 0) return null;
 
-  // ZMIANA: Usunięto .slice().reverse() - dane są już posortowane chronologicznie przez hooka
 
   // Przygotowanie etykiet na podstawie dat
   const labels = prepared.map((m) => m.date.toISOString().slice(5, 10));

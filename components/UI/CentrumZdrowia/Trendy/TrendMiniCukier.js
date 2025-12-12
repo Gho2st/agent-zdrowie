@@ -30,7 +30,6 @@ export default function TrendMiniCukier({ refreshKey }) {
   // Przekazujemy "cukier", a zaktualizowany hook zamieni to na "GLUCOSE"
   const { prepared } = useHealthChartData("cukier", refreshKey);
 
-  if (!prepared || prepared.length === 0) return null;
 
   // Przygotowanie etykiet (data)
   const labels = prepared.map((m) => m.date.toISOString().slice(5, 10));

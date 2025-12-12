@@ -26,13 +26,9 @@ ChartJS.register(
 );
 
 export default function TrendMiniTetno({ refreshKey }) {
-  // Pobieranie danych tętna za pomocą zaktualizowanego hooka
-  // Hook sam zamieni "tętno" na "HEART_RATE" i zwróci poprawne 'value'
   const { prepared } = useHealthChartData("tętno", refreshKey);
 
-  if (!prepared || prepared.length === 0) return null;
 
-  // ZMIANA: Usunięto .slice().reverse(), ponieważ hook zwraca już dane chronologicznie
 
   // Przygotowanie etykiet (Daty)
   const labels = prepared.map((m) => m.date.toISOString().slice(5, 10));

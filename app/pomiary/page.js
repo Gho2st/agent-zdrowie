@@ -32,7 +32,7 @@ function isTextPart(p) {
   return p.type === "text" && typeof p.text === "string";
 }
 
-// Sprawdzanie norm dla pomiarów
+// Sprawdzanie norm
 function checkNorms(t, v, n, unit, timing) {
   if (!n) return { out: false };
   if (t === "cukier") {
@@ -90,9 +90,11 @@ export default function Pomiary() {
   const [filterType, setFilterType] = useState("all");
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Pola kontekstowe
   const [glucoseContext, setGlucoseContext] = useState("");
   const [glucoseTime, setGlucoseTime] = useState("przed posiłkiem");
   const [pressureNote, setPressureNote] = useState("");
+  const [pulseNote, setPulseNote] = useState(""); // Nowe pole dla tętna
 
   const [norms, setNorms] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -107,21 +109,20 @@ export default function Pomiary() {
     id: chatId,
   });
 
-  // Pobieranie porady od AI dla najnowszego pomiaru
+  // Pobieranie porady od AI
   const fetchAgentAdvice = async () => {
     try {
       await append({
         id: "feedback",
         role: "user",
         content:
-          "Oceń konkretnie ostatni pomiar — ten najnowszy pod względem daty i czasu. Uwzględnij ewentualne notatki pozostawione przez użytkownika. Jeśli ich nie ma, nie musisz nic o nich pisać. Nie musisz podawać dokładnej godziny, jeśli pomiar został dodany przed chwilą. Szerszą historię użytkownika analizuj tylko wtedy, gdy widzisz ku temu istotne powody.",
+          "Oceń konkretnie ostatni pomiar — ten najnowszy pod względem daty i czasu. Uwzględnij ewentualne notatki pozostawione przez użytkownika. Jeśli ich nie ma, nie musisz nic o nich pisać. Nie musisz podawać dokładnej godziny, jeśli pomiar został dodany przed chwilą. Szerszą historię analizuj tylko wtedy, gdy widzisz ku temu istotne powody.",
       });
     } catch (e) {
       console.error("AI advice error", e);
     }
   };
 
-  // Przetwarzanie odpowiedzi AI
   const gptResponse = useMemo(() => {
     const lastAssistant = [...messages]
       .reverse()
@@ -130,19 +131,16 @@ export default function Pomiary() {
     if (!c) return undefined;
 
     if (typeof c === "string") return c;
-
     if (Array.isArray(c)) {
-      const parts = c;
-      return parts
+      return c
         .filter(isTextPart)
         .map((p) => p.text)
         .join("\n");
     }
-
     return undefined;
   }, [messages]);
 
-  // Pobieranie danych pomiarów i norm użytkownika
+  // Pobieranie pomiarów i norm
   useEffect(() => {
     if (status !== "authenticated") return;
     (async () => {
@@ -155,7 +153,6 @@ export default function Pomiary() {
         const m = await mRes.json();
         const n = await nRes.json();
         if (Array.isArray(m)) setMeasurements(m);
-        else throw new Error("measurements-not-array");
         setNorms(n);
       } catch (e) {
         console.error(e);
@@ -183,7 +180,6 @@ export default function Pomiary() {
       if (!res.ok) throw new Error();
       toast.success("Pomiar został usunięty");
     } catch (error) {
-      console.error(error);
       setMeasurements(prev);
       toast.error("Błąd podczas usuwania pomiaru");
     } finally {
@@ -191,7 +187,7 @@ export default function Pomiary() {
     }
   };
 
-  // Obsługa wysyłania formularza z pomiarem
+  // Wysyłanie formularza
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (status !== "authenticated") {
@@ -239,12 +235,13 @@ export default function Pomiary() {
         }
       } else {
         const numeric = Number(String(value).replace(",", "."));
-        if (!Number.isFinite(numeric)) {
+        if (!Number.isFinite(numeric) || numeric < 0) {
           toast.error("Niepoprawna wartość");
           return;
         }
         body.amount = numeric;
 
+        // Wspólna logika dla cukru, wagi i tętna
         if (type === "cukier") {
           body.context = glucoseContext?.trim() || undefined;
           body.timing = glucoseTime;
@@ -264,6 +261,9 @@ export default function Pomiary() {
         }
 
         if (type === "tętno") {
+          // Dodajemy notatkę do tętna!
+          body.note = pulseNote?.trim() || undefined;
+
           const res = checkNorms(type, numeric, norms, unit);
           if (res.out) {
             isOutOfNorm = true;
@@ -284,12 +284,14 @@ export default function Pomiary() {
         return;
       }
 
-      // Wyczyść wartość i kontekst po zapisaniu
+      // Czyszczenie pól po sukcesie
       setValue("");
       setGlucoseContext("");
       setGlucoseTime("przed posiłkiem");
       setPressureNote("");
+      setPulseNote(""); // Czyszczenie notatki tętna
 
+      // Odświeżenie listy
       const refreshRes = await fetch("/api/measurement");
       if (refreshRes.ok) {
         setMeasurements(await refreshRes.json());
@@ -300,6 +302,9 @@ export default function Pomiary() {
       else toast.success("Pomyślnie dodano pomiar w normie!");
 
       fetchAgentAdvice();
+    } catch (err) {
+      console.error(err);
+      toast.error("Wystąpił błąd");
     } finally {
       setIsSubmitting(false);
     }
@@ -315,7 +320,6 @@ export default function Pomiary() {
 
   const glucoseTimings = ["przed posiłkiem", "po posiłku", "rano", "wieczorem"];
 
-  // Renderowanie formularza i komponentów trendów
   return (
     <Container>
       <Header text="Pomiary" />
@@ -332,6 +336,7 @@ export default function Pomiary() {
             (isSubmitting ? " opacity-80" : "")
           }
         >
+          {/* Typ pomiaru */}
           <div>
             <label
               htmlFor="type"
@@ -345,18 +350,18 @@ export default function Pomiary() {
               onChange={(e) => {
                 const t = e.target.value;
                 setType(t);
-                // Ustawienie pustej wartości przy zmianie typu, w tym na cukier
-                setValue("");
+                setValue(""); // Czyścimy wartość przy zmianie typu
               }}
               className="w-full p-3 rounded-lg border bg-white/30 border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
             >
-              <option value="ciśnienie">💓 Ciśnienie</option>
-              <option value="cukier">🍭 Cukier</option>
-              <option value="waga">⚖️ Waga</option>
-              <option value="tętno">❤️ Tętno</option>
+              <option value="ciśnienie">Ciśnienie</option>
+              <option value="cukier">Cukier</option>
+              <option value="waga">Waga</option>
+              <option value="tętno">Tętno</option>
             </select>
           </div>
 
+          {/* Wartość */}
           <div>
             <label
               htmlFor="value"
@@ -373,13 +378,6 @@ export default function Pomiary() {
                 onChange={(e) => setValue(e.target.value)}
                 required
                 placeholder="np. 120/80"
-                title="Podaj w formacie 120/80"
-                onInvalid={(e) =>
-                  e.currentTarget.setCustomValidity(
-                    "Podaj ciśnienie w formacie 120/80"
-                  )
-                }
-                onInput={(e) => e.currentTarget.setCustomValidity("")}
                 className="w-full p-3 rounded-lg border bg-white/30 border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
               />
             ) : (
@@ -391,7 +389,7 @@ export default function Pomiary() {
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 required
-                placeholder={type === "tętno" ? "np. 70" : "np. 72"}
+                placeholder={type === "tętno" ? "np. 72" : "np. 70"}
                 className="w-full p-3 rounded-lg border bg-white/30 border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
               />
             )}
@@ -404,28 +402,27 @@ export default function Pomiary() {
             </span>
           </div>
 
+          {/* Kontekst dla cukru */}
           {type === "cukier" && (
             <>
-              <label
-                htmlFor="glucoseContext"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Kontekst pomiaru{" "}
-                <span className="text-gray-400">(opcjonalne)</span>
-              </label>
-              <textarea
-                id="glucoseContext"
-                value={glucoseContext}
-                onChange={(e) => setGlucoseContext(e.target.value)}
-                rows={1}
-                placeholder="Co jadłeś przed pomiarem?"
-                onInput={(e) => {
-                  const el = e.currentTarget;
-                  el.style.height = "auto";
-                  el.style.height = el.scrollHeight + "px";
-                }}
-                className="w-full p-3 border bg-white/30 border-gray-300 rounded-lg resize-none overflow-hidden focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Kontekst pomiaru{" "}
+                  <span className="text-gray-400">(opcjonalne)</span>
+                </label>
+                <textarea
+                  value={glucoseContext}
+                  onChange={(e) => setGlucoseContext(e.target.value)}
+                  rows={1}
+                  placeholder="Co jadłeś przed pomiarem?"
+                  onInput={(e) => {
+                    const el = e.currentTarget;
+                    el.style.height = "auto";
+                    el.style.height = el.scrollHeight + "px";
+                  }}
+                  className="w-full p-3 border bg-white/30 border-gray-300 rounded-lg resize-none overflow-hidden focus:ring-2 focus:ring-green-500"
+                />
+              </div>
 
               <div>
                 <span className="block text-sm font-medium text-gray-700 mb-1">
@@ -452,26 +449,44 @@ export default function Pomiary() {
             </>
           )}
 
+          {/* Notatka dla ciśnienia */}
           {type === "ciśnienie" && (
             <div>
-              <label
-                htmlFor="pressureNote"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Notatka <span className="text-gray-400">(opcjonalne)</span>
               </label>
               <textarea
-                id="pressureNote"
                 value={pressureNote}
                 onChange={(e) => setPressureNote(e.target.value)}
                 rows={1}
-                placeholder="np. stres, wysiłek"
+                placeholder="np. stres, po kawie, wysiłek"
                 onInput={(e) => {
                   const el = e.currentTarget;
                   el.style.height = "auto";
                   el.style.height = el.scrollHeight + "px";
                 }}
-                className="w-full p-3 bg-white/30 border border-gray-300 rounded-lg resize-none overflow-hidden focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                className="w-full p-3 bg-white/30 border border-gray-300 rounded-lg resize-none overflow-hidden focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+          )}
+
+          {/* Nowa notatka dla tętna! */}
+          {type === "tętno" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Notatka <span className="text-gray-400">(opcjonalne)</span>
+              </label>
+              <textarea
+                value={pulseNote}
+                onChange={(e) => setPulseNote(e.target.value)}
+                rows={1}
+                placeholder="np. w spoczynku, po biegu, stres"
+                onInput={(e) => {
+                  const el = e.currentTarget;
+                  el.style.height = "auto";
+                  el.style.height = el.scrollHeight + "px";
+                }}
+                className="w-full p-3 bg-white/30 border border-gray-300 rounded-lg resize-none overflow-hidden focus:ring-2 focus:ring-green-500"
               />
             </div>
           )}
@@ -483,11 +498,7 @@ export default function Pomiary() {
           >
             {isSubmitting && (
               <span className="absolute inset-0 flex items-center justify-center">
-                <svg
-                  className="h-5 w-5 animate-spin"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
+                <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
                   <circle
                     cx="12"
                     cy="12"
@@ -505,6 +516,7 @@ export default function Pomiary() {
           </button>
         </form>
 
+        {/* Trendy */}
         <div className="space-y-6">
           <div className={type !== "ciśnienie" ? "hidden" : ""}>
             <TrendMiniCisnienie refreshKey={refreshKey} />
@@ -521,6 +533,7 @@ export default function Pomiary() {
         </div>
       </div>
 
+      {/* Feedback od Agenta */}
       <section
         className="mt-10 p-5 bg-white/30 border border-blue-200 rounded-lg shadow-md"
         aria-live="polite"
@@ -550,7 +563,6 @@ export default function Pomiary() {
           </p>
         )}
 
-        {/* --- logika wyswietlania przycisku --- */}
         {gptResponse && (
           <div className="mt-3 text-right">
             <button
@@ -558,7 +570,7 @@ export default function Pomiary() {
               className="px-3 py-1.5 text-sm rounded-md border cursor-pointer border-blue-300 text-blue-800 bg-white/60 hover:bg-blue-100 disabled:opacity-50"
               onClick={() => {
                 if (isLoading) {
-                  toast.error("Trwa generowanie odpowiedzi. Poczekaj chwilę.");
+                  toast.error("Trwa generowanie. Poczekaj.");
                   return;
                 }
                 append({

@@ -90,6 +90,11 @@ model HealthNorms {
 
   pulseMin Int
   pulseMax Int
+
+  maxHeartRate Int
+
+  targetHeartRateMin Int
+  targetHeartRateMax Int
 }
 
 // 5. Pomiary

@@ -15,6 +15,9 @@ const fieldLabels = {
   weightMax: "Waga (max)",
   pulseMin: "Puls (min)",
   pulseMax: "Puls (max)",
+  maxHeartRate: "Maksymalne tętno (HRmax)",
+  targetHeartRateMin: "Docelowe tętno – min (50–70%)",
+  targetHeartRateMax: "Docelowe tętno – max (70–85%)",
 };
 
 export default function Norms({ norms, handleChange }) {
