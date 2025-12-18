@@ -56,8 +56,14 @@ model HealthProfile {
   weight        Float
   activityLevel ActivityLevel
 
-  conditions  Condition[]
-  medications String?
+  hasDiabetes      Boolean     @default(false) // Cukrzyca
+  hasPrediabetes   Boolean     @default(false) // Stan przedcukrzycowy
+  hasHypertension  Boolean     @default(false) // Nadciśnienie
+  hasHeartDisease  Boolean     @default(false) // CVD (Choroby serca)
+  hasKidneyDisease Boolean     @default(false) // CKD (Choroby nerek)
+  // Pozostałe choroby (np. astma, alergie) nadal mogą być tutaj
+  conditions       Condition[]
+  medications      String?
 
   norms HealthNorms?
 }

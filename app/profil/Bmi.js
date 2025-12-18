@@ -1,143 +1,165 @@
 "use client";
 
+import { Info, AlertCircle, CheckCircle, AlertTriangle } from "lucide-react";
+
 export default function BMICompact({ bmi }) {
-  const minScale = 14;
+  if (bmi === undefined || bmi === null || isNaN(bmi)) return null;
+
+  const minScale = 15;
   const maxScale = 40;
 
   const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
   const bmiClamped = clamp(bmi, minScale, maxScale);
   const positionPct = ((bmiClamped - minScale) / (maxScale - minScale)) * 100;
 
+  // Definicje zakresów
   const ranges = [
-    { label: "Niedowaga", from: minScale, to: 18.5, bg: "bg-sky-300" },
-    { label: "Prawidłowe", from: 18.5, to: 25, bg: "bg-emerald-400" },
-    { label: "Nadwaga", from: 25, to: 30, bg: "bg-amber-400" },
-    { label: "Otyłość", from: 30, to: maxScale, bg: "bg-rose-500" },
+    {
+      label: "Niedowaga",
+      from: minScale,
+      to: 18.5,
+      color: "text-sky-600",
+      bg: "bg-sky-400",
+      lightBg: "bg-sky-50",
+      border: "border-sky-200",
+    },
+    {
+      label: "Prawidłowe",
+      from: 18.5,
+      to: 25,
+      color: "text-emerald-600",
+      bg: "bg-emerald-400",
+      lightBg: "bg-emerald-50",
+      border: "border-emerald-200",
+    },
+    {
+      label: "Nadwaga",
+      from: 25,
+      to: 30,
+      color: "text-amber-500",
+      bg: "bg-amber-400",
+      lightBg: "bg-amber-50",
+      border: "border-amber-200",
+    },
+    {
+      label: "Otyłość",
+      from: 30,
+      to: maxScale,
+      color: "text-rose-500",
+      bg: "bg-rose-500",
+      lightBg: "bg-rose-50",
+      border: "border-rose-200",
+    },
   ];
 
-  const category =
-    bmi < 18.5
-      ? "Niedowaga"
-      : bmi < 25
-      ? "Prawidłowe"
-      : bmi < 30
-      ? "Nadwaga"
-      : "Otyłość";
+  const currentRange =
+    ranges.find((r) => bmi < r.to) || ranges[ranges.length - 1];
 
-  const ticks = [minScale, 18.5, 25, 30, maxScale];
+  // Punkty graniczne na osi
+  const ticks = [18.5, 25, 30];
+
+  const getAdvice = () => {
+    if (bmi < 18.5)
+      return { icon: Info, text: "Niedowaga. Rozważ konsultację dietetyczną." };
+    if (bmi < 25)
+      return { icon: CheckCircle, text: "Waga w normie. Świetna robota!" };
+    if (bmi < 30)
+      return {
+        icon: AlertCircle,
+        text: "Nadwaga. Małe zmiany w diecie pomogą.",
+      };
+    return {
+      icon: AlertTriangle,
+      text: "Otyłość. Zalecana konsultacja z lekarzem.",
+    };
+  };
+
+  const advice = getAdvice();
+  const AdviceIcon = advice.icon;
 
   return (
-    <div className="bg-white/30 mt-6 w-full rounded-2xl border border-gray-200 shadow-2xl p-4 space-y-4">
-      <div className="flex items-center justify-between">
+    <div
+      className={`mt-4 w-full rounded-2xl border p-5 space-y-6 transition-all duration-500 ${currentRange.lightBg} ${currentRange.border}`}
+    >
+      {/* Nagłówek */}
+      <div className="flex items-end justify-between">
         <div>
-          <div className="text-sm text-gray-500">BMI (kg/m²)</div>
-          <div className="text-xl font-semibold">{category}</div>
+          <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-0.5">
+            Twoje BMI
+          </div>
+          <div
+            className={`text-xl font-black ${currentRange.color} transition-colors duration-500`}
+          >
+            {currentRange.label}
+          </div>
         </div>
-        <div className="text-2xl font-bold tracking-tight">
-          {bmi.toFixed(1)}
+        <div className="flex items-baseline gap-1">
+          <span
+            className={`text-3xl font-black ${currentRange.color} transition-colors duration-500`}
+          >
+            {bmi.toFixed(1)}
+          </span>
+          <span className="text-sm text-gray-400 font-medium">kg/m²</span>
         </div>
       </div>
 
-      {/* Skala: podpisy NAD markerem */}
-      <div className="space-y-2">
-        <div className="relative">
-          <div className="absolute inset-x-0 -top-4 flex justify-between text-[10px] text-gray-500">
-            {ticks.map((t, i) => (
-              <span key={i} className={i === 0 ? "" : "-translate-x-1/2"}>
-                {t}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Pasek stref */}
-        <div className="flex w-full h-4 rounded-xl overflow-hidden ring-1 ring-black/5 mt-4">
+      {/* Wykres Paskowy */}
+      <div className="relative pb-6">
+        {/* Tło paska */}
+        <div className="flex w-full h-4 rounded-full overflow-hidden shadow-inner bg-gray-200 relative z-0">
           {ranges.map((r) => (
             <div
               key={r.label}
-              className={`${r.bg} h-full`}
+              className={`${r.bg} h-full relative first:rounded-l-full last:rounded-r-full`}
               style={{
                 width: `${((r.to - r.from) / (maxScale - minScale)) * 100}%`,
               }}
-              aria-label={`${r.label} ${r.from}–${r.to}`}
-              title={`${r.label} ${r.from}–${r.to}`}
             />
           ))}
         </div>
 
-        {/* Marker */}
-        <div className="relative h-6">
-          <div
-            className="absolute -top-2"
-            style={{ left: `calc(${positionPct}% - 8px)` }}
-          >
-            <div className="w-0 h-0 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-gray-700" />
-            <div className="text-[11px] text-gray-700 text-center font-medium">
-              {bmi.toFixed(1)}
+        {/* Liczby na osi (Ticks) */}
+        {ticks.map((t) => {
+          const leftPos = ((t - minScale) / (maxScale - minScale)) * 100;
+          return (
+            <div
+              key={t}
+              className="absolute top-4 flex flex-col items-center -translate-x-1/2"
+              style={{ left: `${leftPos}%` }}
+            >
+              <div className="h-1.5 w-px bg-gray-300 mb-0.5"></div>
+              <span className="text-[10px] font-bold text-gray-400">{t}</span>
             </div>
+          );
+        })}
+
+        {/* Marker (Pin) */}
+        <div
+          className="absolute top-[-6px] -translate-x-1/2 transition-all duration-700 ease-out z-20 drop-shadow-md"
+          style={{ left: `${positionPct}%` }}
+        >
+          <div
+            className={`
+              w-7 h-7 rounded-full border-[3px] border-white 
+              ${currentRange.bg} flex items-center justify-center
+            `}
+          >
+            <div className="w-2 h-2 bg-white rounded-full" />
           </div>
         </div>
       </div>
 
-      {/* Legenda kolorów */}
-      <div className="flex flex-wrap items-center gap-3 text-xs text-gray-700">
-        {ranges.map((r) => (
-          <div key={r.label} className="flex items-center gap-1.5">
-            <span
-              className={`inline-block w-3 h-3 rounded ${r.bg} ring-1 ring-black/10`}
-            />
-            <span>{r.label}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Alert */}
+      {/* Alert / Porada */}
       <div
-        className={`p-3 rounded-xl text-sm flex gap-2 ${
-          bmi < 18.5
-            ? "bg-sky-50 text-sky-700"
-            : bmi < 25
-            ? "bg-emerald-50 text-emerald-700"
-            : bmi < 30
-            ? "bg-amber-50 text-amber-700"
-            : "bg-rose-50 text-rose-700"
-        }`}
+        className={`flex gap-3 items-center p-3 rounded-xl bg-white/70 border ${currentRange.border} shadow-sm backdrop-blur-sm`}
       >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          className="mt-0.5"
-          aria-hidden
+        <div
+          className={`p-2 rounded-full bg-white shrink-0 ${currentRange.color} shadow-sm`}
         >
-          <path
-            d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0zM12 9v5"
-            stroke="currentColor"
-            strokeWidth="2"
-            fill="none"
-            strokeLinecap="round"
-          />
-          <circle cx="12" cy="17" r="1" fill="currentColor" />
-        </svg>
-        <p className="leading-snug">
-          {bmi < 18.5 && (
-            <>Rozważ zwiększenie podaży kalorii i konsultację z dietetykiem.</>
-          )}
-          {bmi >= 18.5 && bmi < 25 && (
-            <>Dobra robota! Utrzymuj aktywność i zbilansowaną dietę.</>
-          )}
-          {bmi >= 25 && bmi < 30 && (
-            <>
-              Delikatnie powyżej normy – małe zmiany w ruchu i diecie mogą
-              pomóc.
-            </>
-          )}
-          {bmi >= 30 && (
-            <>
-              Zwiększone ryzyko zdrowotne – przyda się plan żywieniowy i
-              konsultacja specjalistyczna.
-            </>
-          )}
+          <AdviceIcon className="w-5 h-5" />
+        </div>
+        <p className="text-xs text-gray-700 leading-snug font-medium">
+          {advice.text}
         </p>
       </div>
     </div>

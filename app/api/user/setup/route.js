@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { getHealthNorms } from "@/lib/norms"; // Upewnij się, że ta funkcja zwraca obiekt pasujący do modelu HealthNorms!
+import { getHealthNorms } from "@/lib/norms";
 
 // Funkcja pomocnicza do obliczania wieku
 function calculateAge(birthdate) {
@@ -17,22 +17,17 @@ function calculateAge(birthdate) {
 
 // Mapowanie wartości z Frontendu na Enumy Prisma
 const GENDER_MAP = {
-  M: "MALE",
-  K: "FEMALE",
   MALE: "MALE",
   FEMALE: "FEMALE",
 };
 
 const ACTIVITY_MAP = {
-  niski: "LOW",
-  umiarkowany: "MODERATE",
-  wysoki: "HIGH",
   LOW: "LOW",
   MODERATE: "MODERATE",
   HIGH: "HIGH",
 };
 
-export async function PATCH(req) {
+export async function POST(req) {
   try {
     const session = await auth();
     if (!session?.user?.email) {
@@ -43,8 +38,19 @@ export async function PATCH(req) {
     }
 
     const body = await req.json();
-    const { birthdate, gender, height, weight, activityLevel, conditions } =
-      body;
+
+    const {
+      birthdate,
+      gender,
+      height,
+      weight,
+      activityLevel,
+      hasDiabetes,
+      hasPrediabetes,
+      hasHypertension,
+      hasHeartDisease,
+      hasKidneyDisease,
+    } = body;
 
     // --- WALIDACJA ---
 
@@ -55,7 +61,6 @@ export async function PATCH(req) {
       );
     }
 
-    // Sprawdzamy czy płeć jest w mapie (obsługuje M/K oraz MALE/FEMALE)
     const dbGender = GENDER_MAP[gender];
     if (!dbGender) {
       return NextResponse.json(
@@ -78,7 +83,6 @@ export async function PATCH(req) {
       );
     }
 
-    // Sprawdzamy poziom aktywności
     const dbActivity = ACTIVITY_MAP[activityLevel];
     if (!dbActivity) {
       return NextResponse.json(
@@ -87,38 +91,27 @@ export async function PATCH(req) {
       );
     }
 
-    // Parsowanie chorób (zakładamy string po przecinku lub tablicę)
-    let conditionsArray = [];
-    if (typeof conditions === "string") {
-      conditionsArray = conditions
-        .split(",")
-        .map((c) => c.trim())
-        .filter(Boolean);
-    } else if (Array.isArray(conditions)) {
-      conditionsArray = conditions.map((c) => c.trim()).filter(Boolean);
-    }
-
-    // --- LOGIKA BIZNESOWA ---
-
     const age = calculateAge(birthdate);
 
-    // Obliczenie norm.
-    // UWAGA: Upewnij się, że getHealthNorms zwraca obiekt z kluczami takimi jak w modelu HealthNorms
-    // (np. systolicMax, bmi, glucoseFastingMax itd.)
+    // Obliczamy normy na podstawie danych użytkownika
     const normsData = getHealthNorms(
       age,
-      dbGender, // Przekazujemy MALE/FEMALE
+      dbGender,
       height,
       weight,
-      dbActivity, // Przekazujemy LOW/MODERATE/HIGH
-      conditionsArray
+      dbActivity,
+      hasDiabetes,
+      hasHypertension,
+      hasHeartDisease,
+      hasKidneyDisease,
+      hasPrediabetes
     );
 
     if (normsData.error) {
       return NextResponse.json({ error: normsData.error }, { status: 400 });
     }
 
-    // Pobieramy ID użytkownika na podstawie maila (niezbędne do relacji)
+    // Szukamy ID użytkownika na podstawie maila z sesji
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: { id: true },
@@ -126,63 +119,50 @@ export async function PATCH(req) {
 
     if (!user) {
       return NextResponse.json(
-        { error: "Użytkownik nie istnieje" },
+        { error: "Użytkownik nie istnieje w bazie danych" },
         { status: 404 }
       );
     }
 
-    // --- ZAPIS DO BAZY (Transakcja implicite przez zagnieżdżone pisanie) ---
+    // --- ZAPIS DO BAZY (TYLKO TWORZENIE) ---
 
-    // Używamy upsert na HealthProfile
-    // To utworzy profil jeśli nie istnieje, lub zaktualizuje jeśli istnieje.
-    await prisma.healthProfile.upsert({
-      where: { userId: user.id },
-      create: {
+    await prisma.healthProfile.create({
+      data: {
         userId: user.id,
         birthdate: new Date(birthdate),
         gender: dbGender,
         height: Number(height),
         weight: Number(weight),
         activityLevel: dbActivity,
-        // Tworzenie relacji z chorobami
-        conditions: {
-          connectOrCreate: conditionsArray.map((name) => ({
-            where: { name: name },
-            create: { name: name },
-          })),
-        },
-        // Tworzenie powiązanych norm
+
+        // Flagi zdrowotne
+        hasDiabetes: Boolean(hasDiabetes),
+        hasPrediabetes: Boolean(hasPrediabetes),
+        hasHypertension: Boolean(hasHypertension),
+        hasHeartDisease: Boolean(hasHeartDisease),
+        hasKidneyDisease: Boolean(hasKidneyDisease),
+
+        // Tworzenie rekordu w powiązanej tabeli Norms
         norms: {
           create: normsData,
         },
       },
-      update: {
-        birthdate: new Date(birthdate),
-        gender: dbGender,
-        height: Number(height),
-        weight: Number(weight),
-        activityLevel: dbActivity,
-        // Aktualizacja chorób: czyścimy stare (set: []) i dodajemy aktualne
-        conditions: {
-          set: [],
-          connectOrCreate: conditionsArray.map((name) => ({
-            where: { name: name },
-            create: { name: name },
-          })),
-        },
-        // Aktualizacja norm
-        norms: {
-          upsert: {
-            create: normsData,
-            update: normsData,
-          },
-        },
-      },
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json(
+      { success: true, message: "Profil stworzony pomyślnie" },
+      { status: 201 }
+    );
   } catch (error) {
-    console.error("Błąd aktualizacji profilu:", error);
+    // Obsługa błędu unikalności (jeśli użytkownik już ma profil)
+    if (error.code === "P2002") {
+      return NextResponse.json(
+        { error: "Profil zdrowia dla tego konta już istnieje." },
+        { status: 409 }
+      );
+    }
+
+    console.error("Błąd podczas tworzenia profilu:", error);
     return NextResponse.json(
       { error: "Wewnętrzny błąd serwera" },
       { status: 500 }

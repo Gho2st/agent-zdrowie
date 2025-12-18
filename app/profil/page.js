@@ -22,12 +22,29 @@ export default function Profil() {
     height: 0,
     weight: 0,
     medications: "",
-    conditions: "", // Ciąg z bazy
+    conditions: "",
     activityLevel: "",
-    pregnancy: false,
+    hasDiabetes: false,
+    hasPrediabetes: false,
+    hasHypertension: false,
+    hasHeartDisease: false,
+    hasKidneyDisease: false,
   });
 
-  // Konwersja norms.conditions (ciąg) na tablicę dla MedicationsAndConditions
+  // --- NOWOŚĆ: Funkcja do aktualizacji stanu danymi z API ---
+  const handleDataUpdate = (newData) => {
+    setNorms((prev) => ({
+      ...prev,
+      ...newData, // Nadpisujemy stare wartości nowymi z backendu (w tym przeliczone normy)
+      // Zabezpieczenie formatowania conditions
+      conditions: Array.isArray(newData.conditions)
+        ? newData.conditions.join(",")
+        : newData.conditions ?? prev.conditions,
+    }));
+  };
+  // ---------------------------------------------------------
+
+  // Konwersja danych dla komponentu MedicationsAndConditions
   const medicationNorms = {
     medications: norms.medications,
     conditions: norms.conditions
@@ -35,19 +52,43 @@ export default function Profil() {
       : [],
     activityLevel: norms.activityLevel,
     pregnancy: norms.pregnancy,
+    hasDiabetes: norms.hasDiabetes,
+    hasPrediabetes: norms.hasPrediabetes,
+    hasHypertension: norms.hasHypertension,
+    hasHeartDisease: norms.hasHeartDisease,
+    hasKidneyDisease: norms.hasKidneyDisease,
   };
 
-  // Dostosowanie setNorms dla MedicationsAndConditions, aby aktualizować norms
   const setMedicationNorms = (action) => {
     setNorms((prev) => {
+      const currentMedNorms = {
+        medications: prev.medications,
+        conditions: prev.conditions
+          ? prev.conditions.split(",").filter(Boolean)
+          : [],
+        activityLevel: prev.activityLevel,
+        hasDiabetes: prev.hasDiabetes,
+        hasPrediabetes: prev.hasPrediabetes,
+        hasHypertension: prev.hasHypertension,
+        hasHeartDisease: prev.hasHeartDisease,
+        hasKidneyDisease: prev.hasKidneyDisease,
+      };
+
       const result =
-        typeof action === "function" ? action(medicationNorms) : action;
+        typeof action === "function" ? action(currentMedNorms) : action;
+
       return {
         ...prev,
         medications: result.medications ?? "",
-        conditions: result.conditions.join(","), // Konwersja z powrotem na ciąg
+        conditions: Array.isArray(result.conditions)
+          ? result.conditions.join(",")
+          : "",
         activityLevel: result.activityLevel ?? "",
-        pregnancy: result.pregnancy ?? false,
+        hasDiabetes: result.hasDiabetes ?? false,
+        hasPrediabetes: result.hasPrediabetes ?? false,
+        hasHypertension: result.hasHypertension ?? false,
+        hasHeartDisease: result.hasHeartDisease ?? false,
+        hasKidneyDisease: result.hasKidneyDisease ?? false,
       };
     });
   };
@@ -57,11 +98,9 @@ export default function Profil() {
       const res = await fetch("/api/user/norms");
       if (res.ok) {
         const data = await res.json();
-        // Wypełnianie stanu norms danymi z serwera
         setNorms((prev) => ({
           ...prev,
           ...data,
-          // Upewnienie się, że conditions jest traktowane jako ciąg z bazy
           conditions: data.conditions ?? "",
         }));
       } else {
@@ -73,11 +112,10 @@ export default function Profil() {
     if (session) {
       fetchUserNorms();
     }
-  }, [session]); // Zależność od sesji, aby pobrać dane po zalogowaniu
+  }, [session]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // Sprawdzanie, czy pole jest numeryczne i konwersja, jeśli to konieczne
     const isNumericField = [
       "height",
       "weight",
@@ -98,8 +136,6 @@ export default function Profil() {
 
     let finalValue = value;
     if (isNumericField) {
-      // Używamy parseFloat dla wag, wzrostu i norm, które mogą mieć wartości dziesiętne,
-      // ale jeśli jest to pusty string, ustawiamy null lub pusty string, aby móc go zapisać jako null w DB
       finalValue = value === "" ? "" : parseFloat(value);
       if (isNaN(finalValue)) finalValue = "";
     }
@@ -118,7 +154,7 @@ export default function Profil() {
     });
     if (res.ok) {
       const updatedData = await res.json();
-      setNorms((prev) => ({ ...prev, ...updatedData }));
+      handleDataUpdate(updatedData); // Używamy nowej funkcji
       toast.success("Zaktualizowano wzrost");
       setEditingHeight(false);
     } else {
@@ -134,7 +170,7 @@ export default function Profil() {
     });
     if (res.ok) {
       const updatedData = await res.json();
-      setNorms((prev) => ({ ...prev, ...updatedData }));
+      handleDataUpdate(updatedData); // Używamy nowej funkcji
       toast.success("Zaktualizowano wagę");
       setEditingWeight(false);
     } else {
@@ -153,7 +189,6 @@ export default function Profil() {
     );
   }
 
-  // Przygotowanie danych numerycznych dla komponentu Norms
   const numericNorms = Object.fromEntries(
     Object.entries(norms).filter(
       ([, val]) => typeof val === "number" || val === null || val === ""
@@ -187,30 +222,34 @@ export default function Profil() {
       </div>
 
       <div className="grid sm:grid-cols-2 gap-8 mt-10">
-        <div className="bg-white/30 backdrop-blur-lg border border-white/20 p-6 shadow-lg rounded-2xl">
-          <Age
-            norms={{
-              birthdate: norms.birthdate,
-              height: norms.height,
-              weight: norms.weight,
-              bmi: norms.bmi,
-            }}
-            saveHeight={saveHeight}
-            saveWeight={saveWeight}
-            editingWeight={editingWeight}
-            setEditingWeight={setEditingWeight}
-            editingHeight={editingHeight}
-            setEditingHeight={setEditingHeight}
-          />
-        </div>
+        <Age
+          norms={{
+            birthdate: norms.birthdate,
+            height: norms.height,
+            weight: norms.weight,
+            bmi: norms.bmi,
+          }}
+          saveHeight={saveHeight}
+          saveWeight={saveWeight}
+          editingWeight={editingWeight}
+          setEditingWeight={setEditingWeight}
+          editingHeight={editingHeight}
+          setEditingHeight={setEditingHeight}
+        />
 
+        {/* PRZEKAZUJEMY onUpdate DO DZIECKA */}
         <MedicationsAndConditions
           norms={medicationNorms}
           setNorms={setMedicationNorms}
-          gender={norms.gender}
+          onUpdate={handleDataUpdate}
         />
 
-        <Norms norms={numericNorms} handleChange={handleChange} />
+        {/* PRZEKAZUJEMY onUpdate DO DZIECKA */}
+        <Norms
+          norms={numericNorms}
+          handleChange={handleChange}
+          onUpdate={handleDataUpdate}
+        />
       </div>
     </Container>
   );
