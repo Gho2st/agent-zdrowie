@@ -48,7 +48,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 py-4 h-[calc(100vh-80px)] md:h-[85vh]">
+    <div className="w-full max-w-5xl mx-auto  h-[calc(100vh-80px)] md:h-[85vh]">
       {/* GŁÓWNY KONTENER - FLEXBOX ZABLOKOWANY NA WYSOKOŚĆ */}
       <div className="flex flex-col h-full bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden">
         {/* 1. HEADER (Stały) */}

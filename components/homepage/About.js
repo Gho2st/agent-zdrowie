@@ -55,7 +55,7 @@ export default function About() {
   ];
 
   return (
-    <section className="mt-24 py-10 px-4 overflow-hidden relative">
+    <section className="pb-10 px-4 overflow-hidden relative">
       {/* Tło dekoracyjne */}
       <div className="absolute top-0 right-0 -z-10 w-[600px] h-[600px] bg-emerald-50/50 rounded-full blur-3xl opacity-60 translate-x-1/3 -translate-y-1/4" />
 

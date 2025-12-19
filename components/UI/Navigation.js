@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
-import RaportDownloadButton from "./RaportDownloadButton";
+
 import {
   Menu,
   X,
@@ -16,7 +16,6 @@ import {
   Activity,
   BarChart2,
   LogOut,
-  FileText,
   LogIn,
 } from "lucide-react";
 
@@ -62,7 +61,7 @@ export default function Navigation() {
 
       {/* SIDEBAR */}
       <aside
-        className={`fixed top-0 left-0 h-screen w-72 bg-white border-r border-gray-100 z-50 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none ${
+        className={`fixed top-0 left-0 h-screen w-64 2xl:w-72 bg-white border-r border-gray-100 z-50 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none ${
           open ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0 md:static md:flex`}
       >
@@ -126,24 +125,6 @@ export default function Navigation() {
             );
           })}
         </nav>
-
-        {/* 3. RAPORT */}
-        <div className="px-4 mb-4">
-          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl p-4 text-center">
-            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-emerald-600">
-              <FileText className="w-5 h-5" />
-            </div>
-            <h4 className="font-bold text-gray-800 text-sm mb-1">
-              Twój Raport
-            </h4>
-            <p className="text-xs text-gray-500 mb-3 leading-snug">
-              Pobierz podsumowanie PDF.
-            </p>
-            <div className="[&>button]:w-full [&>button]:py-2 [&>button]:text-xs">
-              <RaportDownloadButton />
-            </div>
-          </div>
-        </div>
 
         {/* 4. USER PROFIL */}
         <div className="p-4 border-t border-gray-100">

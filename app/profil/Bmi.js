@@ -99,7 +99,6 @@ export default function BMICompact({ bmi }) {
           >
             {bmi.toFixed(1)}
           </span>
-          <span className="text-sm text-gray-400 font-medium">kg/m²</span>
         </div>
       </div>
 
