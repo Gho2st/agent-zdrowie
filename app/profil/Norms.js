@@ -2,7 +2,7 @@
 
 import toast from "react-hot-toast";
 import { useState, useEffect, useRef } from "react";
-import { Edit2, Save, X, Loader2, CheckCircle } from "lucide-react";
+import { Edit2, Save, Loader2, CheckCircle } from "lucide-react";
 
 const fieldLabels = {
   systolicMin: "Ciśnienie skurczowe (min)",
@@ -63,7 +63,7 @@ export default function Norms({ norms, handleChange, onUpdate }) {
       } else {
         toast.error("Wystąpił błąd podczas zapisywania");
       }
-    } catch (e) {
+    } catch {
       toast.error("Błąd połączenia");
     } finally {
       setIsSaving(false);

@@ -159,7 +159,7 @@ export default function MedicationsAndConditions({
       } else {
         throw new Error();
       }
-    } catch (error) {
+    } catch {
       toast.error("Wystąpił błąd podczas zapisu.");
     } finally {
       toast.dismiss(loadingToast);

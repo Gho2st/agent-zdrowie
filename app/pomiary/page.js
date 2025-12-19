@@ -179,7 +179,7 @@ export default function Pomiary() {
       });
       if (!res.ok) throw new Error();
       toast.success("Pomiar został usunięty");
-    } catch (error) {
+    } catch {
       setMeasurements(prev);
       toast.error("Błąd podczas usuwania pomiaru");
     } finally {
