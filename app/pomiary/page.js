@@ -94,7 +94,7 @@ export default function Pomiary() {
   const [glucoseContext, setGlucoseContext] = useState("");
   const [glucoseTime, setGlucoseTime] = useState("przed posiłkiem");
   const [pressureNote, setPressureNote] = useState("");
-  const [pulseNote, setPulseNote] = useState(""); // Nowe pole dla tętna
+  const [pulseNote, setPulseNote] = useState("");
 
   const [norms, setNorms] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -241,7 +241,6 @@ export default function Pomiary() {
         }
         body.amount = numeric;
 
-        // Wspólna logika dla cukru, wagi i tętna
         if (type === "cukier") {
           body.context = glucoseContext?.trim() || undefined;
           body.timing = glucoseTime;
@@ -261,7 +260,6 @@ export default function Pomiary() {
         }
 
         if (type === "tętno") {
-          // Dodajemy notatkę do tętna!
           body.note = pulseNote?.trim() || undefined;
 
           const res = checkNorms(type, numeric, norms, unit);
@@ -284,12 +282,11 @@ export default function Pomiary() {
         return;
       }
 
-      // Czyszczenie pól po sukcesie
       setValue("");
       setGlucoseContext("");
       setGlucoseTime("przed posiłkiem");
       setPressureNote("");
-      setPulseNote(""); // Czyszczenie notatki tętna
+      setPulseNote("");
 
       // Odświeżenie listy
       const refreshRes = await fetch("/api/measurement");
@@ -350,7 +347,7 @@ export default function Pomiary() {
               onChange={(e) => {
                 const t = e.target.value;
                 setType(t);
-                setValue(""); // Czyścimy wartość przy zmianie typu
+                setValue("");
               }}
               className="w-full p-3 rounded-lg border bg-white/30 border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
             >
@@ -402,7 +399,6 @@ export default function Pomiary() {
             </span>
           </div>
 
-          {/* Kontekst dla cukru */}
           {type === "cukier" && (
             <>
               <div>
@@ -449,7 +445,6 @@ export default function Pomiary() {
             </>
           )}
 
-          {/* Notatka dla ciśnienia */}
           {type === "ciśnienie" && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -470,7 +465,6 @@ export default function Pomiary() {
             </div>
           )}
 
-          {/* Nowa notatka dla tętna! */}
           {type === "tętno" && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">

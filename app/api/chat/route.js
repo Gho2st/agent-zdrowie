@@ -14,7 +14,7 @@ export async function POST(req) {
 
   const { messages } = await req.json();
 
-  // 1. Pobranie danych
+  // 1. Pobranie danych użytkownika
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
     include: {
@@ -26,7 +26,6 @@ export async function POST(req) {
         take: 10,
         orderBy: { date: "desc" },
       },
-      // profil zdrowotny wraz z normami i chorobami
       healthProfile: {
         include: {
           norms: true,
@@ -43,56 +42,81 @@ export async function POST(req) {
     );
   }
 
-  // 2. Przygotowanie danych dla buildPersonalizedContext
-
+  // 2. Przygotowanie spłaszczonego obiektu dla buildPersonalizedContext
   const profile = user.healthProfile || {};
   const norms = profile.norms || {};
 
-  // Konwersja tablicy obiektów [{name: "cukrzyca"}] na string "cukrzyca"
-  const conditionsString = profile.conditions
-    ? profile.conditions.map((c) => c.name).join(", ")
-    : "Brak zdiagnozowanych chorób";
+  // Główne choroby z flag boolean
+  const mainConditions = [];
+  if (profile.hasDiabetes) mainConditions.push("cukrzyca");
+  if (profile.hasPrediabetes) mainConditions.push("stan przedcukrzycowy");
+  if (profile.hasHypertension) mainConditions.push("nadciśnienie tętnicze");
+  if (profile.hasHeartDisease)
+    mainConditions.push("choroby sercowo-naczyniowe");
+  if (profile.hasKidneyDisease) mainConditions.push("przewlekła choroba nerek");
 
-  // Tworzymy "Wirtualnego Usera" dla kontekstu AI
-  // Łączymy dane z tabeli User, HealthProfile i HealthNorms w jeden obiekt
+  // Dodatkowe choroby z relacji conditions
+  const additionalConditions = profile.conditions
+    ? profile.conditions.map((c) => c.name).join(", ")
+    : "";
+
+  // Łączymy wszystko
+  const allConditionsArray = [...mainConditions];
+  if (additionalConditions) {
+    allConditionsArray.push(additionalConditions);
+  }
+
+  const conditionsString =
+    allConditionsArray.length > 0
+      ? allConditionsArray.join(", ")
+      : "Brak zdiagnozowanych chorób";
+
+  // Spłaszczony obiekt przekazywany do buildPersonalizedContext
   const contextData = {
     name: user.name,
     email: user.email,
-    measurements: user.measurements,
-    dailyCheckins: user.dailyCheckins,
+    measurements: user.measurements || [],
+    dailyCheckins: user.dailyCheckins || [],
 
-    // Dane z HealthProfile
+    // Podstawowe dane
     birthdate: profile.birthdate,
-    gender: profile.gender, // Enum: MALE / FEMALE
+    gender: profile.gender,
     height: profile.height,
     weight: profile.weight,
     activityLevel: profile.activityLevel,
     medications: profile.medications,
 
-    // Spłaszczone choroby
+    // Kluczowe flagi boolean – niezbędne dla precyzyjnej logiki AI
+    hasDiabetes: profile.hasDiabetes ?? false,
+    hasPrediabetes: profile.hasPrediabetes ?? false,
+    hasHypertension: profile.hasHypertension ?? false,
+    hasHeartDisease: profile.hasHeartDisease ?? false,
+    hasKidneyDisease: profile.hasKidneyDisease ?? false,
+
+    // Czytelny opis chorób (do wyświetlenia w kontekście)
     conditions: conditionsString,
 
-    // Normy (rozpakowujemy je, aby były dostępne jako np. user.systolicMax)
+    // Rozpakowane normy zdrowotne
     ...norms,
   };
 
-  // 3. Budowanie kontekstu
+  // 3. Budowanie kontekstu (używa nowej wersji funkcji)
   const context = buildPersonalizedContext(contextData);
 
-  // 4. Prompt Systemowy
+  // 4. System prompt
   const systemPrompt = `
-Jesteś Agent Zdrowie – empatycznym asystentem zdrowia opartym na GPT-4o.
-• Udzielasz wyłącznie porad edukacyjnych i profilaktycznych.
-• Nigdy nie stawiasz diagnozy medycznej.
-• Przy objawach alarmowych (ból w klatce piersiowej, duszność, nagły silny ból głowy, glukoza >300 mg/dL) – natychmiast zalecaj kontakt z 112.
-• Zawsze odwołuj się do indywidualnych norm pacjenta podanych poniżej (jeśli są dostępne).
-• Analizując pomiary, bierz pod uwagę jednostki i trendy.
-• Płeć pacjenta (z bazy): ${
+Jesteś Agent Zdrowie – empatycznym, profesjonalnym asystentem zdrowia opartym na GPT-4o.
+• Udzielasz wyłącznie porad edukacyjnych, profilaktycznych i ogólnych zaleceń prozdrowotnych.
+• Nigdy nie stawiasz diagnozy medycznej ani nie sugerujesz zmiany leczenia bez konsultacji z lekarzem.
+• W stanach alarmowych (np. ból w klatce, duszność, glukoza >300 mg/dL lub <50 mg/dL, nagły silny ból głowy) – natychmiast zalecaj wezwanie pogotowia (112).
+• Zawsze odwołuj się do indywidualnych norm pacjenta z sekcji "Normy" poniżej.
+• Bierz pod uwagę kontekst kliniczny (cukrzyca, nadciśnienie itp.) przy analizie pomiarów.
+• Płeć pacjenta: ${
     profile.gender === "MALE"
-      ? "Mężczyzna"
+      ? "mężczyzna"
       : profile.gender === "FEMALE"
-      ? "Kobieta"
-      : "Nie podano"
+      ? "kobieta"
+      : "nie podano"
   }.
 
 AKTUALNY KONTEKST PACJENTA:
