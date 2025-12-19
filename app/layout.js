@@ -43,11 +43,8 @@ export default function RootLayout({ children }) {
             >
               {children}
               <Toaster position="top-right" reverseOrder={false} />
+              <Footer />
             </main>
-          </div>
-
-          <div className="ml-0 md:ml-64 2xl:ml-72">
-            <Footer />
           </div>
         </SessionProvider>
       </body>

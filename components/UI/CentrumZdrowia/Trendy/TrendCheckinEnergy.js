@@ -32,10 +32,6 @@ export default function TrendCheckinEnergy({ refreshKey }) {
 
   const labels = trends.map((m) => new Date(m.date).toISOString().slice(5, 10));
 
-  // --- ZMIANA: Usunięto mapy tekstowe (sleepMap, energyMap...), bo API zwraca teraz liczby ---
-
-  // Przygotowanie danych - bierzemy liczby bezpośrednio z API
-  // Używamy operatora ?? null, żeby w razie braku danych wykres przerwał linię zamiast rysować 0
   const sleepData = trends.map((m) => m.sleep ?? null);
   const stressData = trends.map((m) => m.stress ?? null);
   const energyData = trends.map((m) => m.energy ?? null);
