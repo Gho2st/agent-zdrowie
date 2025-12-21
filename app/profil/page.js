@@ -33,20 +33,16 @@ export default function Profil() {
     hasKidneyDisease: false,
   });
 
-  // --- NOWOŚĆ: Funkcja do aktualizacji stanu danymi z API ---
   const handleDataUpdate = (newData) => {
     setNorms((prev) => ({
       ...prev,
-      ...newData, // Nadpisujemy stare wartości nowymi z backendu (w tym przeliczone normy)
-      // Zabezpieczenie formatowania conditions
+      ...newData,
       conditions: Array.isArray(newData.conditions)
         ? newData.conditions.join(",")
         : newData.conditions ?? prev.conditions,
     }));
   };
-  // ---------------------------------------------------------
 
-  // Konwersja danych dla komponentu MedicationsAndConditions
   const medicationNorms = {
     medications: norms.medications,
     conditions: norms.conditions
@@ -172,7 +168,7 @@ export default function Profil() {
     });
     if (res.ok) {
       const updatedData = await res.json();
-      handleDataUpdate(updatedData); // Używamy nowej funkcji
+      handleDataUpdate(updatedData);
       toast.success("Zaktualizowano wagę");
       setEditingWeight(false);
     } else {
@@ -246,15 +242,13 @@ export default function Profil() {
           onUpdate={handleDataUpdate}
         />
 
-        {/* PRZEKAZUJEMY onUpdate DO DZIECKA */}
         <Norms
           norms={numericNorms}
           handleChange={handleChange}
           onUpdate={handleDataUpdate}
         />
 
-        {/* 3. RAPORT */}
-        <div className="px-4 mb-4">
+        <div className="">
           <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl p-4 text-center">
             <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-emerald-600">
               <FileText className="w-5 h-5" />

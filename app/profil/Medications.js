@@ -149,10 +149,8 @@ export default function MedicationsAndConditions({
       });
 
       if (res.ok) {
-        // --- KLUCZOWE: Odbieramy nowe dane i aktualizujemy rodzica ---
         const updatedData = await res.json();
         if (onUpdate) onUpdate(updatedData);
-        // -----------------------------------------------------------
 
         toast.success("Profil zaktualizowany pomyślnie!");
         setIsAdding(false);
@@ -169,7 +167,6 @@ export default function MedicationsAndConditions({
 
   return (
     <div className="bg-white/80 backdrop-blur-xl border border-white/40 p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 space-y-10">
-      {/* 1. Aktywność */}
       <section className="space-y-4">
         <div className="flex items-center gap-2 text-gray-800 border-b border-gray-100 pb-2">
           <Dumbbell className="w-5 h-5 text-emerald-600" />
@@ -201,7 +198,6 @@ export default function MedicationsAndConditions({
         </div>
       </section>
 
-      {/* 2. Diagnozy */}
       <section className="space-y-4">
         <div className="flex items-center justify-between border-b border-gray-100 pb-2">
           <div className="flex items-center gap-2 text-gray-800">
@@ -277,7 +273,6 @@ export default function MedicationsAndConditions({
         </div>
       </section>
 
-      {/* 3. Inne schorzenia */}
       <section className="space-y-4">
         <div className="flex items-center gap-2 text-gray-800 border-b border-gray-100 pb-2">
           <PlusCircle className="w-5 h-5 text-emerald-600" />
@@ -329,7 +324,6 @@ export default function MedicationsAndConditions({
         </div>
       </section>
 
-      {/* 4. Leki */}
       <section className="space-y-4">
         <div className="flex items-center gap-2 text-gray-800 border-b border-gray-100 pb-2">
           <Pill className="w-5 h-5 text-emerald-600" />
@@ -346,7 +340,6 @@ export default function MedicationsAndConditions({
         />
       </section>
 
-      {/* Save Button */}
       <div className="pt-4">
         <button
           type="button"

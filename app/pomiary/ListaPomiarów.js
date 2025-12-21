@@ -1,33 +1,68 @@
 "use client";
+
 import React, { useState, useMemo } from "react";
 import {
   Heart,
-  Droplet,
+  Droplets,
   Scale,
   Activity,
   Trash2,
-  X,
-  Check,
   ChevronUp,
   ChevronDown,
+  Filter,
+  ArrowUpDown,
+  Calendar,
+  AlertCircle,
+  CheckCircle2,
+  X,
 } from "lucide-react";
-
-// konfiguracja
 
 const ITEMS_PER_PAGE = 12;
 
-const MEASUREMENT_TYPES = {
+const MEASUREMENT_STYLES = {
   BLOOD_PRESSURE: {
     label: "Ciśnienie",
     icon: Activity,
-    iconColor: "text-blue-500",
+    bg: "bg-indigo-50",
+    text: "text-indigo-600",
+    border: "border-indigo-100",
+    badge: "bg-indigo-100 text-indigo-700",
   },
-  GLUCOSE: { label: "Cukier", icon: Droplet, iconColor: "text-red-500" },
-  WEIGHT: { label: "Waga", icon: Scale, iconColor: "text-green-500" },
-  HEART_RATE: { label: "Tętno", icon: Heart, iconColor: "text-purple-500" },
+  GLUCOSE: {
+    label: "Glukoza",
+    icon: Droplets,
+    bg: "bg-amber-50",
+    text: "text-amber-600",
+    border: "border-amber-100",
+    badge: "bg-amber-100 text-amber-700",
+  },
+  WEIGHT: {
+    label: "Waga",
+    icon: Scale,
+    bg: "bg-teal-50",
+    text: "text-teal-600",
+    border: "border-teal-100",
+    badge: "bg-teal-100 text-teal-700",
+  },
+  HEART_RATE: {
+    label: "Tętno",
+    icon: Heart,
+    bg: "bg-rose-50",
+    text: "text-rose-600",
+    border: "border-rose-100",
+    badge: "bg-rose-100 text-rose-700",
+  },
+  DEFAULT: {
+    label: "Inne",
+    icon: Activity,
+    bg: "bg-gray-50",
+    text: "text-gray-600",
+    border: "border-gray-100",
+    badge: "bg-gray-100 text-gray-700",
+  },
 };
 
-// normy
+// Funkcja sprawdzająca normy
 const getNormStatus = (m, n) => {
   if (!n) return "UNKNOWN";
 
@@ -72,40 +107,44 @@ const getNormStatus = (m, n) => {
   return "IN_RANGE";
 };
 
-const getPolishStatus = (s) =>
+// Pomocnicze funkcje do statusów
+const getStatusLabel = (s) =>
   ({
     HIGH: "Podwyższony",
     LOW: "Zbyt niski",
     IN_RANGE: "W normie",
     UNKNOWN: "Brak norm",
   }[s] || "Brak norm");
-const getNormColor = (s) =>
+
+const getStatusColorClass = (s) =>
   ({
-    HIGH: "bg-red-500",
-    LOW: "bg-orange-500",
-    IN_RANGE: "bg-green-500",
-    UNKNOWN: "bg-gray-400",
+    HIGH: "text-rose-600 bg-rose-50 border-rose-100",
+    LOW: "text-amber-600 bg-amber-50 border-amber-100",
+    IN_RANGE: "text-emerald-600 bg-emerald-50 border-emerald-100",
+    UNKNOWN: "text-gray-500 bg-gray-50 border-gray-100",
   }[s]);
 
-// wyswietlanie wartosci
+const getStatusIcon = (s) => {
+  if (s === "IN_RANGE") return <CheckCircle2 className="w-3.5 h-3.5" />;
+  if (s === "HIGH" || s === "LOW")
+    return <AlertCircle className="w-3.5 h-3.5" />;
+  return null;
+};
+
+// Wyświetlanie wartości
 const getMeasurementDisplay = (m) => {
   switch (m.type) {
     case "BLOOD_PRESSURE":
-      return `${m.systolic || m.value}/${m.diastolic || m.value2} ${
-        m.unit || "mmHg"
-      }`;
+      return `${m.systolic || m.value}/${m.diastolic || m.value2}`;
     case "GLUCOSE":
-      return `${m.amount || m.value} ${m.unit || "mg/dL"}`;
     case "WEIGHT":
-      return `${m.amount || m.value} ${m.unit || "kg"}`;
     case "HEART_RATE":
-      return `${m.amount || m.value} ${m.unit || "bpm"}`;
+      return `${m.amount || m.value}`;
     default:
       return "—";
   }
 };
 
-// komponent glowny
 export default function ListaPomiarow({
   measurements = [],
   filterType,
@@ -157,156 +196,157 @@ export default function ListaPomiarow({
   const SortButton = ({ value, label }) => (
     <button
       onClick={() => handleSortChange(value)}
-      className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1 transition-colors ${
+      className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-all border ${
         sortOrder === value
-          ? "bg-blue-600 text-white"
-          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          ? "bg-white border-blue-200 text-blue-600 shadow-sm"
+          : "bg-transparent border-transparent text-gray-500 hover:bg-white/50"
       }`}
     >
       {label}
       {sortOrder === value &&
         (value.includes("Desc") ? (
-          <ChevronDown className="w-4 h-4" />
+          <ChevronDown className="w-3 h-3" />
         ) : (
-          <ChevronUp className="w-4 h-4" />
+          <ChevronUp className="w-3 h-3" />
         ))}
     </button>
   );
 
   return (
-    <>
-      {/* PANEL STEROWANIA */}
-      <div className="mt-10  bg-white/30 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 shadow-lg">
-        <h2 className="text-xl font-bold text-gray-800 mb-5">
-          Opcje wyświetlania
-        </h2>
-        <div className="grid md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Filtr typu
-            </label>
-            <select
-              value={filterType}
-              onChange={handleFilterChange}
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-            >
-              <option value="all">Wszystkie ({measurements.length})</option>
-              {Object.entries(MEASUREMENT_TYPES).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v.label}
-                </option>
-              ))}
-            </select>
+    <div className="mt-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="bg-white/80 backdrop-blur-xl border border-white/40 rounded-3xl p-6 shadow-xl shadow-slate-200/50 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex flex-col gap-3">
+            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              <Filter className="w-5 h-5 text-gray-400" />
+              Filtrowanie
+            </h2>
+            <div className="relative">
+              <select
+                value={filterType}
+                onChange={handleFilterChange}
+                className="appearance-none w-full md:w-64 pl-4 pr-10 py-2.5 rounded-xl bg-gray-50/50 border border-gray-200 text-gray-700 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
+              >
+                <option value="all">Wszystkie typy</option>
+                <option value="BLOOD_PRESSURE">💓 Ciśnienie</option>
+                <option value="GLUCOSE">🍭 Cukier</option>
+                <option value="WEIGHT">⚖️ Waga</option>
+                <option value="HEART_RATE">❤️ Tętno</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+
+          <div className="flex flex-col gap-3">
+            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              <ArrowUpDown className="w-5 h-5 text-gray-400" />
               Sortowanie
-            </label>
-            <div className="flex flex-wrap gap-2">
+            </h2>
+            <div className="flex flex-wrap gap-1 bg-gray-100/50 p-1 rounded-xl">
               <SortButton value="dateDesc" label="Najnowsze" />
               <SortButton value="dateAsc" label="Najstarsze" />
-              <SortButton value="valueDesc" label="Od najwyższej" />
-              <SortButton value="valueAsc" label="Od najniższej" />
+              <SortButton value="valueDesc" label="Wartość max" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* lista pomiarow */}
-      <div className="mt-8">
-        <h2 className="text-xl font-bold text-gray-800 mb-6">
-          Historia pomiarów ({processed.totalItems})
+      <div>
+        <h2 className="text-xl font-bold text-gray-800 mb-6 px-2">
+          Historia pomiarów{" "}
+          <span className="text-gray-400 font-normal text-base ml-1">
+            ({processed.totalItems})
+          </span>
         </h2>
 
         {processed.paginated.length === 0 ? (
-          <div className="text-center py-20 bg-white/30 rounded-2xl border-gray-300">
-            <p className="text-gray-500 text-lg">
-              Brak pomiarów do wyświetlenia
+          <div className="flex flex-col items-center justify-center py-16 bg-white/40 border border-white/40 rounded-3xl text-center">
+            <div className="bg-white p-4 rounded-full shadow-sm mb-4">
+              <Filter className="w-8 h-8 text-gray-300" />
+            </div>
+            <p className="text-gray-500 font-medium">
+              Brak wyników dla wybranych filtrów.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {processed.paginated.map((m) => {
-              const typeData = MEASUREMENT_TYPES[m.type] || {};
-              const Icon = typeData.icon || Activity;
+              const style =
+                MEASUREMENT_STYLES[m.type] || MEASUREMENT_STYLES.DEFAULT;
+              const Icon = style.icon;
               const status = getNormStatus(m, norms);
-              const color = getNormColor(status);
+              const statusClass = getStatusColorClass(status);
 
               return (
                 <div
                   key={m.id}
-                  className="group relative bg-white/30 border border-gray-200 rounded-2xl overflow-hidden
-                             flex flex-col h-54 shadow-md hover:shadow-xl transition-shadow duration-300"
+                  className="group relative bg-white/60 hover:bg-white/90 backdrop-blur-md border border-white/60 hover:border-white p-5 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
                 >
-                  {/* Pasek statusu */}
-                  <div
-                    className={`absolute left-0 top-0 bottom-0 w-2 ${color}`}
-                  />
-
-                  <div className="flex-1 p-6 pl-8 flex flex-col justify-between">
-                    {/* Nagłówek */}
-                    <div className="flex justify-between items-start">
+                  <div>
+                    <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-3">
-                        <Icon
-                          className={`w-7 h-7 ${
-                            typeData.iconColor || "text-gray-500"
-                          }`}
-                        />
-                        <h3 className="font-bold text-gray-800">
-                          {typeData.label}
-                        </h3>
+                        <div
+                          className={`p-2.5 rounded-xl ${style.bg} ${style.text}`}
+                        >
+                          <Icon className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-gray-700 leading-tight">
+                            {style.label}
+                          </h3>
+                          <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide mt-0.5">
+                            {m.unit}
+                          </p>
+                        </div>
                       </div>
+
                       <button
                         onClick={() => requestDelete(String(m.id))}
-                        className="text-gray-400 hover:text-red-600 
-                                   hover:bg-red-50 p-2 rounded-full transition-all duration-200"
-                        title="Usuń"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                        title="Usuń wpis"
                       >
-                        <Trash2 className="w-5 h-5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
 
-                    {/* Wartość główna */}
-                    <p className="text-2xl font-extrabold text-gray-900 my-3 tracking-tight">
-                      {getMeasurementDisplay(m)}
-                    </p>
+                    <div className="mb-4">
+                      <span
+                        className={`text-2xl font-black ${style.text.replace(
+                          "text-",
+                          "text-slate-"
+                        )}`}
+                      >
+                        {getMeasurementDisplay(m)}
+                      </span>
+                    </div>
+                  </div>
 
-                    {/* Status + data */}
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-600">Status:</span>
-                        <span
-                          className={`font-bold ${color.replace(
-                            "bg-",
-                            "text-"
-                          )}`}
-                        >
-                          {getPolishStatus(status)}
-                        </span>
-                      </div>
-                      <p className="text-gray-500">
+                  <div className="space-y-3">
+                    <div
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ${statusClass}`}
+                    >
+                      {getStatusIcon(status)}
+                      {getStatusLabel(status)}
+                    </div>
+
+                    <div className="pt-3 border-t border-gray-100/50 flex flex-col gap-1 text-xs text-gray-500">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
                         {new Date(m.createdAt).toLocaleString("pl-PL", {
                           day: "numeric",
                           month: "short",
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
-                      </p>
-                    </div>
+                      </div>
 
-                    {/* Timing / notatka */}
-                    <div className="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-600 h-12 flex items-center">
-                      {m.timing && m.type === "GLUCOSE" && (
-                        <span className="flex items-center gap-1">
-                          <Check className="w-4 h-4 text-green-600" />
-                          <strong>{m.timing}</strong>
-                        </span>
-                      )}
-                      {m.note && m.type === "BLOOD_PRESSURE" && (
-                        <span className="flex items-center gap-1">
-                          <Check className="w-4 h-4 text-green-600" />
-                          Notatka: {m.note}
-                        </span>
+                      {(m.timing || m.note) && (
+                        <div
+                          className="mt-1 text-gray-400 italic truncate"
+                          title={m.note || m.timing}
+                        >
+                          {m.type === "GLUCOSE" && m.timing ? m.timing : m.note}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -319,55 +359,62 @@ export default function ListaPomiarow({
 
       {/* PAGINACJA */}
       {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-4 mt-10">
+        <div className="flex justify-center items-center gap-2 mt-10">
           <button
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="px-6 py-3 rounded-xl bg-white border border-gray-300 shadow-sm disabled:opacity-50 hover:bg-gray-50 transition-all"
+            className="px-4 py-2 rounded-xl bg-white/50 border border-gray-200 text-sm font-medium hover:bg-white disabled:opacity-50 transition-colors"
           >
             Poprzednia
           </button>
-          <span className="text-gray-700 font-medium">
-            Strona {currentPage} z {totalPages}
-          </span>
+
+          <div className="px-4 py-2 bg-white/30 rounded-xl text-sm font-bold text-gray-600">
+            {currentPage} / {totalPages}
+          </div>
+
           <button
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="px-6 py-3 rounded-xl bg-white border border-gray-300 shadow-sm disabled:opacity-50 hover:bg-gray-50 transition-all"
+            className="px-4 py-2 rounded-xl bg-white/50 border border-gray-200 text-sm font-medium hover:bg-white disabled:opacity-50 transition-colors"
           >
             Następna
           </button>
         </div>
       )}
 
-      {/* MODAL USUNIĘCIA */}
+      {/* MODAL USUNIĘCIA (Glassmorphism) */}
       {confirmDeleteId && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full">
-            <h3 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-3">
-              <Trash2 className="w-8 h-8 text-red-600" />
-              Potwierdź usunięcie
+        <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 max-w-sm w-full border border-white/50 animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center mb-4 text-red-500 mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-xl font-bold text-gray-800 text-center mb-2">
+              Usunąć pomiar?
             </h3>
-            <p className="text-gray-600 mb-8">
-              Czy na pewno chcesz trwale usunąć ten pomiar?
+            <p className="text-center text-gray-500 mb-8 text-sm">
+              Tej operacji nie można cofnąć. Pomiar zniknie z historii i
+              statystyk.
             </p>
-            <div className="flex justify-end gap-4">
+
+            <div className="flex gap-3">
               <button
                 onClick={() => setConfirmDeleteId(null)}
-                className="px-6 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 transition-all flex items-center gap-2"
+                className="flex-1 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors"
               >
-                <X className="w-5 h-5" /> Anuluj
+                Anuluj
               </button>
               <button
                 onClick={confirmDelete}
-                className="px-6 py-3 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-all flex items-center gap-2"
+                className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium shadow-lg shadow-red-200 transition-colors"
               >
-                <Trash2 className="w-5 h-5" /> Usuń
+                Usuń
               </button>
             </div>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

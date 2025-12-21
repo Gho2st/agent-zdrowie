@@ -63,11 +63,11 @@ export default function RaportDownloadButton() {
   };
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col">
       <button
         onClick={handleDownload}
         disabled={isLoading || status === "loading"}
-        className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50"
+        className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2 justify-center disabled:opacity-50 self-center"
       >
         {isLoading ? (
           <>

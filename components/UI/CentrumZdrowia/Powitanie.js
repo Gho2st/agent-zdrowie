@@ -7,13 +7,11 @@ import { Sparkles } from "lucide-react";
 export default function PowitanieMotywacja({ userName }) {
   const hasAsked = useRef(false); // Zapobiega podwójnemu zapytaniu
 
-  // Inicjalizacja chatu z API
   const { messages, append, isLoading } = useChat({
     api: "/api/chat",
     id: "motywacja",
   });
 
-  // Wysłanie zapytania o motywacyjne hasło przy pierwszym renderowaniu
   useEffect(() => {
     if (!hasAsked.current && messages.length === 0) {
       append({
@@ -29,7 +27,6 @@ export default function PowitanieMotywacja({ userName }) {
     .find((m) => m.role === "assistant")
     ?.parts.find((part) => part.type === "text")?.text;
 
-  // Renderowanie powitania i motywacyjnego hasła
   return (
     <div className="mb-8">
       <h1 className="text-3xl xl:text-4xl font-bold text-gray-900">

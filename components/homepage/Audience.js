@@ -28,7 +28,6 @@ export default function Audience() {
 
   return (
     <section className="mt-24 py-16 px-4 relative overflow-hidden">
-      {/* Dekoracyjne tło */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/50 via-white to-white -z-10 pointer-events-none" />
 
       <div className="max-w-6xl mx-auto">
@@ -52,7 +51,6 @@ export default function Audience() {
               key={item.label}
               className="group relative bg-white border border-gray-100 p-8 rounded-3xl shadow-lg shadow-gray-200/40 hover:shadow-xl hover:shadow-emerald-100/50 hover:border-emerald-200 transition-all duration-300 hover:-translate-y-1 overflow-hidden"
             >
-              {/* Dekoracyjne duże emoji w tle */}
               <div className="absolute -right-4 -top-4 text-9xl opacity-[0.03] group-hover:opacity-[0.07] group-hover:scale-110 transition-all duration-500 select-none grayscale group-hover:grayscale-0">
                 {item.emoji}
               </div>

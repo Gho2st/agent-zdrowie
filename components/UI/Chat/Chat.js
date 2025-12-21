@@ -49,9 +49,7 @@ export default function ChatPage() {
 
   return (
     <div className="w-full max-w-5xl mx-auto  h-[calc(100vh-80px)] md:h-[85vh]">
-      {/* GŁÓWNY KONTENER - FLEXBOX ZABLOKOWANY NA WYSOKOŚĆ */}
       <div className="flex flex-col h-full bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden">
-        {/* 1. HEADER (Stały) */}
         <div className="bg-white border-b border-gray-100 p-4 flex items-center justify-between shrink-0 z-10">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-gradient-to-br from-emerald-100 to-teal-50 rounded-xl text-emerald-600 shadow-sm">
@@ -74,7 +72,6 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* 2. LISTA WIADOMOŚCI (To jedyny element, który się przewija) */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-50 custom-scrollbar scroll-smooth">
           {messages.length === 0 && status === "ready" && (
             <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-50">
@@ -97,7 +94,6 @@ export default function ChatPage() {
                 msg.role === "user" ? "flex-row-reverse" : "flex-row"
               }`}
             >
-              {/* Avatar */}
               <div
                 className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
                   msg.role === "user"
@@ -112,7 +108,6 @@ export default function ChatPage() {
                 )}
               </div>
 
-              {/* Dymek */}
               <div
                 className={`px-4 py-3 rounded-2xl max-w-[85%] text-sm leading-relaxed shadow-sm transition-all ${
                   msg.role === "user"
@@ -129,7 +124,6 @@ export default function ChatPage() {
             </div>
           ))}
 
-          {/* Loading Animation */}
           {status === "streaming" && (
             <div className="flex gap-3">
               <div className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-emerald-600 shrink-0">
@@ -152,11 +146,9 @@ export default function ChatPage() {
             </div>
           )}
 
-          {/* Niewidoczny element do scrollowania */}
           <div ref={messagesEndRef} className="h-1" />
         </div>
 
-        {/* 3. INPUT (Stały na dole) */}
         <div className="bg-white p-4 border-t border-gray-100 shrink-0">
           {localError && (
             <div className="mb-2 px-3 py-1.5 bg-orange-50 text-orange-600 text-xs font-medium rounded-lg w-fit mx-auto border border-orange-100">

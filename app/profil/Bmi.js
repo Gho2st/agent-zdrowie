@@ -102,9 +102,7 @@ export default function BMICompact({ bmi }) {
         </div>
       </div>
 
-      {/* Wykres Paskowy */}
       <div className="relative pb-6">
-        {/* Tło paska */}
         <div className="flex w-full h-4 rounded-full overflow-hidden shadow-inner bg-gray-200 relative z-0">
           {ranges.map((r) => (
             <div
@@ -117,7 +115,6 @@ export default function BMICompact({ bmi }) {
           ))}
         </div>
 
-        {/* Liczby na osi (Ticks) */}
         {ticks.map((t) => {
           const leftPos = ((t - minScale) / (maxScale - minScale)) * 100;
           return (
@@ -132,7 +129,6 @@ export default function BMICompact({ bmi }) {
           );
         })}
 
-        {/* Marker (Pin) */}
         <div
           className="absolute top-[-6px] -translate-x-1/2 transition-all duration-700 ease-out z-20 drop-shadow-md"
           style={{ left: `${positionPct}%` }}
@@ -148,7 +144,6 @@ export default function BMICompact({ bmi }) {
         </div>
       </div>
 
-      {/* Alert / Porada */}
       <div
         className={`flex gap-3 items-center p-3 rounded-xl bg-white/70 border ${currentRange.border} shadow-sm backdrop-blur-sm`}
       >

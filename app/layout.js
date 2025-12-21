@@ -28,15 +28,12 @@ export default function RootLayout({ children }) {
       >
         <SessionProvider>
           <div className="flex h-screen overflow-hidden">
-            {/* Lewa kolumna – desktop */}
             <div className="hidden md:block fixed top-0 left-0 w-72 h-screen z-40">
-              <Navigation /> {/* desktop only */}
+              <Navigation />
             </div>
-            {/* Nawigacja mobilna – niezależna */}
             <div className="md:hidden">
-              <Navigation /> {/* mobile only */}
+              <Navigation />
             </div>
-            {/* Treść */}
             <main
               id="scrollable"
               className="flex-1 ml-0 md:ml-64 2xl:ml-72 overflow-y-auto h-full"

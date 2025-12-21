@@ -14,11 +14,19 @@ import {
 import annotationPlugin from "chartjs-plugin-annotation";
 import { Line } from "react-chartjs-2";
 import "chartjs-adapter-date-fns";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import Container from "@/components/UI/Container/Container";
 import Header from "@/components/UI/Headers/Header";
-import { ArrowDown, ArrowUp, Activity, Percent } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Activity,
+  Percent,
+  BarChart3,
+  CalendarRange,
+  Loader2,
+} from "lucide-react";
 
 ChartJS.register(
   LineElement,
@@ -37,33 +45,43 @@ const CONFIG = {
     dbType: "BLOOD_PRESSURE",
     label: "Ciśnienie",
     unit: "mmHg",
-    color: "blue",
+    color: "#4f46e5",
+    bg: "rgba(79, 70, 229, 0.1)",
+    iconBg: "bg-indigo-50",
+    iconText: "text-indigo-600",
   },
   cukier: {
     dbType: "GLUCOSE",
     label: "Glukoza",
     unit: "mg/dL",
-    color: "teal",
+    color: "#d97706",
+    bg: "rgba(245, 158, 11, 0.1)",
+    iconBg: "bg-amber-50",
+    iconText: "text-amber-600",
   },
   waga: {
     dbType: "WEIGHT",
-    label: "Waga",
+    label: "Masa ciała",
     unit: "kg",
-    color: "cyan",
+    color: "#0d9488",
+    bg: "rgba(13, 148, 136, 0.1)",
+    iconBg: "bg-teal-50",
+    iconText: "text-teal-600",
   },
   tętno: {
     dbType: "HEART_RATE",
     label: "Tętno",
     unit: "bpm",
-    color: "amber",
+    color: "#e11d48",
+    bg: "rgba(225, 29, 72, 0.1)",
+    iconBg: "bg-rose-50",
+    iconText: "text-rose-600",
   },
 };
 
-// Helper: Sprawdza czy wartość jest w normie
 const checkIsNormal = (val, val2, type, norms) => {
   if (!norms) return null;
   if (type === "ciśnienie") {
-    // Dla ciśnienia oba muszą być w normie
     const sOk =
       val >= (norms.systolicMin || 0) && val <= (norms.systolicMax || 999);
     const dOk =
@@ -71,7 +89,6 @@ const checkIsNormal = (val, val2, type, norms) => {
     return sOk && dOk;
   }
   if (type === "cukier") {
-    // Uproszczenie: sprawdzamy ogólny zakres (np. na czczo max)
     return (
       val <= (norms.glucosePostMealMax || 180) &&
       val >= (norms.glucoseFastingMin || 60)
@@ -87,13 +104,14 @@ const checkIsNormal = (val, val2, type, norms) => {
 };
 
 export default function Statistics() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [measurements, setMeasurements] = useState([]);
   const [norms, setNorms] = useState(null);
-  const [timeRange, setTimeRange] = useState("30"); // 7, 30, 90, all
+  const [timeRange, setTimeRange] = useState("30");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (session?.user?.id) {
+    if (status === "authenticated") {
       const fetchData = async () => {
         try {
           const [mRes, nRes] = await Promise.all([
@@ -105,18 +123,18 @@ export default function Statistics() {
           setNorms(nData?.user || nData || null);
         } catch (error) {
           console.error("Błąd danych:", error);
+        } finally {
+          setTimeout(() => setLoading(false), 300);
         }
       };
       fetchData();
     }
-  }, [session]);
+  }, [status]);
 
-  // --- OBLICZANIE STATYSTYK W LOCIE ---
   const getStats = (category) => {
     const config = CONFIG[category];
     const now = new Date();
 
-    // 1. Filtrowanie po typie i dacie
     const filtered = measurements.filter((m) => {
       if (m.type !== config.dbType) return false;
       if (timeRange === "all") return true;
@@ -127,12 +145,10 @@ export default function Statistics() {
 
     if (filtered.length === 0) return null;
 
-    // 2. Wyciąganie wartości
-    const values1 = filtered.map((m) => m.value); // Sys, Waga, Cukier
+    const values1 = filtered.map((m) => m.value);
     const values2 =
       category === "ciśnienie" ? filtered.map((m) => m.value2) : [];
 
-    // 3. Obliczenia matematyczne
     const avg1 = values1.reduce((a, b) => a + b, 0) / values1.length;
     const min1 = Math.min(...values1);
     const max1 = Math.max(...values1);
@@ -146,7 +162,6 @@ export default function Statistics() {
       max2 = Math.max(...values2);
     }
 
-    // 4. Analiza Norm (% poprawnych wyników)
     const inNormCount = filtered.filter((m) =>
       checkIsNormal(m.value, m.value2, category, norms)
     ).length;
@@ -167,121 +182,113 @@ export default function Statistics() {
     };
   };
 
-  // --- PRZYGOTOWANIE DANYCH DO WYKRESU I NORM (Adnotacji) ---
   const prepareChartData = (category, data) => {
     const labels = data.map((m) => new Date(m.createdAt));
     let datasets = [];
     let annotations = {};
+    const config = CONFIG[category];
 
-    // 1. DANE (datasets)
     if (category === "ciśnienie") {
       datasets = [
         {
           label: "Skurczowe",
           data: data.map((m) => ({ x: new Date(m.createdAt), y: m.value })),
-          borderColor: "#3b82f6",
-          backgroundColor: "rgba(59, 130, 246, 0.1)",
-          tension: 0.3,
-          pointRadius: 4,
+          borderColor: "#4f46e5", // Indigo
+          backgroundColor: "rgba(79, 70, 229, 0.1)",
+          tension: 0.4,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+          fill: true,
         },
         {
           label: "Rozkurczowe",
           data: data.map((m) => ({ x: new Date(m.createdAt), y: m.value2 })),
-          borderColor: "#ef4444",
-          backgroundColor: "rgba(239, 68, 68, 0.1)",
-          tension: 0.3,
-          pointRadius: 4,
+          borderColor: "#ec4899", // Pink
+          backgroundColor: "rgba(236, 72, 153, 0.1)",
+          tension: 0.4,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+          fill: true,
         },
       ];
     } else {
-      // Kolory dla reszty
-      const color =
-        category === "cukier"
-          ? "#14b8a6"
-          : category === "waga"
-          ? "#06b6d4"
-          : "#f59e0b";
       datasets = [
         {
-          label: CONFIG[category].label,
+          label: config.label,
           data: data.map((m) => ({ x: new Date(m.createdAt), y: m.value })),
-          borderColor: color,
-          backgroundColor: color + "20", // przezroczystość
+          borderColor: config.color,
+          backgroundColor: (context) => {
+            const ctx = context.chart.ctx;
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, config.color + "40"); // 25% opacity
+            gradient.addColorStop(1, config.color + "00"); // 0% opacity
+            return gradient;
+          },
           fill: true,
-          tension: 0.3,
+          tension: 0.4,
           pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: "#fff",
+          pointBorderColor: config.color,
+          borderWidth: 2,
         },
       ];
     }
 
-    // 2. NORMY (annotations) - Użycie stref tła (box) dla czytelności
-    const NORM_COLOR = "rgba(16, 185, 129, 0.1)"; // Jasnozielony dla strefy normy
+    const NORM_COLOR = "rgba(16, 185, 129, 0.08)";
+    const BORDER_COLOR = "rgba(16, 185, 129, 0.3)";
 
     if (norms) {
-      if (category === "ciśnienie" && norms.systolicMin && norms.systolicMax) {
-        // Strefa normy dla ciśnienia skurczowego (Górna linia)
-        annotations.systolicNormArea = {
+      if (category === "ciśnienie" && norms.systolicMin) {
+        annotations.systolicNorm = {
           type: "box",
           yMin: norms.systolicMin,
           yMax: norms.systolicMax,
           backgroundColor: NORM_COLOR,
-          borderWidth: 0,
-          label: {
-            content: "Norma Skurczowe",
-            enabled: true,
-            position: "end",
-            backgroundColor: "rgba(16, 185, 129, 0.5)",
-            yAdjust: 10,
-          },
+          borderColor: BORDER_COLOR,
+          borderWidth: 1,
+          borderDash: [5, 5],
         };
-
-        // Strefa normy dla ciśnienia rozkurczowego (Dolna linia)
-        if (norms.diastolicMin && norms.diastolicMax) {
-          annotations.diastolicNormArea = {
+        if (norms.diastolicMin) {
+          annotations.diastolicNorm = {
             type: "box",
             yMin: norms.diastolicMin,
             yMax: norms.diastolicMax,
             backgroundColor: NORM_COLOR,
-            borderWidth: 0,
-            label: {
-              content: "Norma Rozkurczowe",
-              enabled: true,
-              position: "start",
-              backgroundColor: "rgba(16, 185, 129, 0.5)",
-              yAdjust: -10,
-            },
+            borderColor: BORDER_COLOR,
+            borderWidth: 1,
+            borderDash: [5, 5],
           };
         }
-      } else if (
-        category === "cukier" &&
-        norms.glucoseFastingMin &&
-        norms.glucosePostMealMax
-      ) {
-        // Norma dla Cukru (jedna strefa)
-        annotations.glucoseNormArea = {
+      } else if (category === "cukier" && norms.glucoseFastingMin) {
+        annotations.normArea = {
           type: "box",
           yMin: norms.glucoseFastingMin,
           yMax: norms.glucosePostMealMax,
           backgroundColor: NORM_COLOR,
-          borderWidth: 0,
+          borderColor: BORDER_COLOR,
+          borderWidth: 1,
+          borderDash: [5, 5],
         };
-      } else if (category === "waga" && norms.weightMin && norms.weightMax) {
-        // Norma dla Wagi (jedna strefa)
-        annotations.weightNormArea = {
+      } else if (category === "waga" && norms.weightMin) {
+        annotations.normArea = {
           type: "box",
           yMin: norms.weightMin,
           yMax: norms.weightMax,
           backgroundColor: NORM_COLOR,
-          borderWidth: 0,
+          borderColor: BORDER_COLOR,
+          borderWidth: 1,
+          borderDash: [5, 5],
         };
-      } else if (category === "tętno" && norms.pulseMin && norms.pulseMax) {
-        // Norma dla Tętna (jedna strefa)
-        annotations.pulseNormArea = {
+      } else if (category === "tętno" && norms.pulseMin) {
+        annotations.normArea = {
           type: "box",
           yMin: norms.pulseMin,
           yMax: norms.pulseMax,
           backgroundColor: NORM_COLOR,
-          borderWidth: 0,
+          borderColor: BORDER_COLOR,
+          borderWidth: 1,
+          borderDash: [5, 5],
         };
       }
     }
@@ -289,15 +296,29 @@ export default function Statistics() {
     return { labels, datasets, annotations };
   };
 
-  // --- OPCJE WYKRESU Z OBSŁUGĄ ANNOTATIONS ---
   const getChartOptions = (annotations) => ({
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      mode: "index",
+      intersect: false,
+    },
     plugins: {
-      legend: { display: false },
-      tooltip: { mode: "index", intersect: false },
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        backgroundColor: "rgba(255, 255, 255, 0.95)",
+        titleColor: "#1f2937",
+        bodyColor: "#4b5563",
+        borderColor: "#e5e7eb",
+        borderWidth: 1,
+        padding: 10,
+        cornerRadius: 8,
+        displayColors: true,
+        usePointStyle: true,
+      },
       annotation: {
-        // Dodajemy konfigurację dla pluginu annotations
         annotations: annotations,
       },
     },
@@ -307,113 +328,209 @@ export default function Statistics() {
         time: {
           unit: timeRange === "7" ? "day" : "month",
           displayFormats: { day: "d MMM", month: "MMM" },
+          tooltipFormat: "d MMM yyyy",
         },
         grid: { display: false },
+        ticks: {
+          font: { size: 10 },
+          color: "#9ca3af",
+          maxTicksLimit: 6,
+        },
+        border: { display: false },
       },
       y: {
         beginAtZero: false,
+        grid: {
+          color: "#f3f4f6",
+          borderDash: [5, 5],
+        },
+        border: { display: false },
+        ticks: {
+          font: { size: 10 },
+          color: "#9ca3af",
+          maxTicksLimit: 5,
+        },
       },
     },
   });
+
+  if (loading || status === "loading") {
+    return (
+      <Container>
+        <div className="flex items-center gap-4 mb-8">
+          <div className="w-12 h-12 rounded-2xl bg-gray-200 animate-pulse" />
+          <div className="space-y-2">
+            <div className="h-3 w-20 bg-gray-200 rounded animate-pulse" />
+            <div className="h-6 w-48 bg-gray-200 rounded animate-pulse" />
+          </div>
+        </div>
+
+        <div className="flex justify-center gap-2 mb-8">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="w-16 h-8 bg-gray-200 rounded-full animate-pulse"
+            />
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {[1, 2].map((i) => (
+            <div
+              key={i}
+              className="bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl h-[450px] shadow-sm animate-pulse"
+            >
+              <div className="flex justify-between mb-6">
+                <div className="h-6 w-32 bg-gray-200 rounded" />
+                <div className="h-5 w-16 bg-gray-200 rounded" />
+              </div>
+              <div className="grid grid-cols-4 gap-3 mb-6">
+                {[1, 2, 3, 4].map((j) => (
+                  <div key={j} className="h-16 bg-gray-200 rounded-xl" />
+                ))}
+              </div>
+              <div className="h-[250px] bg-gray-200 rounded-xl" />
+            </div>
+          ))}
+        </div>
+      </Container>
+    );
+  }
 
   if (measurements.length === 0) {
     return (
       <Container>
         <Header text="Statystyki" />
-        <p className="mt-10 text-center text-gray-500">Brak danych...</p>
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="p-4 bg-gray-100 rounded-full mb-4">
+            <BarChart3 className="w-8 h-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-bold text-gray-700">
+            Brak danych do analizy
+          </h3>
+          <p className="text-gray-500 max-w-sm mt-2">
+            Dodaj swoje pierwsze pomiary, aby zobaczyć tutaj szczegółowe wykresy
+            i analizy trendów.
+          </p>
+        </div>
       </Container>
     );
   }
 
   return (
     <Container>
-      <Header text="Szczegółowe Statystyki" />
-
-      {/* Przełącznik Czasu */}
-      <div className="flex justify-center gap-2 mt-6 mb-8">
-        {[
-          { label: "7 dni", val: "7" },
-          { label: "30 dni", val: "30" },
-          { label: "90 dni", val: "90" },
-          { label: "Wszystko", val: "all" },
-        ].map((opt) => (
-          <button
-            key={opt.val}
-            onClick={() => setTimeRange(opt.val)}
-            className={`px-4 py-1.5 text-sm rounded-full transition-all ${
-              timeRange === opt.val
-                ? "bg-blue-600 text-white shadow-md font-medium"
-                : "bg-white text-gray-600 border hover:bg-gray-50"
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
+      <div className="flex items-center gap-4 mb-8 pb-4 border-b border-gray-100">
+        <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl shadow-sm ring-1 ring-blue-100">
+          <BarChart3 className="w-6 h-6" />
+        </div>
+        <div>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+            Analiza
+          </p>
+          <h1 className="text-2xl font-bold text-gray-800 leading-none">
+            Szczegółowe Statystyki
+          </h1>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+      <div className="flex justify-center mb-8">
+        <div className="inline-flex bg-gray-100/50 p-1.5 rounded-2xl border border-gray-200/50 shadow-sm">
+          {[
+            { label: "7 dni", val: "7" },
+            { label: "30 dni", val: "30" },
+            { label: "3 mies.", val: "90" },
+            { label: "Całość", val: "all" },
+          ].map((opt) => (
+            <button
+              key={opt.val}
+              onClick={() => setTimeRange(opt.val)}
+              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-300 ${
+                timeRange === opt.val
+                  ? "bg-white text-blue-600 shadow-sm scale-105 ring-1 ring-black/5"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-white/50"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
         {Object.keys(CONFIG).map((category) => {
           const stats = getStats(category);
           const config = CONFIG[category];
 
-          if (!stats) return null; // Ukryj, jeśli brak danych w tym okresie
+          if (!stats) return null;
 
-          // Pobierz dane i adnotacje
           const chartData = prepareChartData(category, stats.dataForChart);
 
           return (
             <div
               key={category}
-              className="bg-white/40 backdrop-blur-md border border-white/30 rounded-2xl shadow-lg p-6 flex flex-col h-full"
+              className="bg-white/80 backdrop-blur-xl border border-white/40 p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 flex flex-col h-full hover:shadow-2xl transition-shadow duration-500"
             >
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                  {category === "ciśnienie" && "💓"}
-                  {category === "cukier" && "🍭"}
-                  {category === "waga" && "⚖️"}
-                  {category === "tętno" && "❤️"}
-                  {config.label}
-                </h3>
-                <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded text-gray-500">
-                  {stats.count} pomiarów
-                </span>
+              <div className="flex justify-between items-start mb-8">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`p-2.5 rounded-xl ${config.iconBg} ${config.iconText}`}
+                  >
+                    {category === "ciśnienie" && (
+                      <Activity className="w-5 h-5" />
+                    )}
+                    {category === "cukier" && <Percent className="w-5 h-5" />}
+                    {category === "waga" && <BarChart3 className="w-5 h-5" />}
+                    {category === "tętno" && <Activity className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-800 leading-tight">
+                      {config.label}
+                    </h3>
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                      {config.unit}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-100 rounded-lg">
+                  <CalendarRange className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-xs font-semibold text-gray-600">
+                    {stats.count}
+                  </span>
+                </div>
               </div>
 
-              {/* STATYSTYKI W KAFELKACH */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
                 <StatCard
                   label="Średnia"
                   value={stats.avg}
-                  unit={config.unit}
-                  icon={<Activity className="w-3 h-3" />}
+                  icon={<Activity className="w-3.5 h-3.5" />}
                 />
                 <StatCard
-                  label="Minimum"
+                  label="Min"
                   value={stats.min}
-                  unit={config.unit}
-                  icon={<ArrowDown className="w-3 h-3" />}
+                  color="text-emerald-600"
+                  icon={<ArrowDown className="w-3.5 h-3.5" />}
                 />
                 <StatCard
-                  label="Maksimum"
+                  label="Max"
                   value={stats.max}
-                  unit={config.unit}
-                  icon={<ArrowUp className="w-3 h-3" />}
+                  color="text-rose-600"
+                  icon={<ArrowUp className="w-3.5 h-3.5" />}
                 />
                 <StatCard
                   label="W normie"
                   value={`${stats.normPercentage}%`}
-                  unit=""
                   color={
                     stats.normPercentage > 80
-                      ? "text-green-600"
+                      ? "text-emerald-600"
                       : "text-amber-600"
                   }
-                  icon={<Percent className="w-3 h-3" />}
+                  icon={<Percent className="w-3.5 h-3.5" />}
                 />
               </div>
 
-              {/* WYKRES */}
-              <div className="grow min-h-[250px] bg-white/50 rounded-xl p-2 border border-white/20">
+              <div className="grow min-h-[280px] w-full relative">
                 <Line
                   data={chartData}
                   options={getChartOptions(chartData.annotations)}
@@ -427,19 +544,13 @@ export default function Statistics() {
   );
 }
 
-// Mini komponent do kafelków
-function StatCard({ label, value, unit, icon, color = "text-gray-800" }) {
+function StatCard({ label, value, icon, color = "text-gray-800" }) {
   return (
-    <div className="bg-white/60 p-3 rounded-xl border border-white/40 shadow-sm flex flex-col justify-center">
-      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-gray-500 mb-1">
+    <div className="bg-white/50 hover:bg-white p-3 rounded-2xl border border-white/60 shadow-sm transition-all duration-300 group">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 group-hover:text-gray-500 transition-colors">
         {icon} {label}
       </div>
-      <div className={`font-bold text-lg leading-none ${color}`}>
-        {value}
-        <span className="text-[10px] text-gray-400 ml-1 font-normal">
-          {unit}
-        </span>
-      </div>
+      <div className={`font-black text-lg leading-none ${color}`}>{value}</div>
     </div>
   );
 }

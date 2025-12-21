@@ -71,7 +71,6 @@ export default function Age({
 
   return (
     <div className="h-full bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl shadow-xl shadow-slate-200/50 flex flex-col justify-between">
-      {/* Nagłówek: Wiek */}
       <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
         <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
           <Calendar className="w-6 h-6" />
@@ -87,7 +86,6 @@ export default function Age({
       </div>
 
       <div className="space-y-4 flex-1">
-        {/* Sekcja: Wzrost */}
         <div className="group relative bg-white border border-gray-100 rounded-2xl p-3 hover:border-emerald-200 transition-colors">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -105,7 +103,6 @@ export default function Age({
                     )}
                   </p>
                 ) : (
-                  // Tryb edycji Wzrostu
                   <div className="flex items-center gap-2 mt-1">
                     <div className="relative">
                       <input
@@ -120,13 +117,8 @@ export default function Age({
                           const val = parseInt(e.target.value, 10);
                           setTempHeight(isNaN(val) ? e.target.value : val);
                         }}
-                        // ZMIANY TUTAJ:
-                        // 1. pr-8: duży padding z prawej, żeby tekst nie najechał na "cm"
-                        // 2. [appearance:textfield]: usuwa strzałki w Firefox
-                        // 3. [&::-webkit...]: usuwa strzałki w Chrome/Safari
                         className="w-24 bg-gray-50 border border-emerald-200 rounded-lg pl-3 pr-8 py-1 text-sm font-semibold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
-                      {/* pointer-events-none: sprawia, że kliknięcie w "cm" przenosi focus do inputa */}
                       <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 pointer-events-none">
                         cm
                       </span>
@@ -136,7 +128,6 @@ export default function Age({
               </div>
             </div>
 
-            {/* Przyciski akcji Wzrost */}
             {!editingHeight ? (
               <button
                 onClick={() => setEditingHeight(true)}
@@ -194,7 +185,6 @@ export default function Age({
                     )}
                   </p>
                 ) : (
-                  // Tryb edycji Wagi
                   <div className="flex items-center gap-2 mt-1">
                     <div className="relative">
                       <input
@@ -209,7 +199,6 @@ export default function Age({
                           const val = parseFloat(e.target.value);
                           setTempWeight(isNaN(val) ? e.target.value : val);
                         }}
-                        // TE SAME ZMIANY CO WYŻEJ
                         className="w-24 bg-gray-50 border border-emerald-200 rounded-lg pl-3 pr-8 py-1 text-sm font-semibold focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                       <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 pointer-events-none">
@@ -221,7 +210,6 @@ export default function Age({
               </div>
             </div>
 
-            {/* Przyciski akcji Waga */}
             {!editingWeight ? (
               <button
                 onClick={() => setEditingWeight(true)}
@@ -262,7 +250,6 @@ export default function Age({
         </div>
       </div>
 
-      {/* Sekcja BMI */}
       <div className="mt-6 pt-4 border-t border-gray-100">
         <div className="flex items-center gap-2 mb-2 text-gray-600">
           <Activity className="w-4 h-4" />

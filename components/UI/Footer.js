@@ -1,12 +1,4 @@
-import {
-  Heart,
-  Github,
-  Mail,
-  Activity,
-  Shield,
-  User,
-  ExternalLink,
-} from "lucide-react";
+import { Github, Mail, Activity, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 export default function Footer() {
@@ -16,7 +8,6 @@ export default function Footer() {
     <footer className="mt-auto w-full bg-white relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 py-10 md:py-12">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12">
-          {/* KOLUMNA 1: Branding (Szeroka - zajmuje 5/12 siatki na dużych ekranach) */}
           <div className="md:col-span-5 space-y-6">
             <Link href="/" className="inline-flex items-center gap-2.5 group">
               <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300 shadow-sm">
@@ -32,7 +23,6 @@ export default function Footer() {
             </p>
           </div>
 
-          {/* KOLUMNA 3: Kontakt / Społeczność */}
           <div className="md:col-span-4 lg:col-span-4">
             <h4 className="font-bold text-gray-900 text-sm uppercase tracking-wider mb-4">
               Kontakt & Community

@@ -32,11 +32,9 @@ export default function Safety() {
 
   return (
     <section className="mt-24 py-16 px-4 relative">
-      {/* Tło dekoracyjne */}
       <div className="absolute inset-0 -z-10 h-full w-full bg-white [background:radial-gradient(125%_125%_at_50%_10%,#fff_40%,#ecfdf5_100%)]"></div>
 
       <div className="max-w-6xl mx-auto">
-        {/* Nagłówek sekcji */}
         <div className="text-center mb-16 space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-bold uppercase tracking-wider">
             <Lock className="w-3 h-3" />
@@ -69,7 +67,6 @@ export default function Safety() {
           </p>
         </div>
 
-        {/* Grid Kart */}
         <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
           {features.map((item, index) => (
             <div

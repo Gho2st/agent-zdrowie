@@ -6,12 +6,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import { useChat } from "@ai-sdk/react";
-import TrendMiniCisnienie from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniCisnienie";
-import TrendMiniCukier from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniCukier";
-import TrendMiniTetno from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniTetno";
-import TrendMiniWaga from "@/components/UI/CentrumZdrowia/Trendy/TrendMiniWaga";
 import ListaPomiarow from "./ListaPomiarów";
-import { Loader2 } from "lucide-react";
+import { Loader2, PlusCircle, Sparkles, Bot, Save } from "lucide-react";
+
+import TrendMini from "@/components/UI/CentrumZdrowia/TrendMini";
 
 // Stałe domyślne jednostki
 const defaults = {
@@ -21,18 +19,22 @@ const defaults = {
   tętno: "bpm",
 };
 
-// Parsowanie ciśnienia w formacie "120/80"
+const TYPE_TO_ENUM = {
+  ciśnienie: "BLOOD_PRESSURE",
+  cukier: "GLUCOSE",
+  waga: "WEIGHT",
+  tętno: "HEART_RATE",
+};
+
 function asBP(v) {
   const m = v.replace(/\s+/g, "").match(/^(\d{2,3})\/(\d{2,3})$/);
   return m ? { sys: Number(m[1]), dia: Number(m[2]) } : null;
 }
 
-// Sprawdzanie, czy część wiadomości to tekst
 function isTextPart(p) {
   return p.type === "text" && typeof p.text === "string";
 }
 
-// Sprawdzanie norm
 function checkNorms(t, v, n, unit, timing) {
   if (!n) return { out: false };
   if (t === "cukier") {
@@ -86,11 +88,11 @@ export default function Pomiary() {
   const [type, setType] = useState("ciśnienie");
   const [value, setValue] = useState("");
   const [unit, setUnit] = useState(defaults["ciśnienie"]);
+
   const [measurements, setMeasurements] = useState([]);
   const [filterType, setFilterType] = useState("all");
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Pola kontekstowe
   const [glucoseContext, setGlucoseContext] = useState("");
   const [glucoseTime, setGlucoseTime] = useState("przed posiłkiem");
   const [pressureNote, setPressureNote] = useState("");
@@ -103,20 +105,18 @@ export default function Pomiary() {
   const [lastSubmittedAt, setLastSubmittedAt] = useState(null);
 
   const [chatId] = useState(() => `feedback-${crypto.randomUUID()}`);
-
   const { messages, append, isLoading } = useChat({
     api: "/api/chat",
     id: chatId,
   });
 
-  // Pobieranie porady od AI
   const fetchAgentAdvice = async () => {
     try {
       await append({
         id: "feedback",
         role: "user",
         content:
-          "Oceń konkretnie ostatni pomiar — ten najnowszy pod względem daty i czasu. Uwzględnij ewentualne notatki pozostawione przez użytkownika. Jeśli ich nie ma, nie musisz nic o nich pisać. Nie musisz podawać dokładnej godziny, jeśli pomiar został dodany przed chwilą. Szerszą historię analizuj tylko wtedy, gdy widzisz ku temu istotne powody.",
+          "Oceń konkretnie ostatni pomiar. Uwzględnij notatki użytkownika. Bądź zwięzły i empatyczny.",
       });
     } catch (e) {
       console.error("AI advice error", e);
@@ -129,7 +129,6 @@ export default function Pomiary() {
       .find((m) => m.role === "assistant");
     const c = lastAssistant?.content;
     if (!c) return undefined;
-
     if (typeof c === "string") return c;
     if (Array.isArray(c)) {
       return c
@@ -140,7 +139,6 @@ export default function Pomiary() {
     return undefined;
   }, [messages]);
 
-  // Pobieranie pomiarów i norm
   useEffect(() => {
     if (status !== "authenticated") return;
     (async () => {
@@ -159,16 +157,13 @@ export default function Pomiary() {
         toast.error("Nie udało się pobrać danych");
       }
     })();
-  }, [status]);
+  }, [status, refreshKey]);
 
-  // Aktualizacja jednostki przy zmianie typu
   useEffect(() => {
     setUnit(defaults[type]);
   }, [type]);
 
-  // Usuwanie pomiaru
   const requestDelete = (id) => setConfirmDeleteId(id);
-
   const confirmDelete = async () => {
     if (!confirmDeleteId) return;
     const prev = measurements;
@@ -187,7 +182,6 @@ export default function Pomiary() {
     }
   };
 
-  // Wysyłanie formularza
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (status !== "authenticated") {
@@ -198,7 +192,7 @@ export default function Pomiary() {
 
     const now = Date.now();
     if (lastSubmittedAt && now - lastSubmittedAt < 5000) {
-      toast.error("Odczekaj chwilę przed kolejnym pomiarem.");
+      toast.error("Odczekaj chwilę.");
       return;
     }
 
@@ -213,7 +207,8 @@ export default function Pomiary() {
       if (type === "ciśnienie") {
         const bp = asBP(value);
         if (!bp) {
-          toast.error("Niepoprawny format ciśnienia (np. 120/80)");
+          toast.error("Format: 120/80");
+          setIsSubmitting(false);
           return;
         }
         body.systolic = bp.sys;
@@ -222,21 +217,19 @@ export default function Pomiary() {
 
         if (
           norms?.systolicMin != null &&
-          norms?.systolicMax != null &&
-          norms?.diastolicMin != null &&
-          norms?.diastolicMax != null &&
           (bp.sys < norms.systolicMin ||
             bp.sys > norms.systolicMax ||
             bp.dia < norms.diastolicMin ||
             bp.dia > norms.diastolicMax)
         ) {
           isOutOfNorm = true;
-          alertDetails = `Zapisano pomiar, ale Twoje ciśnienie ${bp.sys}/${bp.dia} mmHg wykracza poza normę.\nSkurczowe: ${norms.systolicMin}–${norms.systolicMax}, Rozkurczowe: ${norms.diastolicMin}–${norms.diastolicMax}`;
+          alertDetails = `Ciśnienie poza normą.`;
         }
       } else {
         const numeric = Number(String(value).replace(",", "."));
         if (!Number.isFinite(numeric) || numeric < 0) {
           toast.error("Niepoprawna wartość");
+          setIsSubmitting(false);
           return;
         }
         body.amount = numeric;
@@ -247,21 +240,11 @@ export default function Pomiary() {
           const res = checkNorms(type, numeric, norms, unit, glucoseTime);
           if (res.out) {
             isOutOfNorm = true;
-            alertDetails = res.msg || "Wynik poza normą.";
-          }
-        }
-
-        if (type === "waga") {
-          const res = checkNorms(type, numeric, norms, unit);
-          if (res.out) {
-            isOutOfNorm = true;
             alertDetails = res.msg;
           }
         }
-
-        if (type === "tętno") {
-          body.note = pulseNote?.trim() || undefined;
-
+        if (type === "waga" || type === "tętno") {
+          if (type === "tętno") body.note = pulseNote?.trim() || undefined;
           const res = checkNorms(type, numeric, norms, unit);
           if (res.out) {
             isOutOfNorm = true;
@@ -278,7 +261,7 @@ export default function Pomiary() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "Błąd dodawania pomiaru");
+        toast.error(data.error || "Błąd dodawania");
         return;
       }
 
@@ -287,16 +270,10 @@ export default function Pomiary() {
       setGlucoseTime("przed posiłkiem");
       setPressureNote("");
       setPulseNote("");
-
-      // Odświeżenie listy
-      const refreshRes = await fetch("/api/measurement");
-      if (refreshRes.ok) {
-        setMeasurements(await refreshRes.json());
-        setRefreshKey(Date.now());
-      }
+      setRefreshKey(Date.now());
 
       if (isOutOfNorm) toast.error(alertDetails);
-      else toast.success("Pomyślnie dodano pomiar w normie!");
+      else toast.success("Zapisano!");
 
       fetchAgentAdvice();
     } catch (err) {
@@ -309,277 +286,263 @@ export default function Pomiary() {
 
   if (status === "loading") {
     return (
-      <div className="flex justify-center items-center h-screen">
-        Wczytywanie...
+      <div className="flex justify-center items-center h-screen text-emerald-600">
+        <Loader2 className="w-8 h-8 animate-spin" />
       </div>
     );
   }
 
-  const glucoseTimings = ["przed posiłkiem", "po posiłku", "rano", "wieczorem"];
-
   return (
     <Container>
       <Header text="Pomiary" />
-      <p className="text-gray-600 mt-4 mb-8">
-        Zarządzaj swoimi pomiarami w prosty i przejrzysty sposób
+      <p className="text-gray-500 mt-2 mb-8 ml-1">
+        Dodawaj wyniki, śledź trendy i otrzymuj porady AI.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         <form
           onSubmit={handleSubmit}
-          aria-busy={isSubmitting}
-          className={
-            "relative bg-white/30 backdrop-blur-lg border border-white/20 p-6 md:p-8 rounded-2xl shadow-xl w-full mx-auto space-y-5 transition-all duration-300" +
-            (isSubmitting ? " opacity-80" : "")
-          }
+          className={`
+            h-full
+            relative bg-white/80 backdrop-blur-xl border border-white/40 p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 
+            flex flex-col gap-5 transition-all duration-300
+            ${isSubmitting ? "opacity-80" : ""}
+          `}
         >
-          {/* Typ pomiaru */}
+          <div className="flex items-center gap-3 mb-2 border-b border-gray-100 pb-4">
+            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+              <PlusCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-800">Nowy wynik</h2>
+              <p className="text-xs text-gray-500">Uzupełnij dane poniżej</p>
+            </div>
+          </div>
+
           <div>
-            <label
-              htmlFor="type"
-              className="text-sm font-medium text-gray-700 block mb-1"
-            >
+            <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
               Typ pomiaru
             </label>
-            <select
-              id="type"
-              value={type}
-              onChange={(e) => {
-                const t = e.target.value;
-                setType(t);
-                setValue("");
-              }}
-              className="w-full p-3 rounded-lg border bg-white/30 border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
-            >
-              <option value="ciśnienie">Ciśnienie</option>
-              <option value="cukier">Cukier</option>
-              <option value="waga">Waga</option>
-              <option value="tętno">Tętno</option>
-            </select>
+            <div className="relative">
+              <select
+                id="type"
+                value={type}
+                onChange={(e) => {
+                  setType(e.target.value);
+                  setValue("");
+                }}
+                className="w-full p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-700 font-medium focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 focus:outline-none transition-all appearance-none"
+              >
+                <option value="ciśnienie">💓 Ciśnienie</option>
+                <option value="cukier">🍭 Cukier (Glukoza)</option>
+                <option value="waga">⚖️ Waga</option>
+                <option value="tętno">❤️ Tętno</option>
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </div>
+            </div>
           </div>
 
-          {/* Wartość */}
           <div>
-            <label
-              htmlFor="value"
-              className="text-sm font-medium text-gray-700 block mb-1"
-            >
-              {type === "ciśnienie" ? "Ciśnienie (np. 120/80)" : "Wartość"}
+            <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
+              {type === "ciśnienie"
+                ? "Wynik (skurczowe/rozkurczowe)"
+                : "Wartość wyniku"}
             </label>
-            {type === "ciśnienie" ? (
-              <input
-                id="value"
-                type="text"
-                inputMode="numeric"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                required
-                placeholder="np. 120/80"
-                className="w-full p-3 rounded-lg border bg-white/30 border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
-              />
-            ) : (
-              <input
-                id="value"
-                type="number"
-                inputMode="decimal"
-                step="any"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                required
-                placeholder={type === "tętno" ? "np. 72" : "np. 70"}
-                className="w-full p-3 rounded-lg border bg-white/30 border-gray-300 focus:ring-2 focus:ring-green-400 focus:outline-none"
-              />
-            )}
-          </div>
-
-          <div className="text-sm text-gray-700">
-            Jednostka:
-            <span className="ml-2 px-2 py-1 rounded-md bg-green-100 text-green-800 border border-green-200 align-middle">
-              {unit}
-            </span>
+            <div className="relative">
+              {type === "ciśnienie" ? (
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  required
+                  placeholder="np. 120/80"
+                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold placeholder:font-normal focus:ring-2 focus:ring-emerald-400 focus:outline-none transition-all"
+                />
+              ) : (
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  required
+                  placeholder={type === "tętno" ? "np. 72" : "np. 70.5"}
+                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold placeholder:font-normal focus:ring-2 focus:ring-emerald-400 focus:outline-none transition-all"
+                />
+              )}
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-md">
+                {unit}
+              </span>
+            </div>
           </div>
 
           {type === "cukier" && (
-            <>
+            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Kontekst pomiaru{" "}
-                  <span className="text-gray-400">(opcjonalne)</span>
+                <span className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
+                  Pora pomiaru
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  {["przed posiłkiem", "po posiłku", "rano", "wieczorem"].map(
+                    (t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setGlucoseTime(t)}
+                        className={`p-2.5 rounded-xl text-sm font-medium border transition-all ${
+                          glucoseTime === t
+                            ? "bg-amber-100 border-amber-300 text-amber-800 shadow-sm"
+                            : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
+                  Notatka / Posiłek
                 </label>
                 <textarea
                   value={glucoseContext}
                   onChange={(e) => setGlucoseContext(e.target.value)}
                   rows={1}
-                  placeholder="Co jadłeś przed pomiarem?"
-                  onInput={(e) => {
-                    const el = e.currentTarget;
-                    el.style.height = "auto";
-                    el.style.height = el.scrollHeight + "px";
-                  }}
-                  className="w-full p-3 border bg-white/30 border-gray-300 rounded-lg resize-none overflow-hidden focus:ring-2 focus:ring-green-500"
+                  placeholder="Co zjadłeś?"
+                  className="w-full p-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-emerald-400 focus:outline-none resize-none"
                 />
               </div>
-
-              <div>
-                <span className="block text-sm font-medium text-gray-700 mb-1">
-                  Kiedy mierzono?
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  {glucoseTimings.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setGlucoseTime(t)}
-                      aria-pressed={glucoseTime === t}
-                      className={`p-2 rounded-lg border transition ${
-                        glucoseTime === t
-                          ? "bg-green-600 text-white border-green-600"
-                          : "bg-white/30 border-gray-300 hover:bg-white/50"
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
-          {type === "ciśnienie" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notatka <span className="text-gray-400">(opcjonalne)</span>
-              </label>
-              <textarea
-                value={pressureNote}
-                onChange={(e) => setPressureNote(e.target.value)}
-                rows={1}
-                placeholder="np. stres, po kawie, wysiłek"
-                onInput={(e) => {
-                  const el = e.currentTarget;
-                  el.style.height = "auto";
-                  el.style.height = el.scrollHeight + "px";
-                }}
-                className="w-full p-3 bg-white/30 border border-gray-300 rounded-lg resize-none overflow-hidden focus:ring-2 focus:ring-green-500"
-              />
             </div>
           )}
 
-          {type === "tętno" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notatka <span className="text-gray-400">(opcjonalne)</span>
+          {(type === "ciśnienie" || type === "tętno") && (
+            <div className="animate-in fade-in slide-in-from-top-2">
+              <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
+                Notatka
               </label>
               <textarea
-                value={pulseNote}
-                onChange={(e) => setPulseNote(e.target.value)}
-                rows={1}
-                placeholder="np. w spoczynku, po biegu, stres"
-                onInput={(e) => {
-                  const el = e.currentTarget;
-                  el.style.height = "auto";
-                  el.style.height = el.scrollHeight + "px";
-                }}
-                className="w-full p-3 bg-white/30 border border-gray-300 rounded-lg resize-none overflow-hidden focus:ring-2 focus:ring-green-500"
-              />
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={status !== "authenticated" || isSubmitting}
-            className="relative bg-green-600 hover:bg-green-700 text-white w-full font-semibold py-3 rounded-lg transition disabled:opacity-50"
-          >
-            {isSubmitting && (
-              <span className="absolute inset-0 flex items-center justify-center">
-                <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24">
-                  <circle
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="none"
-                  />
-                </svg>
-              </span>
-            )}
-            <span className={isSubmitting ? "invisible" : ""}>
-              Zapisz pomiar
-            </span>
-          </button>
-        </form>
-
-        {/* Trendy */}
-        <div className="space-y-6">
-          <div className={type !== "ciśnienie" ? "hidden" : ""}>
-            <TrendMiniCisnienie refreshKey={refreshKey} />
-          </div>
-          <div className={type !== "cukier" ? "hidden" : ""}>
-            <TrendMiniCukier refreshKey={refreshKey} />
-          </div>
-          <div className={type !== "tętno" ? "hidden" : ""}>
-            <TrendMiniTetno refreshKey={refreshKey} />
-          </div>
-          <div className={type !== "waga" ? "hidden" : ""}>
-            <TrendMiniWaga refreshKey={refreshKey} />
-          </div>
-        </div>
-      </div>
-
-      {/* Feedback od Agenta */}
-      <section
-        className="mt-10 p-5 bg-white/30 border border-blue-200 rounded-lg shadow-md"
-        aria-live="polite"
-      >
-        <header className="flex items-center justify-between mb-2">
-          <h3 className="text-lg xl:text-2xl font-semibold text-blue-800">
-            Feedback od Agenta Zdrowie
-          </h3>
-          <time className="text-xs text-blue-700/70">
-            {new Date().toLocaleString("pl-PL")}
-          </time>
-        </header>
-
-        {isLoading ? (
-          <div className="flex mb-6 items-center justify-center gap-2 text-sm text-blue-700 rounded-lg py-3 px-4">
-            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-            <span className="font-medium">
-              Generowanie porady zdrowotnej...
-            </span>
-          </div>
-        ) : gptResponse ? (
-          <p className="text-blue-900 whitespace-pre-line">{gptResponse}</p>
-        ) : (
-          <p className="text-blue-900/80 italic">
-            Dodaj nowy pomiar, a Agent Zdrowie przeanalizuje go i udzieli
-            porady.
-          </p>
-        )}
-
-        {gptResponse && (
-          <div className="mt-3 text-right">
-            <button
-              type="button"
-              className="px-3 py-1.5 text-sm rounded-md border cursor-pointer border-blue-300 text-blue-800 bg-white/60 hover:bg-blue-100 disabled:opacity-50"
-              onClick={() => {
-                if (isLoading) {
-                  toast.error("Trwa generowanie. Poczekaj.");
-                  return;
+                value={type === "ciśnienie" ? pressureNote : pulseNote}
+                onChange={(e) =>
+                  type === "ciśnienie"
+                    ? setPressureNote(e.target.value)
+                    : setPulseNote(e.target.value)
                 }
-                append({
-                  role: "user",
-                  content:
-                    "Podpowiedz mi plan na dziś na podstawie tego wyniku.",
-                });
-              }}
-              disabled={isLoading}
+                rows={1}
+                placeholder="np. stres, po kawie"
+                className="w-full p-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-emerald-400 focus:outline-none resize-none"
+              />
+            </div>
+          )}
+
+          <div className="mt-auto">
+            {" "}
+            <button
+              type="submit"
+              disabled={status !== "authenticated" || isSubmitting}
+              className="w-full relative flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold shadow-lg shadow-emerald-200 hover:shadow-emerald-300 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 disabled:hover:scale-100"
             >
-              Poproś o plan na dziś
+              {isSubmitting ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  <Save className="w-5 h-5" />
+                  Zapisz wynik
+                </>
+              )}
             </button>
           </div>
-        )}
-      </section>
+        </form>
+
+        <div className="flex flex-col gap-6 h-full">
+          <div className="shrink-0 h-[300px] xl:h-[320px]">
+            <TrendMini
+              data={measurements}
+              type={TYPE_TO_ENUM[type] || "DEFAULT"}
+              title={
+                type === "ciśnienie"
+                  ? "💓 Ciśnienie"
+                  : type === "cukier"
+                  ? "🍭 Glukoza"
+                  : type === "waga"
+                  ? "⚖️ Waga"
+                  : "❤️ Tętno"
+              }
+            />
+          </div>
+
+          <section className="flex-1 bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl shadow-xl shadow-slate-200/50 flex flex-col">
+            <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100 shrink-0">
+              <div className="p-2.5 bg-violet-50 text-violet-600 rounded-xl">
+                <Bot className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 leading-none">
+                  Feedback AI
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  Analiza ostatniego pomiaru
+                </p>
+              </div>
+            </div>
+
+            <div className="flex-1 flex flex-col justify-center overflow-y-auto custom-scrollbar">
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-4 space-y-3">
+                  <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+                  <span className="text-sm font-medium text-violet-600 animate-pulse">
+                    Analizuję Twój wynik...
+                  </span>
+                </div>
+              ) : gptResponse ? (
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                  <div className="bg-violet-50/50 p-4 rounded-2xl border border-violet-100 text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                    {gptResponse}
+                  </div>
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      className="text-xs flex items-center gap-1.5 text-violet-600 hover:text-violet-800 font-medium bg-white px-3 py-1.5 rounded-lg border border-violet-100 shadow-sm transition-colors"
+                      onClick={() => {
+                        if (isLoading) return;
+                        append({
+                          role: "user",
+                          content: "Podaj krótką wskazówkę co teraz zrobić.",
+                        });
+                      }}
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      Dopytaj o wskazówkę
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-gray-400 text-sm italic">
+                    Dodaj nowy pomiar powyżej,
+                    <br /> a Agent automatycznie go oceni.
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      </div>
 
       <ListaPomiarow
         measurements={measurements}

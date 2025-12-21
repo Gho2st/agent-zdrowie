@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 export default function useCheckinTrends(refreshKey) {
-  // Stan przechowuje obiekty, które odpowiadają interfejsowi CheckinTrend
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,12 +19,12 @@ export default function useCheckinTrends(refreshKey) {
         if (Array.isArray(data)) {
           setTrends(data);
         } else {
-          setTrends([]); // fallback, gdyby coś poszło nie tak
+          setTrends([]);
         }
       } catch (err) {
         setError("Nie udało się pobrać trendów");
         console.error(err);
-        setTrends([]); // zabezpieczenie
+        setTrends([]);
       } finally {
         setLoading(false);
       }

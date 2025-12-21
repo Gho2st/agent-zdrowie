@@ -43,7 +43,6 @@ export default function Navigation() {
 
   return (
     <>
-      {/* HAMBURGER (MOBILE) */}
       <button
         onClick={() => setOpen(true)}
         className="md:hidden fixed top-4 left-4 z-50 p-2.5 bg-white/90 backdrop-blur-md rounded-xl shadow-sm border border-gray-200 text-gray-700 hover:text-emerald-600 transition-all active:scale-95"
@@ -51,7 +50,6 @@ export default function Navigation() {
         <Menu className="w-6 h-6" />
       </button>
 
-      {/* BACKDROP (MOBILE) */}
       <div
         className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300 ${
           open ? "opacity-100 visible" : "opacity-0 invisible"
@@ -59,13 +57,11 @@ export default function Navigation() {
         onClick={() => setOpen(false)}
       />
 
-      {/* SIDEBAR */}
       <aside
         className={`fixed top-0 left-0 h-screen w-64 2xl:w-72 bg-white border-r border-gray-100 z-50 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none ${
           open ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0 md:static md:flex`}
       >
-        {/* 1. LOGO */}
         <div className="p-6 flex items-center justify-between">
           <Link
             href="/"
@@ -89,8 +85,6 @@ export default function Navigation() {
           </button>
         </div>
 
-        {/* 2. NAWIGACJA - POPRAWIONE ODSTĘPY */}
-        {/* space-y-2 dodaje 8px przerwy między każdym elementem Link */}
         <nav className="flex-1 px-4 overflow-y-auto custom-scrollbar space-y-2 mt-2">
           <p className="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
             Menu
@@ -103,7 +97,6 @@ export default function Navigation() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
-                // Zmiana: py-2.5 (było py-3) - przycisk jest nieco niższy, zgrabniejszy
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 group ${
                   isActive
                     ? "bg-emerald-50 text-emerald-700 font-semibold shadow-sm ring-1 ring-emerald-100"
@@ -126,7 +119,6 @@ export default function Navigation() {
           })}
         </nav>
 
-        {/* 4. USER PROFIL */}
         <div className="p-4 border-t border-gray-100">
           {session?.user ? (
             <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors">

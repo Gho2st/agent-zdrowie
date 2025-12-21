@@ -9,7 +9,6 @@ import {
   Sparkles,
 } from "lucide-react";
 
-// --- ANIMACJE ---
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -56,11 +55,9 @@ export default function About() {
 
   return (
     <section className="pb-10 px-4 overflow-hidden relative">
-      {/* Tło dekoracyjne */}
       <div className="absolute top-0 right-0 -z-10 w-[600px] h-[600px] bg-emerald-50/50 rounded-full blur-3xl opacity-60 translate-x-1/3 -translate-y-1/4" />
 
       <div className="max-w-7xl mx-auto">
-        {/* NAGŁÓWEK */}
         <motion.div
           className="text-center mb-16 space-y-4"
           initial={{ opacity: 0, y: -20 }}
@@ -97,7 +94,6 @@ export default function About() {
         </motion.div>
 
         <div className="flex flex-col-reverse lg:flex-row items-center gap-12 xl:gap-20">
-          {/* LEWA KOLUMNA - KARTY */}
           <motion.div
             className="grid sm:grid-cols-2 gap-5 flex-1 w-full"
             variants={containerVariants}
@@ -125,7 +121,6 @@ export default function About() {
             ))}
           </motion.div>
 
-          {/* PRAWA KOLUMNA - OBRAZ AGENTA */}
           <motion.div
             className="w-full lg:w-5/12 relative flex justify-center"
             initial={{ opacity: 0, scale: 0.8, x: 50 }}
@@ -133,7 +128,6 @@ export default function About() {
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
           >
-            {/* Tło pod obrazkiem (Blob) */}
             <div className="absolute inset-0 bg-gradient-to-tr from-emerald-100 to-teal-50 rounded-full blur-2xl opacity-60 scale-90 animate-pulse" />
 
             <div className="relative z-10 w-full max-w-md drop-shadow-2xl">
@@ -146,7 +140,6 @@ export default function About() {
                 priority
               />
 
-              {/* Pływające elementy UI wokół agenta */}
               <motion.div
                 className="absolute -left-6 top-10 bg-white p-3 rounded-2xl shadow-xl border border-gray-100 flex items-center gap-3"
                 animate={{ y: [0, -10, 0] }}

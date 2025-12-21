@@ -173,7 +173,6 @@ export default function RejestracjaDodatkowa() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 flex justify-center items-start">
       <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-        {/* Header */}
         <div className="bg-emerald-600 p-8 text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-32 h-32 bg-white opacity-5 rounded-full -translate-x-10 -translate-y-10"></div>
           <div className="absolute bottom-0 right-0 w-24 h-24 bg-white opacity-5 rounded-full translate-x-10 translate-y-10"></div>
@@ -186,7 +185,6 @@ export default function RejestracjaDodatkowa() {
         </div>
 
         <div className="p-8 space-y-8">
-          {/* Sekcja 1: Dane Parametryczne */}
           <section>
             <h2 className="text-xs uppercase tracking-wider text-gray-500 font-bold mb-5 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -271,7 +269,6 @@ export default function RejestracjaDodatkowa() {
 
           <hr className="border-gray-100" />
 
-          {/* Sekcja 2: Profil Kliniczny */}
           <section>
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-xs uppercase tracking-wider text-gray-500 font-bold flex items-center gap-2">

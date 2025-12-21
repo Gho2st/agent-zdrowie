@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Flame, ChevronRight } from "lucide-react";
+import {
+  Loader2,
+  Flame,
+  ChevronRight,
+  Trophy,
+  CalendarCheck,
+  Check,
+} from "lucide-react";
 
 const MILESTONES = [7, 14, 30, 60, 100, 200, 365];
 
@@ -59,6 +66,8 @@ export default function StreakTrackerDynamic({ userTimeZone }) {
   const last7 = useMemo(() => {
     const days = lastNDaysISO(7, userTimeZone);
     const set = new Set(data?.history ?? []);
+
+    // Logika fallbackowa jeśli brak historii w API (symulacja na podstawie licznika)
     if (!data?.history && data?.streakCount) {
       for (let i = 0; i < Math.min(7, data.streakCount); i++) {
         const idx = days.length - 1 - i;
@@ -66,132 +75,165 @@ export default function StreakTrackerDynamic({ userTimeZone }) {
       }
       if (data?.lastEntryDate) set.add(data.lastEntryDate);
     }
-    return days.map((iso) => ({
-      iso,
-      done: set.has(iso),
-      label: new Date(iso).toLocaleDateString("pl-PL", {
-        day: "2-digit",
-        month: "2-digit",
-      }),
-    }));
+
+    return days.map((iso) => {
+      const dateObj = new Date(iso);
+      return {
+        iso,
+        done: set.has(iso),
+        // Skrócona nazwa dnia tygodnia (np. Pn, Wt)
+        dayName: dateObj
+          .toLocaleDateString("pl-PL", { weekday: "short" })
+          .replace(".", ""),
+        dayNum: dateObj.getDate(),
+      };
+    });
   }, [data, userTimeZone]);
 
   // Obliczenie postępu do kolejnego progu
   const { nextMilestone, progressPct } = useMemo(() => {
     if (!data) return { nextMilestone: null, progressPct: 0 };
     const next =
-      MILESTONES.find((m) => m > data.streakCount) ?? data.streakCount;
+      MILESTONES.find((m) => m > data.streakCount) ?? data.streakCount + 100;
     const prev = MILESTONES.filter((m) => m < next).pop() ?? 0;
     const span = Math.max(1, next - prev);
-    const pct = Math.min(
-      100,
-      Math.round(((data.streakCount - prev) / span) * 100)
-    );
+    const currentProgress = Math.max(0, data.streakCount - prev);
+    const pct = Math.min(100, Math.round((currentProgress / span) * 100));
     return { nextMilestone: next, progressPct: pct };
   }, [data]);
 
-  // Renderowanie komponentu z serią dni
+  // Wspólny styl kontenera
+  const containerClasses =
+    "bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl shadow-xl shadow-slate-200/50 flex flex-col h-full";
+
+  if (loading) {
+    return (
+      <div
+        className={`${containerClasses} items-center justify-center min-h-[250px]`}
+      >
+        <Loader2 className="animate-spin text-orange-500 mb-3" size={32} />
+        <span className="text-sm font-medium text-gray-400">
+          Ładowanie serii...
+        </span>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
   return (
-    <div className="bg-white/30 shadow rounded-2xl p-4 md:p-5 text-center flex flex-col items-center gap-5">
-      <style>{`
-        @keyframes glow { 0%,100%{filter:drop-shadow(0 0 0px rgba(249,115,22,0))} 50%{filter:drop-shadow(0 0 10px rgba(249,115,22,0.7))} }
-        .flame-glow { animation: glow 2.2s ease-in-out infinite; }
-      `}</style>
-
-      <h2 className="text-xl md:text-2xl font-semibold mb-1 flex items-center justify-center gap-2">
-        <Flame
-          className={`w-6 h-6 ${
-            isStreakActive ? "text-orange-500 flame-glow" : "text-gray-400"
+    <div className={containerClasses}>
+      {/* NAGŁÓWEK */}
+      <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
+        <div
+          className={`p-3 rounded-2xl ${
+            isStreakActive
+              ? "bg-orange-100 text-orange-600"
+              : "bg-gray-100 text-gray-500"
           }`}
-        />
-        Seria dni z pomiarami
-      </h2>
-
-      {loading ? (
-        <div className="flex flex-col items-center justify-center text-gray-500 py-6">
-          <Loader2 className="animate-spin w-5 h-5 mb-2" />
-          Ładowanie danych...
-          <div className="mt-3 h-3 w-56 bg-gray-200/60 rounded-full overflow-hidden">
-            <div className="h-full w-1/3 bg-gray-300 animate-pulse" />
-          </div>
+        >
+          <Flame
+            className={`w-6 h-6 ${isStreakActive ? "animate-pulse" : ""}`}
+          />
         </div>
-      ) : !data ? (
-        <p className="text-gray-500">Brak danych do wyświetlenia.</p>
-      ) : (
-        <>
-          <p className="text-3xl md:text-4xl font-extrabold">
-            <span
-              className={isStreakActive ? "text-green-600" : "text-gray-800"}
-            >
-              {data.streakCount}
-            </span>{" "}
-            dni
+        <div>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+            Regularność
           </p>
+          <h2 className="text-xl font-bold text-gray-800 leading-none">
+            Twoja Seria
+          </h2>
+        </div>
+      </div>
 
-          <p className="md:text-lg text-green-900 font-bold -mt-1">
-            {isStreakActive
-              ? "Dzisiaj już dodałeś pomiar 💪"
-              : "Nie zapomnij dodać pomiaru dzisiaj!"}
-          </p>
-
-          <div className="flex items-center gap-2" aria-label="Ostatnie 7 dni">
-            {last7.map(({ iso, done, label }) => (
-              <div key={iso} className="flex flex-col items-center">
-                <div
-                  className={`h-3.5 w-3.5 rounded-full shadow-2xl border-3 transition
-                    ${
-                      done
-                        ? "bg-green-500 border-green-600"
-                        : "bg-gray-200 border-gray-300"
-                    }`}
-                  title={`${label} • ${done ? "jest wpis ✅" : "brak ❌"}`}
-                  aria-label={`${label}: ${done ? "zapisano" : "brak"}`}
-                />
-              </div>
-            ))}
+      {/* GŁÓWNA TREŚĆ */}
+      <div className="flex flex-col items-center justify-center flex-1 space-y-6">
+        {/* Licznik dni */}
+        <div className="text-center relative">
+          <div className="text-6xl font-black text-gray-800 tracking-tight leading-none">
+            {data.streakCount}
+            <span className="text-base font-medium text-gray-400 ml-2 align-middle">
+              dni
+            </span>
           </div>
 
-          {nextMilestone && nextMilestone > 0 && (
-            <div className="w-full max-w-md text-left">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-gray-600">
-                  Postęp do kolejnego progu
-                </span>
-                <span className="text-sm font-medium">{progressPct}%</span>
+          <p
+            className={`text-sm font-semibold mt-2 ${
+              isStreakActive ? "text-emerald-600" : "text-amber-600"
+            }`}
+          >
+            {isStreakActive
+              ? "🔥 Seria podtrzymana! Świetna robota."
+              : "⚠️ Nie przerywaj serii! Dodaj wpis dziś."}
+          </p>
+        </div>
+
+        {/* Historia 7 dni */}
+        <div className="flex justify-center gap-2 md:gap-3 w-full">
+          {last7.map(({ iso, done, dayName }) => (
+            <div key={iso} className="flex flex-col items-center gap-1">
+              <div
+                className={`
+                  w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300
+                  ${
+                    done
+                      ? "bg-emerald-500 text-white shadow-md shadow-emerald-200 scale-105"
+                      : "bg-gray-100 text-gray-300 border border-gray-200"
+                  }
+                `}
+                title={iso}
+              >
+                {done ? (
+                  <Check className="w-4 h-4" strokeWidth={3} />
+                ) : (
+                  <span className="w-1.5 h-1.5 bg-gray-300 rounded-full" />
+                )}
               </div>
-              <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-emerald-500 transition-[width] duration-700 ease-out"
-                  style={{ width: `${progressPct}%` }}
-                  role="progressbar"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={progressPct}
-                />
-              </div>
-              <div className="mt-1 text-xs text-gray-500">
+              <span
+                className={`text-[10px] font-medium uppercase ${
+                  done ? "text-emerald-600" : "text-gray-400"
+                }`}
+              >
+                {dayName}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Pasek postępu do milestone */}
+        {nextMilestone && (
+          <div className="w-full">
+            <div className="flex justify-between items-end mb-2 px-1">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase tracking-wide">
+                <Trophy className="w-3.5 h-3.5 text-orange-400" />
                 Cel: {nextMilestone} dni
               </div>
+              <span className="text-xs font-bold text-orange-600">
+                {progressPct}%
+              </span>
             </div>
-          )}
 
-          {MILESTONES.includes(data.streakCount) && data.streakCount > 0 && (
-            <div className="mt-1 bg-yellow-100 text-yellow-900 px-3 py-2 rounded-lg font-medium">
-              🏅 Gratulacje! Odznaka za {data.streakCount} dni!
+            <div className="h-3 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-100">
+              <div
+                className="h-full bg-gradient-to-r from-orange-400 to-amber-500 rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(251,146,60,0.4)]"
+                style={{ width: `${progressPct}%` }}
+              />
             </div>
-          )}
+          </div>
+        )}
 
-          {!isStreakActive && (
-            <button
-              onClick={() => (window.location.href = "/pomiary")}
-              className="group mt-1 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700 active:scale-[0.99] transition"
-            >
-              Dodaj dzisiejszy pomiar
-              <ChevronRight className="w-4 h-4 transition -translate-x-0 group-hover:translate-x-0.5" />
-            </button>
-          )}
-        </>
-      )}
+        {/* Przycisk akcji (tylko gdy seria nieaktywna) */}
+        {!isStreakActive && (
+          <button
+            onClick={() => (window.location.href = "/pomiary")}
+            className="w-full group mt-2 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-white font-semibold shadow-lg shadow-emerald-200 hover:bg-emerald-700 hover:shadow-emerald-300 active:scale-[0.98] transition-all"
+          >
+            <CalendarCheck className="w-5 h-5" />
+            Zapisz dzisiejszy wynik
+            <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
