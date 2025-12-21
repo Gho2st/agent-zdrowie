@@ -2,14 +2,7 @@
 
 import toast from "react-hot-toast";
 import { useState, useEffect, useRef } from "react";
-import {
-  Edit2,
-  Save,
-  Loader2,
-  CheckCircle,
-  Activity,
-  Settings2,
-} from "lucide-react";
+import { Edit2, Save, Loader2, CheckCircle, Settings2 } from "lucide-react";
 
 // Definicja etykiet dla pól norm
 const fieldLabels = {

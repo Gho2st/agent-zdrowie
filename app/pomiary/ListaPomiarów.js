@@ -14,7 +14,6 @@ import {
   Calendar,
   AlertCircle,
   CheckCircle2,
-  X,
 } from "lucide-react";
 
 const ITEMS_PER_PAGE = 12;

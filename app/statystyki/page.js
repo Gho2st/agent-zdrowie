@@ -14,7 +14,7 @@ import {
 import annotationPlugin from "chartjs-plugin-annotation";
 import { Line } from "react-chartjs-2";
 import "chartjs-adapter-date-fns";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Container from "@/components/UI/Container/Container";
 import Header from "@/components/UI/Headers/Header";
@@ -25,7 +25,6 @@ import {
   Percent,
   BarChart3,
   CalendarRange,
-  Loader2,
 } from "lucide-react";
 
 ChartJS.register(
@@ -104,7 +103,7 @@ const checkIsNormal = (val, val2, type, norms) => {
 };
 
 export default function Statistics() {
-  const { data: session, status } = useSession();
+  const { data: status } = useSession();
   const [measurements, setMeasurements] = useState([]);
   const [norms, setNorms] = useState(null);
   const [timeRange, setTimeRange] = useState("30");

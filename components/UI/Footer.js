@@ -2,8 +2,6 @@ import { Github, Mail, Activity, ExternalLink } from "lucide-react";
 import Link from "next/link";
 
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
-
   return (
     <footer className="mt-auto w-full bg-white relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 py-10 md:py-12">

@@ -10,67 +10,7 @@ import {
   Activity,
   Droplets,
   Heart,
-  Minus,
 } from "lucide-react";
-
-const GoalItem = ({
-  label,
-  value,
-  min,
-  max,
-  unit,
-  icon: Icon,
-  colorClass,
-  iconColor,
-}) => {
-  const hasValue = value !== null && value !== undefined;
-
-  return (
-    <div className="group flex items-center justify-between p-3 rounded-2xl hover:bg-white/50 transition-colors border border-transparent hover:border-white/60">
-      <div className="flex items-center gap-4">
-        <div className={`p-3 rounded-2xl ${colorClass}`}>
-          <Icon className="w-5 h-5" />
-        </div>
-
-        <div>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">
-            {label}
-          </p>
-          <p className="text-xs text-gray-500 font-medium">
-            Cel:{" "}
-            <span className="text-gray-700">
-              {min} – {max}
-            </span>{" "}
-            {unit}
-          </p>
-        </div>
-      </div>
-
-      <div className="text-right">
-        <p
-          className={`text-lg font-bold leading-none ${
-            hasValue ? "text-gray-800" : "text-gray-300"
-          }`}
-        >
-          {hasValue ? value : "---"}
-          {hasValue && (
-            <span className="text-xs text-gray-400 font-normal ml-1">
-              {unit}
-            </span>
-          )}
-        </p>
-
-        <div className="flex justify-end mt-1">
-          {hasValue ? null : (
-            <div className="flex items-center text-xs text-gray-400">
-              <Minus className="w-3 h-3 mr-1" /> Brak danych
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const GoalRow = ({
   label,
