@@ -49,6 +49,7 @@ const GoalRow = ({
   let displayValue = "---";
   let hasData = false;
 
+  // Logika sprawdzania sukcesu (dla obiektów i wartości prostych)
   if (
     typeof currentVal === "object" &&
     currentVal !== null &&
@@ -56,11 +57,18 @@ const GoalRow = ({
   ) {
     hasData = true;
     displayValue = `${currentVal.sys}/${currentVal.dia}`;
+
+    // Używamy bezpiecznego sprawdzania (dajemy 0 jeśli undefined, żeby nie wywaliło błędu logicznego)
+    const minSys = min?.sys ?? 0;
+    const maxSys = max?.sys ?? 999;
+    const minDia = min?.dia ?? 0;
+    const maxDia = max?.dia ?? 999;
+
     isSuccess =
-      currentVal.sys >= min.sys &&
-      currentVal.sys <= max.sys &&
-      currentVal.dia >= min.dia &&
-      currentVal.dia <= max.dia;
+      currentVal.sys >= minSys &&
+      currentVal.sys <= maxSys &&
+      currentVal.dia >= minDia &&
+      currentVal.dia <= maxDia;
   } else if (currentVal !== null && currentVal !== undefined) {
     hasData = true;
     displayValue = currentVal;
@@ -78,7 +86,7 @@ const GoalRow = ({
           <p className="text-xs text-gray-500">
             Cel:{" "}
             {typeof min === "object"
-              ? `${min.sys}-${max.sys}`
+              ? `${min.sys}–${max.sys} / ${min.dia ?? "--"}–${max.dia ?? "--"}`
               : `${min}–${max}`}{" "}
             <span className="opacity-70">{unit}</span>
           </p>

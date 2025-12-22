@@ -5,7 +5,7 @@ import prisma from "@/lib/prisma";
 export async function GET() {
   const session = await auth();
 
-  // 1. Walidacja sesji
+  //  Walidacja sesji
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -23,6 +23,8 @@ export async function GET() {
                 weightMax: true,
                 systolicMin: true,
                 systolicMax: true,
+                diastolicMin: true,
+                diastolicMax: true,
                 glucoseFastingMin: true,
                 glucoseFastingMax: true,
                 pulseMin: true,
@@ -41,14 +43,13 @@ export async function GET() {
       );
     }
 
-    // 3. Pobranie ostatnich pomiarów
+    //  Pobranie ostatnich pomiarów
     const lastMeasurements = await prisma.measurement.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
       take: 20,
     });
 
-    // 4. Mapowanie ostatnich wartości (Enumy + value/value2)
     const findMeasurement = (type) =>
       lastMeasurements.find((m) => m.type === type);
 
@@ -57,12 +58,9 @@ export async function GET() {
     const glucoseM = findMeasurement("GLUCOSE");
     const pulseM = findMeasurement("HEART_RATE");
 
-    // 5. Przygotowanie spłaszczonego obiektu norm (zgodność z frontendem)
-    // Jeśli user nie ma profilu/norm, zwracamy pusty obiekt lub null
     const norms = user.healthProfile?.norms || {};
 
     return NextResponse.json({
-      // Frontend oczekuje obiektu "user" z polami weightMin, systolicMax itp.
       user: norms,
 
       values: {

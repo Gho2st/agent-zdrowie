@@ -2,7 +2,7 @@
 
 import Container from "@/components/UI/Container/Container";
 import Header from "@/components/UI/Headers/Header";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import { useChat } from "@ai-sdk/react";
@@ -11,7 +11,6 @@ import { Loader2, PlusCircle, Sparkles, Bot, Save } from "lucide-react";
 
 import TrendMini from "@/components/UI/CentrumZdrowia/TrendMini";
 
-// Stałe domyślne jednostki
 const defaults = {
   ciśnienie: "mmHg",
   cukier: "mg/dL",
@@ -45,10 +44,7 @@ function checkNorms(t, v, n, unit, timing) {
     ) {
       const out = v < n.glucoseFastingMin || v > n.glucoseFastingMax;
       return out
-        ? {
-            out,
-            msg: `Twój cukier ${v} ${unit} poza normą na czczo (${n.glucoseFastingMin}–${n.glucoseFastingMax} ${unit}).`,
-          }
+        ? { out, msg: `Twój cukier ${v} ${unit} poza normą na czczo.` }
         : { out: false };
     }
     if (timing === "po posiłku" && n.glucosePostMealMax != null) {
@@ -56,28 +52,18 @@ function checkNorms(t, v, n, unit, timing) {
       return out
         ? {
             out,
-            msg: `Po posiłku wynik ${v} ${unit} > ${n.glucosePostMealMax} ${unit}.`,
+            msg: `Po posiłku wynik ${v} ${unit} > ${n.glucosePostMealMax}.`,
           }
         : { out: false };
     }
   }
   if (t === "waga" && n.weightMin != null && n.weightMax != null) {
     const out = v < n.weightMin || v > n.weightMax;
-    return out
-      ? {
-          out,
-          msg: `Waga ${v} ${unit} poza ${n.weightMin}–${n.weightMax} ${unit}.`,
-        }
-      : { out: false };
+    return out ? { out, msg: `Waga poza normą.` } : { out: false };
   }
   if (t === "tętno" && n.pulseMin != null && n.pulseMax != null) {
     const out = v < n.pulseMin || v > n.pulseMax;
-    return out
-      ? {
-          out,
-          msg: `Tętno ${v} ${unit} poza ${n.pulseMin}–${n.pulseMax} ${unit}.`,
-        }
-      : { out: false };
+    return out ? { out, msg: `Tętno poza normą.` } : { out: false };
   }
   return { out: false };
 }
@@ -105,18 +91,34 @@ export default function Pomiary() {
   const [lastSubmittedAt, setLastSubmittedAt] = useState(null);
 
   const [chatId] = useState(() => `feedback-${crypto.randomUUID()}`);
-  const { messages, append, isLoading } = useChat({
+
+  const { messages, append, isLoading, setMessages } = useChat({
     api: "/api/chat",
     id: chatId,
+    onError: (err) => {
+      console.error("Chat error", err);
+      toast.error("Błąd generowania porady AI");
+    },
   });
 
-  const fetchAgentAdvice = async () => {
+  const fetchAgentAdvice = async (currentData) => {
     try {
+      setMessages([]);
+
+      const promptContent = `
+        Oceń ten konkretny, nowy wynik zdrowotny. Nie analizuj historii, tylko ten jeden pomiar:
+        - Typ: ${currentData.type}
+        - Wartość: ${currentData.formattedValue}
+        - Pora/Kontekst: ${currentData.context || "Brak"}
+        - Notatka użytkownika: ${currentData.note || "Brak"}
+        
+        Czy ten wynik jest w normie? Daj krótką, empatyczną wskazówkę (max 2-3 zdania).
+      `;
+
       await append({
-        id: "feedback",
+        id: `msg-${Date.now()}`,
         role: "user",
-        content:
-          "Oceń konkretnie ostatni pomiar. Uwzględnij notatki użytkownika. Bądź zwięzły i empatyczny.",
+        content: promptContent,
       });
     } catch (e) {
       console.error("AI advice error", e);
@@ -154,7 +156,6 @@ export default function Pomiary() {
         setNorms(n);
       } catch (e) {
         console.error(e);
-        toast.error("Nie udało się pobrać danych");
       }
     })();
   }, [status, refreshKey]);
@@ -163,38 +164,34 @@ export default function Pomiary() {
     setUnit(defaults[type]);
   }, [type]);
 
-  const requestDelete = (id) => setConfirmDeleteId(id);
-  const confirmDelete = async () => {
+  const requestDelete = useCallback((id) => setConfirmDeleteId(id), []);
+  const confirmDelete = useCallback(async () => {
     if (!confirmDeleteId) return;
-    const prev = measurements;
     setMeasurements((p) => p.filter((m) => String(m.id) !== confirmDeleteId));
     try {
       const res = await fetch(`/api/measurement/${confirmDeleteId}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error();
-      toast.success("Pomiar został usunięty");
+      toast.success("Usunięto");
     } catch {
-      setMeasurements(prev);
-      toast.error("Błąd podczas usuwania pomiaru");
+      setRefreshKey((prev) => prev + 1);
+      toast.error("Błąd usuwania");
     } finally {
       setConfirmDeleteId(null);
     }
-  };
+  }, [confirmDeleteId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (status !== "authenticated") {
-      toast.error("Zaloguj się, aby dodać pomiar");
+      toast.error("Zaloguj się");
       return;
     }
     if (isSubmitting) return;
 
     const now = Date.now();
-    if (lastSubmittedAt && now - lastSubmittedAt < 5000) {
-      toast.error("Odczekaj chwilę.");
-      return;
-    }
+    if (lastSubmittedAt && now - lastSubmittedAt < 2000) return; // Krótszy debounce
 
     setIsSubmitting(true);
     setLastSubmittedAt(now);
@@ -202,6 +199,13 @@ export default function Pomiary() {
     const body = { type, unit };
     let isOutOfNorm = false;
     let alertDetails = "";
+
+    let aiDataPayload = {
+      type: type,
+      formattedValue: "",
+      context: "",
+      note: "",
+    };
 
     try {
       if (type === "ciśnienie") {
@@ -215,28 +219,33 @@ export default function Pomiary() {
         body.diastolic = bp.dia;
         body.note = pressureNote?.trim() || undefined;
 
+        // Dane dla AI
+        aiDataPayload.formattedValue = `${bp.sys}/${bp.dia} ${unit}`;
+        aiDataPayload.note = pressureNote;
+
         if (
           norms?.systolicMin != null &&
-          (bp.sys < norms.systolicMin ||
-            bp.sys > norms.systolicMax ||
-            bp.dia < norms.diastolicMin ||
-            bp.dia > norms.diastolicMax)
+          (bp.sys < norms.systolicMin || bp.sys > norms.systolicMax)
         ) {
           isOutOfNorm = true;
-          alertDetails = `Ciśnienie poza normą.`;
+          alertDetails = "Ciśnienie poza normą.";
         }
       } else {
         const numeric = Number(String(value).replace(",", "."));
         if (!Number.isFinite(numeric) || numeric < 0) {
-          toast.error("Niepoprawna wartość");
+          toast.error("Błędna wartość");
           setIsSubmitting(false);
           return;
         }
         body.amount = numeric;
 
+        aiDataPayload.formattedValue = `${numeric} ${unit}`;
+
         if (type === "cukier") {
           body.context = glucoseContext?.trim() || undefined;
           body.timing = glucoseTime;
+          aiDataPayload.context = `${glucoseTime}, ${glucoseContext || ""}`;
+
           const res = checkNorms(type, numeric, norms, unit, glucoseTime);
           if (res.out) {
             isOutOfNorm = true;
@@ -244,7 +253,10 @@ export default function Pomiary() {
           }
         }
         if (type === "waga" || type === "tętno") {
-          if (type === "tętno") body.note = pulseNote?.trim() || undefined;
+          if (type === "tętno") {
+            body.note = pulseNote?.trim() || undefined;
+            aiDataPayload.note = pulseNote;
+          }
           const res = checkNorms(type, numeric, norms, unit);
           if (res.out) {
             isOutOfNorm = true;
@@ -261,21 +273,25 @@ export default function Pomiary() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "Błąd dodawania");
+        toast.error(data.error || "Błąd");
         return;
       }
 
+      // Reset formularza
       setValue("");
       setGlucoseContext("");
-      setGlucoseTime("przed posiłkiem");
       setPressureNote("");
       setPulseNote("");
+
+      // Odświeżenie listy pomiarów
       setRefreshKey(Date.now());
 
       if (isOutOfNorm) toast.error(alertDetails);
       else toast.success("Zapisano!");
 
-      fetchAgentAdvice();
+      setTimeout(() => {
+        fetchAgentAdvice(aiDataPayload);
+      }, 100);
     } catch (err) {
       console.error(err);
       toast.error("Wystąpił błąd");
@@ -283,6 +299,48 @@ export default function Pomiary() {
       setIsSubmitting(false);
     }
   };
+
+  const TrendSection = useMemo(
+    () => (
+      <TrendMini
+        data={measurements}
+        type={TYPE_TO_ENUM[type] || "DEFAULT"}
+        title={
+          type === "ciśnienie"
+            ? "💓 Ciśnienie"
+            : type === "cukier"
+            ? "🍭 Glukoza"
+            : type === "waga"
+            ? "⚖️ Waga"
+            : "❤️ Tętno"
+        }
+      />
+    ),
+    [measurements, type]
+  );
+
+  const ListSection = useMemo(
+    () => (
+      <ListaPomiarow
+        measurements={measurements}
+        filterType={filterType}
+        setFilterType={setFilterType}
+        requestDelete={requestDelete}
+        confirmDeleteId={confirmDeleteId}
+        setConfirmDeleteId={setConfirmDeleteId}
+        confirmDelete={confirmDelete}
+        norms={norms}
+      />
+    ),
+    [
+      measurements,
+      filterType,
+      confirmDeleteId,
+      norms,
+      requestDelete,
+      confirmDelete,
+    ]
+  );
 
   if (status === "loading") {
     return (
@@ -303,10 +361,9 @@ export default function Pomiary() {
         <form
           onSubmit={handleSubmit}
           className={`
-            h-full
-            relative bg-white/80 backdrop-blur-xl border border-white/40 p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 
+            h-full relative bg-white/80 backdrop-blur-xl border border-white/40 p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 
             flex flex-col gap-5 transition-all duration-300
-            ${isSubmitting ? "opacity-80" : ""}
+            ${isSubmitting ? "opacity-80 pointer-events-none" : ""}
           `}
         >
           <div className="flex items-center gap-3 mb-2 border-b border-gray-100 pb-4">
@@ -331,28 +388,13 @@ export default function Pomiary() {
                   setType(e.target.value);
                   setValue("");
                 }}
-                className="w-full p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-700 font-medium focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 focus:outline-none transition-all appearance-none"
+                className="w-full p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-700 font-medium focus:ring-2 focus:ring-emerald-400 focus:outline-none appearance-none"
               >
                 <option value="ciśnienie">💓 Ciśnienie</option>
                 <option value="cukier">🍭 Cukier (Glukoza)</option>
                 <option value="waga">⚖️ Waga</option>
                 <option value="tętno">❤️ Tętno</option>
               </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </div>
             </div>
           </div>
 
@@ -371,7 +413,7 @@ export default function Pomiary() {
                   onChange={(e) => setValue(e.target.value)}
                   required
                   placeholder="np. 120/80"
-                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold placeholder:font-normal focus:ring-2 focus:ring-emerald-400 focus:outline-none transition-all"
+                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold focus:ring-2 focus:ring-emerald-400 focus:outline-none"
                 />
               ) : (
                 <input
@@ -382,7 +424,7 @@ export default function Pomiary() {
                   onChange={(e) => setValue(e.target.value)}
                   required
                   placeholder={type === "tętno" ? "np. 72" : "np. 70.5"}
-                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold placeholder:font-normal focus:ring-2 focus:ring-emerald-400 focus:outline-none transition-all"
+                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold focus:ring-2 focus:ring-emerald-400 focus:outline-none"
                 />
               )}
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-md">
@@ -406,7 +448,7 @@ export default function Pomiary() {
                         onClick={() => setGlucoseTime(t)}
                         className={`p-2.5 rounded-xl text-sm font-medium border transition-all ${
                           glucoseTime === t
-                            ? "bg-amber-100 border-amber-300 text-amber-800 shadow-sm"
+                            ? "bg-amber-100 border-amber-300 text-amber-800"
                             : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
                         }`}
                       >
@@ -424,7 +466,6 @@ export default function Pomiary() {
                   value={glucoseContext}
                   onChange={(e) => setGlucoseContext(e.target.value)}
                   rows={1}
-                  placeholder="Co zjadłeś?"
                   className="w-full p-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-emerald-400 focus:outline-none resize-none"
                 />
               </div>
@@ -451,18 +492,16 @@ export default function Pomiary() {
           )}
 
           <div className="mt-auto">
-            {" "}
             <button
               type="submit"
               disabled={status !== "authenticated" || isSubmitting}
-              className="w-full relative flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold shadow-lg shadow-emerald-200 hover:shadow-emerald-300 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 disabled:hover:scale-100"
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transition-all disabled:opacity-50"
             >
               {isSubmitting ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <>
-                  <Save className="w-5 h-5" />
-                  Zapisz wynik
+                  <Save className="w-5 h-5" /> Zapisz wynik
                 </>
               )}
             </button>
@@ -470,23 +509,9 @@ export default function Pomiary() {
         </form>
 
         <div className="flex flex-col gap-6 h-full">
-          <div className="shrink-0 h-[300px] xl:h-[320px]">
-            <TrendMini
-              data={measurements}
-              type={TYPE_TO_ENUM[type] || "DEFAULT"}
-              title={
-                type === "ciśnienie"
-                  ? "💓 Ciśnienie"
-                  : type === "cukier"
-                  ? "🍭 Glukoza"
-                  : type === "waga"
-                  ? "⚖️ Waga"
-                  : "❤️ Tętno"
-              }
-            />
-          </div>
+          <div className="shrink-0 h-[300px] xl:h-[320px]">{TrendSection}</div>
 
-          <section className="flex-1 bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl shadow-xl shadow-slate-200/50 flex flex-col">
+          <section className="flex-1 bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl shadow-xl shadow-slate-200/50 flex flex-col min-h-0">
             <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100 shrink-0">
               <div className="p-2.5 bg-violet-50 text-violet-600 rounded-xl">
                 <Bot className="w-6 h-6" />
@@ -501,59 +526,54 @@ export default function Pomiary() {
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col justify-center overflow-y-auto custom-scrollbar">
+            <div className="flex-1 overflow-y-auto custom-scrollbar relative">
               {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-4 space-y-3">
+                <div className="absolute inset-0 flex flex-col items-center justify-center space-y-3 bg-white/50 backdrop-blur-sm z-10">
                   <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
                   <span className="text-sm font-medium text-violet-600 animate-pulse">
-                    Analizuję Twój wynik...
+                    Analizuję wynik...
                   </span>
                 </div>
-              ) : gptResponse ? (
-                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+              ) : null}
+
+              {gptResponse ? (
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 pb-2">
                   <div className="bg-violet-50/50 p-4 rounded-2xl border border-violet-100 text-sm text-gray-700 leading-relaxed whitespace-pre-line">
                     {gptResponse}
                   </div>
-                  <div className="mt-3 flex justify-end">
-                    <button
-                      type="button"
-                      className="text-xs flex items-center gap-1.5 text-violet-600 hover:text-violet-800 font-medium bg-white px-3 py-1.5 rounded-lg border border-violet-100 shadow-sm transition-colors"
-                      onClick={() => {
-                        if (isLoading) return;
-                        append({
-                          role: "user",
-                          content: "Podaj krótką wskazówkę co teraz zrobić.",
-                        });
-                      }}
-                    >
-                      <Sparkles className="w-3 h-3" />
-                      Dopytaj o wskazówkę
-                    </button>
-                  </div>
+                  {!isLoading && (
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        className="text-xs flex items-center gap-1.5 text-violet-600 hover:text-violet-800 font-medium bg-white px-3 py-1.5 rounded-lg border border-violet-100 shadow-sm transition-colors"
+                        onClick={() =>
+                          append({
+                            role: "user",
+                            content: "Daj wskazówkę co teraz zrobić.",
+                          })
+                        }
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        Dopytaj
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="text-center py-4">
-                  <p className="text-gray-400 text-sm italic">
-                    Dodaj nowy pomiar powyżej,
-                    <br /> a Agent automatycznie go oceni.
-                  </p>
-                </div>
+                !isLoading && (
+                  <div className="h-full flex flex-col items-center justify-center text-center py-4">
+                    <p className="text-gray-400 text-sm italic">
+                      Dodaj pomiar, aby otrzymać analizę.
+                    </p>
+                  </div>
+                )
               )}
             </div>
           </section>
         </div>
       </div>
 
-      <ListaPomiarow
-        measurements={measurements}
-        filterType={filterType}
-        setFilterType={setFilterType}
-        requestDelete={requestDelete}
-        confirmDeleteId={confirmDeleteId}
-        setConfirmDeleteId={setConfirmDeleteId}
-        confirmDelete={confirmDelete}
-        norms={norms}
-      />
+      {ListSection}
     </Container>
   );
 }
