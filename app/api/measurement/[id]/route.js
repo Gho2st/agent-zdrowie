@@ -7,7 +7,7 @@ export async function DELETE(req, { params }) {
 
   const session = await auth();
 
-  // 1. Walidacja sesji
+  //  Walidacja sesji
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -17,7 +17,7 @@ export async function DELETE(req, { params }) {
   }
 
   try {
-    // 2. Pobranie ID zalogowanego użytkownika
+    //  Pobranie ID zalogowanego użytkownika
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: { id: true },
@@ -30,7 +30,7 @@ export async function DELETE(req, { params }) {
       );
     }
 
-    // 3. Pobranie pomiaru w celu weryfikacji właściciela ORAZ sprawdzenia typu
+    //  Pobranie pomiaru w celu weryfikacji właściciela ORAZ sprawdzenia typu
     const measurementToDelete = await prisma.measurement.findUnique({
       where: { id },
       select: { userId: true, type: true, value: true },
@@ -43,17 +43,17 @@ export async function DELETE(req, { params }) {
       );
     }
 
-    // 4. Sprawdzenie czy pomiar należy do użytkownika
+    //  Sprawdzenie czy pomiar należy do użytkownika
     if (measurementToDelete.userId !== user.id) {
       return NextResponse.json({ error: "Brak uprawnień" }, { status: 403 });
     }
 
-    // 5. Usunięcie rekordu
+    //  Usunięcie rekordu
     await prisma.measurement.delete({
       where: { id },
     });
 
-    // 6. LOGIKA AKTUALIZACJI WAGI W HealthProfile
+    //  LOGIKA AKTUALIZACJI WAGI W HealthProfile
     if (measurementToDelete.type === "WEIGHT") {
       // A. Znajdź najnowszy pozostały pomiar wagi
       const latestRemainingWeight = await prisma.measurement.findMany({
@@ -81,7 +81,7 @@ export async function DELETE(req, { params }) {
       });
     }
 
-    // 7. Zwrócenie odpowiedzi
+    //  Zwrócenie odpowiedzi
     return NextResponse.json({ message: "Pomiar usunięty" }, { status: 200 });
   } catch (error) {
     console.error("❌ Błąd podczas usuwania pomiaru:", error);

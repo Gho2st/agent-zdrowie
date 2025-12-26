@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-// Konfiguracja kategorii: Ikony, Kolory i Opcje
 const CATEGORIES = {
   mood: {
     label: "Samopoczucie",
@@ -143,16 +142,11 @@ export default function DailyCheckin({ onCheckinSuccess }) {
     }
   };
 
-  const containerClasses =
-    "bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl shadow-xl shadow-slate-200/50 flex flex-col";
-
   if (loading) {
     return (
-      <div
-        className={`${containerClasses} items-center justify-center min-h-[400px]`}
-      >
-        <Loader2 className="animate-spin text-green-600 mb-3" size={32} />
-        <span className="text-sm font-medium text-gray-400">
+      <div className="bg-white border border-gray-200 p-6 rounded-3xl min-h-[400px] flex flex-col items-center justify-center">
+        <Loader2 className="animate-spin text-gray-600 mb-3" size={32} />
+        <span className="text-sm font-medium text-gray-500">
           Ładowanie check-inu...
         </span>
       </div>
@@ -160,8 +154,8 @@ export default function DailyCheckin({ onCheckinSuccess }) {
   }
 
   return (
-    <div className={containerClasses}>
-      <div className="flex items-center gap-4 mb-8 pb-4 border-b border-gray-100">
+    <div className="bg-white border border-gray-200 p-6 rounded-3xl flex flex-col">
+      <div className="flex items-center gap-4 mb-8 pb-4 border-b border-gray-200">
         <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
           <ClipboardCheck className="w-6 h-6" />
         </div>
@@ -175,7 +169,7 @@ export default function DailyCheckin({ onCheckinSuccess }) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-8">
         {Object.entries(CATEGORIES).map(([key, config]) => {
           const Icon = config.icon;
           const theme = config.theme;
@@ -189,7 +183,7 @@ export default function DailyCheckin({ onCheckinSuccess }) {
                 </span>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-3">
                 {config.options.map((option) => {
                   const isSelected = checkin[key] === option.value;
                   const isSaving = savingField === key;
@@ -200,11 +194,11 @@ export default function DailyCheckin({ onCheckinSuccess }) {
                       onClick={() => handleSelect(key, option.value)}
                       disabled={isSaving}
                       className={`
-                        relative group flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all duration-200
+                        flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium
                         ${
                           isSelected
-                            ? `${theme.activeBg} ${theme.activeBorder} ${theme.activeText} shadow-sm`
-                            : "bg-white/40 border-transparent text-gray-600 hover:bg-white/80 hover:border-white/60 hover:shadow-sm"
+                            ? `${theme.activeBg} ${theme.activeBorder} ${theme.activeText} border-2`
+                            : "bg-gray-50 border border-gray-300 text-gray-600"
                         }
                         ${isSaving ? "opacity-70 cursor-wait" : ""}
                       `}
@@ -212,7 +206,7 @@ export default function DailyCheckin({ onCheckinSuccess }) {
                       <span>{option.label}</span>
 
                       {isSelected && !isSaving && (
-                        <Check className="w-4 h-4 ml-1 opacity-100 transition-opacity duration-300" />
+                        <Check className="w-4 h-4 ml-1" />
                       )}
 
                       {isSaving && isSelected && (
@@ -227,16 +221,14 @@ export default function DailyCheckin({ onCheckinSuccess }) {
         })}
       </div>
 
-      <div
-        className={`mt-8 transition-all duration-500 overflow-hidden ${
-          saved ? "max-h-20 opacity-100" : "max-h-0 opacity-0"
-        }`}
-      >
-        <div className="flex items-center justify-center gap-2 p-3 bg-emerald-50/80 border border-emerald-100 rounded-2xl text-emerald-700 text-sm font-medium">
-          <Check className="w-4 h-4" />
-          <span>Check-in zapisany na dziś!</span>
+      {saved && (
+        <div className="mt-8">
+          <div className="flex items-center justify-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-700 text-sm font-medium">
+            <Check className="w-4 h-4" />
+            <span>Check-in zapisany na dziś!</span>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

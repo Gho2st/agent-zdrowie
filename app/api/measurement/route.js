@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 
-// Mapowanie typów z Frontendu (PL) na Bazę (Enums)
 const TYPE_MAP = {
   ciśnienie: "BLOOD_PRESSURE",
   waga: "WEIGHT",
@@ -17,7 +16,7 @@ const TYPE_MAP = {
 export async function POST(req) {
   const session = await auth();
 
-  // 1. Walidacja sesji
+  // Walidacja sesji
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -26,7 +25,7 @@ export async function POST(req) {
 
   const { amount, type, unit, systolic, diastolic, context, note } = body;
 
-  // 2. Mapowanie typu na ENUM
+  //  Mapowanie typu na ENUM
   const dbType = TYPE_MAP[type];
   if (!dbType) {
     return NextResponse.json(
@@ -35,7 +34,7 @@ export async function POST(req) {
     );
   }
 
-  // 3. Przygotowanie danych (value / value2)
+  //  Przygotowanie danych (value / value2)
   let finalValue = null;
   let finalValue2 = null;
 
@@ -65,7 +64,7 @@ export async function POST(req) {
   }
 
   try {
-    // 4. Pobranie usera
+    //  Pobranie usera
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
@@ -79,7 +78,7 @@ export async function POST(req) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // 5. Specjalna logika dla WAGI (aktualizacja profilu i BMI)
+    // Specjalna logika dla WAGI (aktualizacja profilu i BMI)
     if (dbType === "WEIGHT") {
       const profile = user.healthProfile;
 
@@ -93,9 +92,6 @@ export async function POST(req) {
           const heightM = profile.height / 100;
           const bmi = parseFloat((finalValue / (heightM * heightM)).toFixed(1));
 
-          // --- NAPRAWA BŁĘDU ---
-          // Aktualizujemy normy TYLKO jeśli już istnieją (profile.norms nie jest null).
-          // Usuwamy 'upsert', ponieważ 'create' wymagałoby podania systolicMax itp., których tu nie mamy.
           if (profile.norms) {
             normsUpdate = {
               norms: {
@@ -110,13 +106,13 @@ export async function POST(req) {
           where: { id: profile.id },
           data: {
             ...updateData,
-            ...normsUpdate, // To wykona się tylko jeśli normsUpdate nie jest puste
+            ...normsUpdate,
           },
         });
       }
     }
 
-    // 6. Zapis pomiaru w tabeli Measurement
+    // . Zapis pomiaru w tabeli Measurement
     const measurement = await prisma.measurement.create({
       data: {
         userId: user.id,
@@ -132,7 +128,6 @@ export async function POST(req) {
     return NextResponse.json(measurement, { status: 200 });
   } catch (error) {
     console.error("❌ Błąd zapisu pomiaru:", error);
-    // Zwracamy bardziej szczegółowy błąd w konsoli serwera, a ogólny dla klienta
     return NextResponse.json({ error: "Błąd serwera" }, { status: 500 });
   }
 }

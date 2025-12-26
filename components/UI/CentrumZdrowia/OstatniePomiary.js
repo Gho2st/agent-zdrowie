@@ -37,7 +37,6 @@ const TYPE_CONFIG = {
     colorClass: "bg-rose-50 text-rose-600",
     textClass: "text-rose-700",
   },
-  // Fallback
   DEFAULT: {
     label: "Pomiar",
     icon: Activity,
@@ -69,16 +68,11 @@ export default function OstatniePomiary() {
     fetchPomiary();
   }, []);
 
-  const containerClasses =
-    "bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl shadow-xl shadow-slate-200/50 h-full flex flex-col";
-
   if (loading) {
     return (
-      <div
-        className={`${containerClasses} items-center justify-center min-h-[200px]`}
-      >
-        <Loader2 className="animate-spin text-blue-500 mb-3" size={32} />
-        <span className="text-sm font-medium text-gray-400">
+      <div className="bg-white border border-gray-200 p-6 rounded-3xl min-h-[200px] flex flex-col items-center justify-center">
+        <Loader2 className="animate-spin text-gray-600 mb-3" size={32} />
+        <span className="text-sm font-medium text-gray-500">
           Pobieranie historii...
         </span>
       </div>
@@ -87,15 +81,13 @@ export default function OstatniePomiary() {
 
   if (dane.length === 0) {
     return (
-      <div
-        className={`${containerClasses} items-center justify-center text-center gap-4`}
-      >
-        <div className="p-4 bg-gray-50 rounded-full">
-          <Info className="w-8 h-8 text-gray-300" />
+      <div className="bg-white border border-gray-200 p-6 rounded-3xl flex flex-col items-center justify-center text-center gap-4">
+        <div className="p-4 bg-gray-100 rounded-full">
+          <Info className="w-8 h-8 text-gray-400" />
         </div>
         <div>
           <p className="text-lg font-bold text-gray-700">Pusto w historii</p>
-          <p className="text-sm text-gray-400 max-w-[200px] mx-auto leading-snug">
+          <p className="text-sm text-gray-500 max-w-[200px] mx-auto leading-snug">
             Dodaj swój pierwszy pomiar, aby zobaczyć go tutaj.
           </p>
         </div>
@@ -104,8 +96,8 @@ export default function OstatniePomiary() {
   }
 
   return (
-    <div className={containerClasses}>
-      <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
+    <div className="bg-white border border-gray-200 p-6 rounded-3xl flex flex-col h-full">
+      <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-200">
         <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
           <History className="w-6 h-6" />
         </div>
@@ -119,12 +111,11 @@ export default function OstatniePomiary() {
         </div>
       </div>
 
-      <ul className="space-y-2 overflow-y-auto pr-1 custom-scrollbar flex-1">
+      <ul className="space-y-3 flex-1 overflow-y-auto">
         {dane.map((pomiar) => {
           const config = TYPE_CONFIG[pomiar.type] || TYPE_CONFIG.DEFAULT;
           const Icon = config.icon;
 
-          // Formatowanie daty
           const dateObj = new Date(pomiar.createdAt);
           const dateStr = dateObj.toLocaleDateString("pl-PL", {
             day: "numeric",
@@ -135,7 +126,6 @@ export default function OstatniePomiary() {
             minute: "2-digit",
           });
 
-          // Wyświetlanie wartości
           let valueDisplay = "";
           if (pomiar.type === "BLOOD_PRESSURE") {
             valueDisplay = `${pomiar.value}/${pomiar.value2 ?? "?"}`;
@@ -146,7 +136,7 @@ export default function OstatniePomiary() {
           return (
             <li
               key={pomiar.id}
-              className="group flex items-center justify-between p-3 rounded-2xl hover:bg-white/60 border border-transparent hover:border-white/60 transition-all duration-200"
+              className="flex items-center justify-between p-3 rounded-2xl bg-gray-50 border border-gray-200"
             >
               <div className="flex items-center gap-4">
                 <div
@@ -159,10 +149,10 @@ export default function OstatniePomiary() {
                   <span className="font-bold text-gray-700 text-sm">
                     {config.label}
                   </span>
-                  <div className="flex items-center text-xs text-gray-400 mt-0.5 gap-1">
+                  <div className="flex items-center text-xs text-gray-500 mt-0.5 gap-1">
                     <CalendarClock className="w-3 h-3" />
                     <span>{dateStr}</span>
-                    <span className="text-gray-300">•</span>
+                    <span className="text-gray-400">•</span>
                     <span>{timeStr}</span>
                   </div>
                 </div>
@@ -174,7 +164,7 @@ export default function OstatniePomiary() {
                 >
                   {valueDisplay}
                 </span>
-                <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider mt-1 block">
+                <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wider mt-1 block">
                   {pomiar.unit}
                 </span>
               </div>

@@ -61,7 +61,6 @@ const MEASUREMENT_STYLES = {
   },
 };
 
-// Funkcja sprawdzająca normy
 const getNormStatus = (m, n) => {
   if (!n) return "UNKNOWN";
 
@@ -106,7 +105,6 @@ const getNormStatus = (m, n) => {
   return "IN_RANGE";
 };
 
-// Pomocnicze funkcje do statusów
 const getStatusLabel = (s) =>
   ({
     HIGH: "Podwyższony",
@@ -130,7 +128,6 @@ const getStatusIcon = (s) => {
   return null;
 };
 
-// Wyświetlanie wartości
 const getMeasurementDisplay = (m) => {
   switch (m.type) {
     case "BLOOD_PRESSURE":
@@ -195,10 +192,10 @@ export default function ListaPomiarow({
   const SortButton = ({ value, label }) => (
     <button
       onClick={() => handleSortChange(value)}
-      className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-all border ${
+      className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 border ${
         sortOrder === value
-          ? "bg-white border-blue-200 text-blue-600 shadow-sm"
-          : "bg-transparent border-transparent text-gray-500 hover:bg-white/50"
+          ? "bg-white border-blue-300 text-blue-700"
+          : "bg-gray-50 border-gray-200 text-gray-600"
       }`}
     >
       {label}
@@ -212,8 +209,8 @@ export default function ListaPomiarow({
   );
 
   return (
-    <div className="mt-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="bg-white/80 backdrop-blur-xl border border-white/40 rounded-3xl p-6 shadow-xl shadow-slate-200/50 mb-8">
+    <div className="mt-10">
+      <div className="bg-white border border-gray-200 rounded-3xl p-6 mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex flex-col gap-3">
             <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -224,7 +221,7 @@ export default function ListaPomiarow({
               <select
                 value={filterType}
                 onChange={handleFilterChange}
-                className="appearance-none w-full md:w-64 pl-4 pr-10 py-2.5 rounded-xl bg-gray-50/50 border border-gray-200 text-gray-700 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
+                className="appearance-none w-full md:w-64 pl-4 pr-10 py-2.5 rounded-xl bg-gray-50 border border-gray-300 text-gray-700 text-sm font-medium outline-none"
               >
                 <option value="all">Wszystkie typy</option>
                 <option value="BLOOD_PRESSURE">💓 Ciśnienie</option>
@@ -241,7 +238,7 @@ export default function ListaPomiarow({
               <ArrowUpDown className="w-5 h-5 text-gray-400" />
               Sortowanie
             </h2>
-            <div className="flex flex-wrap gap-1 bg-gray-100/50 p-1 rounded-xl">
+            <div className="flex flex-wrap gap-1 bg-gray-100 p-1 rounded-xl">
               <SortButton value="dateDesc" label="Najnowsze" />
               <SortButton value="dateAsc" label="Najstarsze" />
               <SortButton value="valueDesc" label="Wartość max" />
@@ -259,8 +256,8 @@ export default function ListaPomiarow({
         </h2>
 
         {processed.paginated.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 bg-white/40 border border-white/40 rounded-3xl text-center">
-            <div className="bg-white p-4 rounded-full shadow-sm mb-4">
+          <div className="flex flex-col items-center justify-center py-16 bg-white border border-gray-200 rounded-3xl text-center">
+            <div className="bg-gray-100 p-4 rounded-full mb-4">
               <Filter className="w-8 h-8 text-gray-300" />
             </div>
             <p className="text-gray-500 font-medium">
@@ -279,7 +276,7 @@ export default function ListaPomiarow({
               return (
                 <div
                   key={m.id}
-                  className="group relative bg-white/60 hover:bg-white/90 backdrop-blur-md border border-white/60 hover:border-white p-5 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
+                  className="bg-white border border-gray-200 p-5 rounded-2xl flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex justify-between items-start mb-4">
@@ -301,7 +298,7 @@ export default function ListaPomiarow({
 
                       <button
                         onClick={() => requestDelete(String(m.id))}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                        className="p-2 text-gray-400 hover:text-red-600 rounded-lg"
                         title="Usuń wpis"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -309,12 +306,7 @@ export default function ListaPomiarow({
                     </div>
 
                     <div className="mb-4">
-                      <span
-                        className={`text-2xl font-black ${style.text.replace(
-                          "text-",
-                          "text-slate-"
-                        )}`}
-                      >
+                      <span className="text-2xl font-black text-gray-800">
                         {getMeasurementDisplay(m)}
                       </span>
                     </div>
@@ -328,7 +320,7 @@ export default function ListaPomiarow({
                       {getStatusLabel(status)}
                     </div>
 
-                    <div className="pt-3 border-t border-gray-100/50 flex flex-col gap-1 text-xs text-gray-500">
+                    <div className="pt-3 border-t border-gray-200 flex flex-col gap-1 text-xs text-gray-500">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-gray-400" />
                         {new Date(m.createdAt).toLocaleString("pl-PL", {
@@ -356,35 +348,33 @@ export default function ListaPomiarow({
         )}
       </div>
 
-      {/* PAGINACJA */}
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-2 mt-10">
           <button
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="px-4 py-2 rounded-xl bg-white/50 border border-gray-200 text-sm font-medium hover:bg-white disabled:opacity-50 transition-colors"
+            className="px-4 py-2 rounded-xl bg-gray-100 border border-gray-300 text-sm font-medium disabled:opacity-50"
           >
             Poprzednia
           </button>
 
-          <div className="px-4 py-2 bg-white/30 rounded-xl text-sm font-bold text-gray-600">
+          <div className="px-4 py-2 bg-gray-200 rounded-xl text-sm font-bold text-gray-700">
             {currentPage} / {totalPages}
           </div>
 
           <button
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="px-4 py-2 rounded-xl bg-white/50 border border-gray-200 text-sm font-medium hover:bg-white disabled:opacity-50 transition-colors"
+            className="px-4 py-2 rounded-xl bg-gray-100 border border-gray-300 text-sm font-medium disabled:opacity-50"
           >
             Następna
           </button>
         </div>
       )}
 
-      {/* MODAL USUNIĘCIA (Glassmorphism) */}
       {confirmDeleteId && (
-        <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 max-w-sm w-full border border-white/50 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 max-w-sm w-full border border-gray-200">
             <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center mb-4 text-red-500 mx-auto">
               <Trash2 className="w-6 h-6" />
             </div>
@@ -400,13 +390,13 @@ export default function ListaPomiarow({
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmDeleteId(null)}
-                className="flex-1 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors"
+                className="flex-1 py-3 rounded-xl bg-gray-100 text-gray-700 font-medium"
               >
                 Anuluj
               </button>
               <button
                 onClick={confirmDelete}
-                className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium shadow-lg shadow-red-200 transition-colors"
+                className="flex-1 py-3 rounded-xl bg-red-600 text-white font-medium"
               >
                 Usuń
               </button>

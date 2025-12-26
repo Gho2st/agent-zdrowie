@@ -103,32 +103,49 @@ const checkIsNormal = (val, val2, type, norms) => {
 };
 
 export default function Statistics() {
-  const { data: status } = useSession();
+  const { status } = useSession();
   const [measurements, setMeasurements] = useState([]);
   const [norms, setNorms] = useState(null);
   const [timeRange, setTimeRange] = useState("30");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (status === "authenticated") {
-      const fetchData = async () => {
-        try {
-          const [mRes, nRes] = await Promise.all([
-            fetch("/api/measurement"),
-            fetch("/api/user/norms"),
-          ]);
-          setMeasurements(mRes.ok ? await mRes.json() : []);
-          const nData = nRes.ok ? await nRes.json() : null;
-          setNorms(nData?.user || nData || null);
-        } catch (error) {
-          console.error("Błąd danych:", error);
-        } finally {
-          setTimeout(() => setLoading(false), 300);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(false);
+
+        const [mRes, nRes] = await Promise.all([
+          fetch("/api/measurement"),
+          fetch("/api/user/norms"),
+        ]);
+
+        if (mRes.ok) {
+          const mData = await mRes.json();
+          setMeasurements(Array.isArray(mData) ? mData : []);
+        } else {
+          setMeasurements([]);
         }
-      };
-      fetchData();
-    }
-  }, [status]);
+
+        if (nRes.ok) {
+          const nData = await nRes.json();
+          setNorms(nData?.user || nData || null);
+        } else {
+          setNorms(null);
+        }
+      } catch (err) {
+        console.error("Błąd danych:", err);
+        setError(true);
+        setMeasurements([]);
+        setNorms(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const getStats = (category) => {
     const config = CONFIG[category];
@@ -192,7 +209,7 @@ export default function Statistics() {
         {
           label: "Skurczowe",
           data: data.map((m) => ({ x: new Date(m.createdAt), y: m.value })),
-          borderColor: "#4f46e5", // Indigo
+          borderColor: "#4f46e5",
           backgroundColor: "rgba(79, 70, 229, 0.1)",
           tension: 0.4,
           pointRadius: 3,
@@ -202,7 +219,7 @@ export default function Statistics() {
         {
           label: "Rozkurczowe",
           data: data.map((m) => ({ x: new Date(m.createdAt), y: m.value2 })),
-          borderColor: "#ec4899", // Pink
+          borderColor: "#ec4899",
           backgroundColor: "rgba(236, 72, 153, 0.1)",
           tension: 0.4,
           pointRadius: 3,
@@ -219,8 +236,8 @@ export default function Statistics() {
           backgroundColor: (context) => {
             const ctx = context.chart.ctx;
             const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-            gradient.addColorStop(0, config.color + "40"); // 25% opacity
-            gradient.addColorStop(1, config.color + "00"); // 0% opacity
+            gradient.addColorStop(0, config.color + "40");
+            gradient.addColorStop(1, config.color + "00");
             return gradient;
           },
           fill: true,
@@ -263,7 +280,7 @@ export default function Statistics() {
         annotations.normArea = {
           type: "box",
           yMin: norms.glucoseFastingMin,
-          yMax: norms.glucosePostMealMax,
+          yMax: norms.glucosePostMealMax || 180,
           backgroundColor: NORM_COLOR,
           borderColor: BORDER_COLOR,
           borderWidth: 1,
@@ -303,9 +320,7 @@ export default function Statistics() {
       intersect: false,
     },
     plugins: {
-      legend: {
-        display: false,
-      },
+      legend: { display: false },
       tooltip: {
         backgroundColor: "rgba(255, 255, 255, 0.95)",
         titleColor: "#1f2937",
@@ -317,9 +332,7 @@ export default function Statistics() {
         displayColors: true,
         usePointStyle: true,
       },
-      annotation: {
-        annotations: annotations,
-      },
+      annotation: { annotations },
     },
     scales: {
       x: {
@@ -339,10 +352,7 @@ export default function Statistics() {
       },
       y: {
         beginAtZero: false,
-        grid: {
-          color: "#f3f4f6",
-          borderDash: [5, 5],
-        },
+        grid: { color: "#f3f4f6", borderDash: [5, 5] },
         border: { display: false },
         ticks: {
           font: { size: 10 },
@@ -353,6 +363,7 @@ export default function Statistics() {
     },
   });
 
+  // Skeleton podczas ładowania
   if (loading || status === "loading") {
     return (
       <Container>
@@ -364,31 +375,22 @@ export default function Statistics() {
           </div>
         </div>
 
-        <div className="flex justify-center gap-2 mb-8">
+        <div className="flex justify-center gap-3 mb-8">
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="w-16 h-8 bg-gray-200 rounded-full animate-pulse"
+              className="w-20 h-9 bg-gray-200 rounded-xl animate-pulse"
             />
           ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {[1, 2].map((i) => (
+          {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl h-[450px] shadow-sm animate-pulse"
+              className="bg-gray-50 border border-gray-200 p-6 rounded-3xl h-[450px]"
             >
-              <div className="flex justify-between mb-6">
-                <div className="h-6 w-32 bg-gray-200 rounded" />
-                <div className="h-5 w-16 bg-gray-200 rounded" />
-              </div>
-              <div className="grid grid-cols-4 gap-3 mb-6">
-                {[1, 2, 3, 4].map((j) => (
-                  <div key={j} className="h-16 bg-gray-200 rounded-xl" />
-                ))}
-              </div>
-              <div className="h-[250px] bg-gray-200 rounded-xl" />
+              <div className="h-full bg-gray-200 rounded-xl animate-pulse" />
             </div>
           ))}
         </div>
@@ -396,7 +398,8 @@ export default function Statistics() {
     );
   }
 
-  if (measurements.length === 0) {
+  // Brak danych lub błąd
+  if (error || measurements.length === 0) {
     return (
       <Container>
         <Header text="Statystyki" />
@@ -405,21 +408,23 @@ export default function Statistics() {
             <BarChart3 className="w-8 h-8 text-gray-400" />
           </div>
           <h3 className="text-lg font-bold text-gray-700">
-            Brak danych do analizy
+            {error ? "Błąd ładowania danych" : "Brak danych do analizy"}
           </h3>
           <p className="text-gray-500 max-w-sm mt-2">
-            Dodaj swoje pierwsze pomiary, aby zobaczyć tutaj szczegółowe wykresy
-            i analizy trendów.
+            {error
+              ? "Nie udało się pobrać statystyk. Spróbuj odświeżyć stronę."
+              : "Dodaj swoje pierwsze pomiary, aby zobaczyć tutaj szczegółowe wykresy i analizy trendów."}
           </p>
         </div>
       </Container>
     );
   }
 
+  // Główna zawartość
   return (
     <Container>
-      <div className="flex items-center gap-4 mb-8 pb-4 border-b border-gray-100">
-        <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl shadow-sm ring-1 ring-blue-100">
+      <div className="flex items-center gap-4 mb-8 pb-4 border-b border-gray-200">
+        <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
           <BarChart3 className="w-6 h-6" />
         </div>
         <div>
@@ -433,7 +438,7 @@ export default function Statistics() {
       </div>
 
       <div className="flex justify-center mb-8">
-        <div className="inline-flex bg-gray-100/50 p-1.5 rounded-2xl border border-gray-200/50 shadow-sm">
+        <div className="inline-flex bg-gray-100 p-1.5 rounded-2xl border border-gray-300">
           {[
             { label: "7 dni", val: "7" },
             { label: "30 dni", val: "30" },
@@ -443,10 +448,10 @@ export default function Statistics() {
             <button
               key={opt.val}
               onClick={() => setTimeRange(opt.val)}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-300 ${
+              className={`px-4 py-2 text-xs font-bold rounded-xl ${
                 timeRange === opt.val
-                  ? "bg-white text-blue-600 shadow-sm scale-105 ring-1 ring-black/5"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-white/50"
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-gray-600"
               }`}
             >
               {opt.label}
@@ -455,7 +460,7 @@ export default function Statistics() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {Object.keys(CONFIG).map((category) => {
           const stats = getStats(category);
           const config = CONFIG[category];
@@ -467,7 +472,7 @@ export default function Statistics() {
           return (
             <div
               key={category}
-              className="bg-white/80 backdrop-blur-xl border border-white/40 p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 flex flex-col h-full hover:shadow-2xl transition-shadow duration-500"
+              className="bg-white border border-gray-200 p-6 md:p-8 rounded-3xl flex flex-col"
             >
               <div className="flex justify-between items-start mb-8">
                 <div className="flex items-center gap-3">
@@ -485,15 +490,15 @@ export default function Statistics() {
                     <h3 className="text-lg font-bold text-gray-800 leading-tight">
                       {config.label}
                     </h3>
-                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                       {config.unit}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-100 rounded-lg">
-                  <CalendarRange className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="text-xs font-semibold text-gray-600">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-200 rounded-lg">
+                  <CalendarRange className="w-3.5 h-3.5 text-gray-500" />
+                  <span className="text-xs font-semibold text-gray-700">
                     {stats.count}
                   </span>
                 </div>
@@ -531,7 +536,10 @@ export default function Statistics() {
 
               <div className="grow min-h-[280px] w-full relative">
                 <Line
-                  data={chartData}
+                  data={{
+                    datasets: chartData.datasets,
+                    labels: chartData.labels,
+                  }}
                   options={getChartOptions(chartData.annotations)}
                 />
               </div>
@@ -545,8 +553,8 @@ export default function Statistics() {
 
 function StatCard({ label, value, icon, color = "text-gray-800" }) {
   return (
-    <div className="bg-white/50 hover:bg-white p-3 rounded-2xl border border-white/60 shadow-sm transition-all duration-300 group">
-      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 group-hover:text-gray-500 transition-colors">
+    <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">
         {icon} {label}
       </div>
       <div className={`font-black text-lg leading-none ${color}`}>{value}</div>

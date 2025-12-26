@@ -41,7 +41,6 @@ const hexToRgba = (hex, alpha) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-// Konfiguracja wyglądu dla poszczególnych typów
 const STYLE_CONFIG = {
   WEIGHT: {
     icon: Scale,
@@ -81,30 +80,33 @@ const STYLE_CONFIG = {
   },
 };
 
-export default function TrendMini({
-  data = [],
-  type, // "WEIGHT", "BLOOD_PRESSURE", "CHECKIN", etc.
-  title,
-}) {
+export default function TrendMini({ data = [], type, title }) {
   const isCheckin = type === "CHECKIN";
   const isPressure = type === "BLOOD_PRESSURE" || type === "ciśnienie";
 
-  // Pobieramy konfigurację stylów na podstawie typu
   const configType =
     Object.keys(STYLE_CONFIG).find((key) => key === type) || "DEFAULT";
   const style = STYLE_CONFIG[configType];
   const Icon = style.icon;
 
-  //  Logika przetwarzania danych
   const chartData = useMemo(() => {
-    return data
-      .map((m) => ({
-        dateObj: new Date(m.createdAt || m.date),
-        ...m,
-      }))
+    const processed = data
+      .map((m) => {
+        try {
+          return {
+            dateObj: new Date(m.createdAt || m.date),
+            ...m,
+          };
+        } catch (e) {
+          return null;
+        }
+      })
+      .filter((item) => item && !isNaN(item.dateObj.getTime()))
       .filter((m) => {
         if (isCheckin) return true;
-        return m.type === type || m.type === type?.toLowerCase();
+        const itemType = m.type?.toUpperCase();
+        const targetType = type?.toUpperCase();
+        return itemType === targetType;
       })
       .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime())
       .slice(-7)
@@ -116,14 +118,27 @@ export default function TrendMini({
         stress: m.stress,
         energy: m.energy,
       }));
+
+    return processed;
   }, [data, type, isCheckin]);
+
+  if (chartData.length === 0) {
+    return (
+      <div className="bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl flex flex-col h-full items-center justify-center min-h-[200px] text-gray-400">
+        <Icon
+          className={`w-10 h-10 mb-2 opacity-50 ${
+            style.colorClass.split(" ")[1]
+          }`}
+        />
+        <p className="text-sm">Brak danych z ostatnich 7 dni</p>
+      </div>
+    );
+  }
 
   const labels = chartData.map((d) => d.date);
   let datasets = [];
   let optionsScalesY = {};
-  let optionsPluginsTooltip = {};
 
-  // Konfiguracja Wykresów
   if (isCheckin) {
     datasets = [
       {
@@ -157,14 +172,10 @@ export default function TrendMini({
         tension: 0.4,
       },
     ];
-
     optionsScalesY = {
       min: 0,
       max: 4,
-      grid: {
-        color: "#f3f4f6",
-        borderDash: [5, 5],
-      },
+      grid: { color: "#f3f4f6", borderDash: [5, 5] },
       border: { display: false },
       ticks: {
         font: { size: 10, family: "'Inter', sans-serif" },
@@ -175,23 +186,6 @@ export default function TrendMini({
           if (val === 2) return "Średnio";
           if (val === 3) return "Dobrze";
           return "";
-        },
-      },
-    };
-
-    optionsPluginsTooltip = {
-      backgroundColor: "rgba(255, 255, 255, 0.9)",
-      titleColor: "#1f2937",
-      bodyColor: "#4b5563",
-      borderColor: "#e5e7eb",
-      borderWidth: 1,
-      padding: 10,
-      callbacks: {
-        label: (context) => {
-          const val = context.raw;
-          let label = context.dataset.label || "";
-          let text = val === 1 ? "Niski" : val === 2 ? "Średni" : "Wysoki";
-          return ` ${label}: ${text}`;
         },
       },
     };
@@ -232,10 +226,16 @@ export default function TrendMini({
         borderColor: style.lineColor,
         backgroundColor: (context) => {
           const ctx = context.chart.ctx;
-          const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-          gradient.addColorStop(0, hexToRgba(style.lineColor, 0.4));
-          gradient.addColorStop(1, hexToRgba(style.lineColor, 0.0));
-          return gradient;
+          if (!ctx) return hexToRgba(style.lineColor, 0.2);
+
+          try {
+            const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+            gradient.addColorStop(0, hexToRgba(style.lineColor, 0.4));
+            gradient.addColorStop(1, hexToRgba(style.lineColor, 0.0));
+            return gradient;
+          } catch (e) {
+            return hexToRgba(style.lineColor, 0.2);
+          }
         },
         fill: true,
         borderWidth: 2,
@@ -253,10 +253,8 @@ export default function TrendMini({
     };
   }
 
-  if (chartData.length === 0) return null;
-
   return (
-    <div className="bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl shadow-xl shadow-slate-200/50 flex flex-col h-full">
+    <div className="bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl flex flex-col h-full w-full">
       <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
         <div className={`p-3 rounded-2xl ${style.colorClass}`}>
           <Icon className="w-6 h-6" />
@@ -278,7 +276,7 @@ export default function TrendMini({
         </div>
       </div>
 
-      <div className="flex-1 min-h-[160px]">
+      <div className="flex-1 min-h-[160px] relative w-full">
         <Line
           data={{ labels, datasets }}
           options={{
@@ -307,7 +305,6 @@ export default function TrendMini({
                 padding: 10,
                 displayColors: true,
                 boxPadding: 4,
-                ...optionsPluginsTooltip,
               },
               annotation: { annotations: {} },
             },

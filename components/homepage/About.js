@@ -106,7 +106,7 @@ export default function About() {
                 key={item.title}
                 variants={itemVariants}
                 whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                className="group bg-white border border-gray-100 p-6 rounded-3xl shadow-lg shadow-gray-200/40 hover:shadow-xl hover:shadow-emerald-100/40 hover:border-emerald-200 transition-all duration-300"
+                className="group bg-white border border-gray-100 p-6 rounded-3xl  hover:border-emerald-200 transition-all duration-300"
               >
                 <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
                   <item.icon className="w-6 h-6" strokeWidth={1.5} />
@@ -130,7 +130,7 @@ export default function About() {
           >
             <div className="absolute inset-0 bg-gradient-to-tr from-emerald-100 to-teal-50 rounded-full blur-2xl opacity-60 scale-90 animate-pulse" />
 
-            <div className="relative z-10 w-full max-w-md drop-shadow-2xl">
+            <div className="relative z-10 w-full max-w-md">
               <Image
                 src="/images/agent.png"
                 alt="Agent Zdrowie"
@@ -141,7 +141,7 @@ export default function About() {
               />
 
               <motion.div
-                className="absolute -left-6 top-10 bg-white p-3 rounded-2xl shadow-xl border border-gray-100 flex items-center gap-3"
+                className="absolute -left-6 top-10 bg-white p-3 rounded-2xl  border border-gray-100 flex items-center gap-3"
                 animate={{ y: [0, -10, 0] }}
                 transition={{
                   duration: 4,
@@ -161,7 +161,7 @@ export default function About() {
               </motion.div>
 
               <motion.div
-                className="absolute -right-4 bottom-20 bg-white p-3 rounded-2xl shadow-xl border border-gray-100 flex items-center gap-3"
+                className="absolute -right-4 bottom-20 bg-white p-3 rounded-2xl  border border-gray-100 flex items-center gap-3"
                 animate={{ y: [0, 10, 0] }}
                 transition={{
                   duration: 5,

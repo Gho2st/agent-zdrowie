@@ -388,7 +388,7 @@ export default function Pomiary() {
                   setType(e.target.value);
                   setValue("");
                 }}
-                className="w-full p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-700 font-medium focus:ring-2 focus:ring-emerald-400 focus:outline-none appearance-none"
+                className="w-full p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-700 font-medium "
               >
                 <option value="ciśnienie">💓 Ciśnienie</option>
                 <option value="cukier">🍭 Cukier (Glukoza)</option>
@@ -413,7 +413,7 @@ export default function Pomiary() {
                   onChange={(e) => setValue(e.target.value)}
                   required
                   placeholder="np. 120/80"
-                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold  "
                 />
               ) : (
                 <input
@@ -424,7 +424,7 @@ export default function Pomiary() {
                   onChange={(e) => setValue(e.target.value)}
                   required
                   placeholder={type === "tętno" ? "np. 72" : "np. 70.5"}
-                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold "
                 />
               )}
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-md">
@@ -466,7 +466,7 @@ export default function Pomiary() {
                   value={glucoseContext}
                   onChange={(e) => setGlucoseContext(e.target.value)}
                   rows={1}
-                  className="w-full p-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-emerald-400 focus:outline-none resize-none"
+                  className="w-full p-3 rounded-xl border border-gray-200 bg-white "
                 />
               </div>
             </div>
@@ -486,7 +486,7 @@ export default function Pomiary() {
                 }
                 rows={1}
                 placeholder="np. stres, po kawie"
-                className="w-full p-3 rounded-xl border border-gray-200 bg-white focus:ring-2 focus:ring-emerald-400 focus:outline-none resize-none"
+                className="w-full p-3 rounded-xl border border-gray-200 bg-white "
               />
             </div>
           )}

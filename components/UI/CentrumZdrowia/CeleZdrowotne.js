@@ -25,22 +25,18 @@ const GoalRow = ({
     teal: {
       bg: "bg-teal-50",
       text: "text-teal-600",
-      border: "border-teal-100",
     },
     indigo: {
       bg: "bg-indigo-50",
       text: "text-indigo-600",
-      border: "border-indigo-100",
     },
     amber: {
       bg: "bg-amber-50",
       text: "text-amber-600",
-      border: "border-amber-100",
     },
     rose: {
       bg: "bg-rose-50",
       text: "text-rose-600",
-      border: "border-rose-100",
     },
   };
   const theme = themes[colorTheme] || themes.teal;
@@ -49,7 +45,6 @@ const GoalRow = ({
   let displayValue = "---";
   let hasData = false;
 
-  // Logika sprawdzania sukcesu (dla obiektów i wartości prostych)
   if (
     typeof currentVal === "object" &&
     currentVal !== null &&
@@ -58,7 +53,6 @@ const GoalRow = ({
     hasData = true;
     displayValue = `${currentVal.sys}/${currentVal.dia}`;
 
-    // Używamy bezpiecznego sprawdzania (dajemy 0 jeśli undefined, żeby nie wywaliło błędu logicznego)
     const minSys = min?.sys ?? 0;
     const maxSys = max?.sys ?? 999;
     const minDia = min?.dia ?? 0;
@@ -72,11 +66,11 @@ const GoalRow = ({
   } else if (currentVal !== null && currentVal !== undefined) {
     hasData = true;
     displayValue = currentVal;
-    isSuccess = currentVal >= min && currentVal <= max;
+    isSuccess = currentVal >= (min ?? 0) && currentVal <= (max ?? 999);
   }
 
   return (
-    <div className="flex items-center justify-between p-3 mb-2 rounded-2xl hover:bg-white/40 border border-transparent hover:border-white/60 transition-all">
+    <div className="flex items-center justify-between p-3 mb-2 rounded-2xl bg-gray-50/50 border border-gray-200">
       <div className="flex items-center gap-4">
         <div className={`p-3 rounded-2xl ${theme.bg} ${theme.text}`}>
           <Icon className="w-5 h-5" />
@@ -86,8 +80,10 @@ const GoalRow = ({
           <p className="text-xs text-gray-500">
             Cel:{" "}
             {typeof min === "object"
-              ? `${min.sys}–${max.sys} / ${min.dia ?? "--"}–${max.dia ?? "--"}`
-              : `${min}–${max}`}{" "}
+              ? `${min.sys ?? "--"}–${max.sys ?? "--"} / ${min.dia ?? "--"}–${
+                  max.dia ?? "--"
+                }`
+              : `${min ?? "--"}–${max ?? "--"}`}{" "}
             <span className="opacity-70">{unit}</span>
           </p>
         </div>
@@ -142,7 +138,7 @@ export default function CeleZdrowotne() {
 
   if (loading)
     return (
-      <div className="bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl shadow-xl shadow-slate-200/50 h-full min-h-[300px] flex items-center justify-center text-blue-600">
+      <div className="bg-white border border-gray-200 p-6 rounded-3xl h-full min-h-[300px] flex items-center justify-center">
         <Loader2 className="animate-spin" size={32} />
       </div>
     );
@@ -152,8 +148,8 @@ export default function CeleZdrowotne() {
   const { user, values } = data;
 
   return (
-    <div className="bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl shadow-xl shadow-slate-200/50 h-full flex flex-col">
-      <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
+    <div className="bg-white border border-gray-200 p-6 rounded-3xl h-full flex flex-col">
+      <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-200">
         <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl">
           <Target className="w-6 h-6" />
         </div>
@@ -167,7 +163,7 @@ export default function CeleZdrowotne() {
         </div>
       </div>
 
-      <div className="flex-1 space-y-1 overflow-y-auto pr-1 custom-scrollbar">
+      <div className="flex-1 space-y-1 overflow-y-auto pr-1">
         <GoalRow
           label="Masa ciała"
           icon={Scale}
