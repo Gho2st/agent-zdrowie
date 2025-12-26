@@ -93,15 +93,14 @@ export default function TrendMini({ data = [], type, title }) {
     const processed = data
       .map((m) => {
         try {
-          return {
-            dateObj: new Date(m.createdAt || m.date),
-            ...m,
-          };
-        } catch (e) {
+          const dateObj = new Date(m.createdAt || m.date);
+          if (isNaN(dateObj.getTime())) return null;
+          return { dateObj, ...m };
+        } catch {
           return null;
         }
       })
-      .filter((item) => item && !isNaN(item.dateObj.getTime()))
+      .filter(Boolean)
       .filter((m) => {
         if (isCheckin) return true;
         const itemType = m.type?.toUpperCase();
@@ -124,7 +123,7 @@ export default function TrendMini({ data = [], type, title }) {
 
   if (chartData.length === 0) {
     return (
-      <div className="bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl flex flex-col h-full items-center justify-center min-h-[200px] text-gray-400">
+      <div className="bg-white border border-gray-200 p-6 rounded-3xl flex flex-col h-full items-center justify-center min-h-[200px] text-gray-400">
         <Icon
           className={`w-10 h-10 mb-2 opacity-50 ${
             style.colorClass.split(" ")[1]
@@ -228,14 +227,10 @@ export default function TrendMini({ data = [], type, title }) {
           const ctx = context.chart.ctx;
           if (!ctx) return hexToRgba(style.lineColor, 0.2);
 
-          try {
-            const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-            gradient.addColorStop(0, hexToRgba(style.lineColor, 0.4));
-            gradient.addColorStop(1, hexToRgba(style.lineColor, 0.0));
-            return gradient;
-          } catch (e) {
-            return hexToRgba(style.lineColor, 0.2);
-          }
+          const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+          gradient.addColorStop(0, hexToRgba(style.lineColor, 0.4));
+          gradient.addColorStop(1, hexToRgba(style.lineColor, 0.0));
+          return gradient;
         },
         fill: true,
         borderWidth: 2,
@@ -254,8 +249,8 @@ export default function TrendMini({ data = [], type, title }) {
   }
 
   return (
-    <div className="bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl flex flex-col h-full w-full">
-      <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
+    <div className="bg-white border border-gray-200 p-6 rounded-3xl flex flex-col h-full w-full">
+      <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-200">
         <div className={`p-3 rounded-2xl ${style.colorClass}`}>
           <Icon className="w-6 h-6" />
         </div>
