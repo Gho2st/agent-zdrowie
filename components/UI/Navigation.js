@@ -28,7 +28,7 @@ export default function Navigation() {
     { href: "/", label: "Start", icon: Home },
     { href: "/centrum-zdrowia", label: "Panel Zdrowia", icon: LayoutDashboard },
     { href: "/agent", label: "Asystent AI", icon: Bot },
-    { href: "/pomiary", label: "Dziennik", icon: Activity },
+    { href: "/pomiary", label: "Pomiary", icon: Activity },
     { href: "/statystyki", label: "Statystyki", icon: BarChart2 },
     { href: "/profil", label: "Twój Profil", icon: User },
   ];
