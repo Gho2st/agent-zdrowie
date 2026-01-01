@@ -15,7 +15,6 @@ function calculateAge(birthdate) {
   return age;
 }
 
-// Mapowanie wartości z Frontendu na Enumy Prisma
 const GENDER_MAP = {
   MALE: "MALE",
   FEMALE: "FEMALE",
@@ -52,12 +51,22 @@ export async function POST(req) {
       hasKidneyDisease,
     } = body;
 
-    // --- WALIDACJA ---
-
     if (!birthdate || isNaN(new Date(birthdate).getTime())) {
       return NextResponse.json(
         { error: "Nieprawidłowa data urodzenia" },
         { status: 400 }
+      );
+    }
+
+    const age = calculateAge(birthdate);
+    if (age < 18) {
+      return NextResponse.json(
+        {
+          error:
+            "Musisz mieć ukończone 18 lat, aby korzystać z tej aplikacji.",
+          details: `Podana data urodzenia wskazuje na wiek ${age} lat.`,
+        },
+        { status: 403 } // Forbidden 
       );
     }
 
@@ -91,8 +100,6 @@ export async function POST(req) {
       );
     }
 
-    const age = calculateAge(birthdate);
-
     // Obliczamy normy na podstawie danych użytkownika
     const normsData = getHealthNorms(
       age,
@@ -124,8 +131,6 @@ export async function POST(req) {
       );
     }
 
-    // --- ZAPIS DO BAZY (TYLKO TWORZENIE) ---
-
     await prisma.healthProfile.create({
       data: {
         userId: user.id,
@@ -154,7 +159,7 @@ export async function POST(req) {
       { status: 201 }
     );
   } catch (error) {
-    // Obsługa błędu unikalności (jeśli użytkownik już ma profil)
+    // Obsługa błędu unikalności (jeśli profil już istnieje)
     if (error.code === "P2002") {
       return NextResponse.json(
         { error: "Profil zdrowia dla tego konta już istnieje." },
