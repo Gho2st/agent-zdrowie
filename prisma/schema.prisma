@@ -64,7 +64,8 @@ model HealthProfile {
   // Pozostałe choroby (np. astma, alergie) nadal mogą być tutaj
   conditions       Condition[]
   medications      String?
-
+  healthDataConsent Boolean @default(false)
+  healthDataConsentAt DateTime? // data i godzina udzielenia zgody RODO
   norms HealthNorms?
 }
 

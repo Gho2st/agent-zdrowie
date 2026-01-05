@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-const publicPaths = ["/", "/logowanie"];
+const publicPaths = ["/", "/logowanie", "/polityka-prywatnosci"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -28,11 +28,13 @@ export async function middleware(request: NextRequest) {
     cookieName: cookieKey,
   });
 
+  // Strony publiczne – dostępne bez logowania
+  if (publicPaths.includes(pathname)) {
+    return NextResponse.next();
+  }
+
   // Brak tokena - przekieruj na logowanie
   if (!token) {
-    if (publicPaths.includes(pathname)) {
-      return NextResponse.next();
-    }
     return NextResponse.redirect(new URL("/logowanie", request.url));
   }
 

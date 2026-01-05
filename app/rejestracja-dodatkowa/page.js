@@ -75,6 +75,9 @@ export default function RejestracjaDodatkowa() {
   const [hasHeartDisease, setHasHeartDisease] = useState(false);
   const [hasKidneyDisease, setHasKidneyDisease] = useState(false);
 
+  const [healthDataConsent, setHealthDataConsent] = useState(false);
+  const [consentError, setConsentError] = useState(false);
+
   const [checking, setChecking] = useState(true);
   const router = useRouter();
   const { status, update } = useSession();
@@ -120,6 +123,16 @@ export default function RejestracjaDodatkowa() {
       return;
     }
 
+    // Sprawdzenie zgody – toast jeśli brak
+    if (!healthDataConsent) {
+      toast.error("Musisz wyrazić zgodę na przetwarzanie danych zdrowotnych");
+      setConsentError(true); // aktywujemy czerwone podświetlenie
+      return; // blokujemy dalsze wykonanie
+    }
+
+    // Jeśli wszystko OK – czyścimy ewentualny błąd
+    setConsentError(false);
+
     const loadingToast = toast.loading("Tworzenie profilu medycznego...");
 
     try {
@@ -134,6 +147,7 @@ export default function RejestracjaDodatkowa() {
         hasHypertension,
         hasHeartDisease,
         hasKidneyDisease,
+        healthDataConsent: true,
       };
 
       const res = await fetch("/api/user/setup", {
@@ -321,16 +335,61 @@ export default function RejestracjaDodatkowa() {
             </div>
           </section>
 
-          <div className="pt-2">
+          {/*  RODO */}
+          <section className="border-t border-gray-100 pt-8">
+            <div
+              className={`rounded-xl p-6 transition-all duration-300 ${
+                consentError
+                  ? "bg-red-50 border-2 border-red-400 shadow-red-200 shadow-lg animate-pulse"
+                  : "bg-amber-50 border border-amber-200"
+              }`}
+            >
+              <label className="flex items-start gap-4 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={healthDataConsent}
+                  onChange={(e) => {
+                    setHealthDataConsent(e.target.checked);
+                    if (e.target.checked) setConsentError(false); // czyścimy błąd po zaznaczeniu
+                  }}
+                  className="mt-1 w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 border-gray-300"
+                />
+                <div className="text-sm text-gray-700 leading-relaxed">
+                  <span className="font-semibold text-gray-900">
+                    Wyrażam wyraźną zgodę
+                  </span>{" "}
+                  na przetwarzanie moich danych dotyczących zdrowia (wiek, waga,
+                  wzrost, choroby współistniejące, pomiary parametrów
+                  zdrowotnych itp.) w celu personalizacji norm i generowania
+                  porad przez aplikację Agent Zdrowie.
+                  <br />
+                  <br />
+                  Zdaję sobie sprawę, że są to dane wrażliwe (kategoria
+                  specjalna – art. 9 RODO). Mogę wycofać zgodę w dowolnym
+                  momencie w ustawieniach profilu.
+                </div>
+              </label>
+            </div>
+          </section>
+
+          <div className="pt-4">
             <button
               onClick={handleSubmit}
-              className="group w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-200 shadow-lg shadow-emerald-200 hover:shadow-emerald-300 flex items-center justify-center gap-2"
+              className="group w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-200 shadow-lg shadow-emerald-200 hover:shadow-emerald-300 flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>Zakończ konfigurację</span>
               <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
+
             <p className="text-center text-xs text-gray-400 mt-4">
-              Twoje dane są przetwarzane zgodnie z polityką prywatności.
+              Szczegółowe informacje znajdziesz w{" "}
+              <a
+                href="/polityka-prywatnosci"
+                className="underline hover:text-emerald-600"
+              >
+                polityce prywatności
+              </a>
+              .
             </p>
           </div>
         </div>

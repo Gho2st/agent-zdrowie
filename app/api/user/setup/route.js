@@ -62,11 +62,10 @@ export async function POST(req) {
     if (age < 18) {
       return NextResponse.json(
         {
-          error:
-            "Musisz mieć ukończone 18 lat, aby korzystać z tej aplikacji.",
+          error: "Musisz mieć ukończone 18 lat, aby korzystać z tej aplikacji.",
           details: `Podana data urodzenia wskazuje na wiek ${age} lat.`,
         },
-        { status: 403 } // Forbidden 
+        { status: 403 } // Forbidden
       );
     }
 
@@ -146,6 +145,9 @@ export async function POST(req) {
         hasHypertension: Boolean(hasHypertension),
         hasHeartDisease: Boolean(hasHeartDisease),
         hasKidneyDisease: Boolean(hasKidneyDisease),
+
+        healthDataConsent: true, // fakt wyrazenia zgody
+        healthDataConsentAt: new Date(), // data i godzina
 
         // Tworzenie rekordu w powiązanej tabeli Norms
         norms: {

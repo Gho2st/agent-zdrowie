@@ -50,6 +50,20 @@ export default function Footer() {
             </ul>
           </div>
         </div>
+        <div className="mt-12 pt-8 border-t border-gray-200">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500">
+            <p>© 2026 Dominik Jojczyk. Wszystkie prawa zastrzeżone.</p>
+
+            <div className="flex items-center gap-6">
+              <Link
+                href="/polityka-prywatnosci"
+                className="hover:text-emerald-600 transition-colors duration-200 underline underline-offset-4 decoration-gray-300 hover:decoration-emerald-600"
+              >
+                Polityka prywatności
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     </footer>
   );
