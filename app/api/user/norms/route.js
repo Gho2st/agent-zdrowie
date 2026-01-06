@@ -3,8 +3,6 @@ import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { getHealthNorms } from "@/lib/norms";
 
-// --- HELPERS I MAPOWANIE ---
-
 function calculateAge(birthdate) {
   const birth = new Date(birthdate);
   const today = new Date();
@@ -16,37 +14,26 @@ function calculateAge(birthdate) {
   return age;
 }
 
-// Mapujemy wejście na bazę (zabezpieczenie na wypadek gdyby frontend wysłał 'niski' zamiast 'LOW')
-const ACTIVITY_MAP_TO_DB = {
-  niski: "LOW",
-  umiarkowany: "MODERATE",
-  wysoki: "HIGH",
-  LOW: "LOW",
-  MODERATE: "MODERATE",
-  HIGH: "HIGH",
-};
+const VALID_ACTIVITY_LEVELS = new Set(["LOW", "MODERATE", "HIGH"]);
 
-// Funkcja spłaszczająca - USUNĄŁEM MAPOWANIE NA POLSKI
 function flattenProfileData(healthProfile) {
   if (!healthProfile) return null;
 
   const { norms, conditions, ...rest } = healthProfile;
 
   const conditionsString = conditions
-    ? conditions.map((c) => c.name).join(",")
+    ? conditions.map((c) => c.name).join(", ")
     : "";
 
   return {
     ...rest,
-    // TU BYŁ BŁĄD: zwracamy surowy ENUM (np. "HIGH"), a nie "wysoki"
     activityLevel: rest.activityLevel,
     conditions: conditionsString,
     ...norms,
   };
 }
 
-// --- METODA GET ---
-
+// --- GET pobieranie profilu z normami ---
 export async function GET() {
   try {
     const session = await auth();
@@ -72,13 +59,12 @@ export async function GET() {
 
     return NextResponse.json(flattenProfileData(user.healthProfile));
   } catch (error) {
-    console.error(error);
+    console.error("Błąd pobierania profilu:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
 
-// --- METODA PATCH ---
-
+// --- PATCH aktualizacja profilu z przeliczeniem norm ---
 export async function PATCH(req) {
   try {
     const session = await auth();
@@ -100,35 +86,88 @@ export async function PATCH(req) {
       hasKidneyDisease,
     } = body;
 
-    let conditionsArray = [];
-    if (conditions) {
-      conditionsArray = Array.isArray(conditions)
+    // Przygotowanie danych do aktualizacji
+    const updateData = {};
+
+    // Walidacja i konwersja liczbowych pól
+    if (height !== undefined) {
+      const h = Number(height);
+      if (isNaN(h) || h <= 0) {
+        return NextResponse.json(
+          { error: "Wzrost musi być dodatnią liczbą" },
+          { status: 400 }
+        );
+      }
+      updateData.height = h;
+    }
+
+    if (weight !== undefined) {
+      const w = Number(weight);
+      if (isNaN(w) || w <= 0) {
+        return NextResponse.json(
+          { error: "Waga musi być dodatnią liczbą" },
+          { status: 400 }
+        );
+      }
+      updateData.weight = w;
+    }
+
+    // Walidacja activityLevel
+    if (activityLevel !== undefined) {
+      if (!VALID_ACTIVITY_LEVELS.has(activityLevel)) {
+        return NextResponse.json(
+          { error: "Nieprawidłowy poziom aktywności (LOW, MODERATE, HIGH)" },
+          { status: 400 }
+        );
+      }
+      updateData.activityLevel = activityLevel;
+    }
+
+    // Pozostałe pola
+    if (medications !== undefined) updateData.medications = medications;
+    if (hasDiabetes !== undefined)
+      updateData.hasDiabetes = Boolean(hasDiabetes);
+    if (hasPrediabetes !== undefined)
+      updateData.hasPrediabetes = Boolean(hasPrediabetes);
+    if (hasHypertension !== undefined)
+      updateData.hasHypertension = Boolean(hasHypertension);
+    if (hasHeartDisease !== undefined)
+      updateData.hasHeartDisease = Boolean(hasHeartDisease);
+    if (hasKidneyDisease !== undefined)
+      updateData.hasKidneyDisease = Boolean(hasKidneyDisease);
+
+    // Obsługa listy chorób (całkowite nadpisanie)
+    if (conditions !== undefined) {
+      const conditionsArray = Array.isArray(conditions)
         ? conditions
         : conditions
             .split(",")
             .map((c) => c.trim())
             .filter(Boolean);
+
+      updateData.conditions = {
+        set: [], // odłączamy wszystkie stare
+        connectOrCreate: conditionsArray.map((name) => ({
+          where: { name },
+          create: { name },
+        })),
+      };
     }
 
-    // Mapujemy wartość na ENUM (np. jeśli przyjdzie "HIGH" to zostaje "HIGH")
-    let dbActivity = undefined;
-    if (activityLevel) {
-      dbActivity = ACTIVITY_MAP_TO_DB[activityLevel];
-    }
-
+    // Pobranie aktualnego profilu
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, healthProfile: { include: { conditions: true } } },
+      select: { id: true, healthProfile: true },
     });
 
     if (!user?.healthProfile) {
       return NextResponse.json({ error: "No profile" }, { status: 404 });
     }
+
     const currentProfile = user.healthProfile;
 
-    // Przeliczanie norm
-    let normsData = {};
-    const changingRelevantData =
+    // Czy trzeba przeliczyć normy?
+    const needRecalculateNorms =
       height !== undefined ||
       weight !== undefined ||
       activityLevel !== undefined ||
@@ -138,87 +177,35 @@ export async function PATCH(req) {
       hasHeartDisease !== undefined ||
       hasKidneyDisease !== undefined;
 
-    if (changingRelevantData) {
+    if (needRecalculateNorms) {
       const age = calculateAge(currentProfile.birthdate);
-      const newHeight =
-        height !== undefined ? Number(height) : currentProfile.height;
-      const newWeight =
-        weight !== undefined ? Number(weight) : currentProfile.weight;
-      const newActivity = dbActivity ?? currentProfile.activityLevel;
 
-      const newHasDiabetes =
-        hasDiabetes !== undefined
-          ? Boolean(hasDiabetes)
-          : currentProfile.hasDiabetes;
-      const newHasPrediabetes =
-        hasPrediabetes !== undefined
-          ? Boolean(hasPrediabetes)
-          : currentProfile.hasPrediabetes;
-      const newHasHypertension =
-        hasHypertension !== undefined
-          ? Boolean(hasHypertension)
-          : currentProfile.hasHypertension;
-      const newHasHeartDisease =
-        hasHeartDisease !== undefined
-          ? Boolean(hasHeartDisease)
-          : currentProfile.hasHeartDisease;
-      const newHasKidneyDisease =
-        hasKidneyDisease !== undefined
-          ? Boolean(hasKidneyDisease)
-          : currentProfile.hasKidneyDisease;
-
-      // Tutaj ważne: przekazujemy newActivity, które jest ENUMem (np. "HIGH")
       const normsResult = getHealthNorms(
         age,
         currentProfile.gender,
-        newHeight,
-        newWeight,
-        newActivity,
-        newHasDiabetes,
-        newHasHypertension,
-        newHasHeartDisease,
-        newHasKidneyDisease,
-        newHasPrediabetes
+        updateData.height ?? currentProfile.height,
+        updateData.weight ?? currentProfile.weight,
+        updateData.activityLevel ?? currentProfile.activityLevel,
+        updateData.hasDiabetes ?? currentProfile.hasDiabetes,
+        updateData.hasHypertension ?? currentProfile.hasHypertension,
+        updateData.hasHeartDisease ?? currentProfile.hasHeartDisease,
+        updateData.hasKidneyDisease ?? currentProfile.hasKidneyDisease,
+        updateData.hasPrediabetes ?? currentProfile.hasPrediabetes
       );
 
       if (normsResult.error) {
         return NextResponse.json({ error: normsResult.error }, { status: 400 });
       }
-      normsData = normsResult;
-    }
 
-    const updateData = {
-      medications: medications !== undefined ? medications : undefined,
-      height: height !== undefined ? Number(height) : undefined,
-      weight: weight !== undefined ? Number(weight) : undefined,
-      activityLevel: dbActivity !== undefined ? dbActivity : undefined,
-      hasDiabetes: hasDiabetes !== undefined ? Boolean(hasDiabetes) : undefined,
-      hasPrediabetes:
-        hasPrediabetes !== undefined ? Boolean(hasPrediabetes) : undefined,
-      hasHypertension:
-        hasHypertension !== undefined ? Boolean(hasHypertension) : undefined,
-      hasHeartDisease:
-        hasHeartDisease !== undefined ? Boolean(hasHeartDisease) : undefined,
-      hasKidneyDisease:
-        hasKidneyDisease !== undefined ? Boolean(hasKidneyDisease) : undefined,
-    };
-
-    if (conditions !== undefined) {
-      updateData.conditions = {
-        set: [],
-        connectOrCreate: conditionsArray.map((name) => ({
-          where: { name: name },
-          create: { name: name },
-        })),
-      };
-    }
-
-    if (Object.keys(normsData).length > 0) {
       updateData.norms = {
-        upsert: { create: normsData, update: normsData },
+        upsert: {
+          create: normsResult,
+          update: normsResult,
+        },
       };
     }
 
+    // Wykonanie aktualizacji
     const updatedProfile = await prisma.healthProfile.update({
       where: { userId: user.id },
       data: updateData,
@@ -227,7 +214,7 @@ export async function PATCH(req) {
 
     return NextResponse.json(flattenProfileData(updatedProfile));
   } catch (error) {
-    console.error(error);
+    console.error("Błąd aktualizacji profilu:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

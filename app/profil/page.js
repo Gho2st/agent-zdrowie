@@ -152,7 +152,7 @@ export default function Profil() {
     });
     if (res.ok) {
       const updatedData = await res.json();
-      handleDataUpdate(updatedData); // Używamy nowej funkcji
+      handleDataUpdate(updatedData);
       toast.success("Zaktualizowano wzrost");
       setEditingHeight(false);
     } else {
@@ -235,7 +235,6 @@ export default function Profil() {
           setEditingHeight={setEditingHeight}
         />
 
-        {/* PRZEKAZUJEMY onUpdate DO DZIECKA */}
         <MedicationsAndConditions
           norms={medicationNorms}
           setNorms={setMedicationNorms}

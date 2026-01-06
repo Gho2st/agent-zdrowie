@@ -2,17 +2,6 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 
-const TYPE_MAP = {
-  ciśnienie: "BLOOD_PRESSURE",
-  waga: "WEIGHT",
-  cukier: "GLUCOSE",
-  tętno: "HEART_RATE",
-  BLOOD_PRESSURE: "BLOOD_PRESSURE",
-  WEIGHT: "WEIGHT",
-  GLUCOSE: "GLUCOSE",
-  HEART_RATE: "HEART_RATE",
-};
-
 export async function POST(req) {
   const session = await auth();
 
@@ -25,11 +14,16 @@ export async function POST(req) {
 
   const { amount, type, unit, systolic, diastolic, context, note } = body;
 
-  //  Mapowanie typu na ENUM
-  const dbType = TYPE_MAP[type];
-  if (!dbType) {
+  const VALID_TYPES = new Set([
+    "BLOOD_PRESSURE",
+    "GLUCOSE",
+    "WEIGHT",
+    "HEART_RATE",
+  ]);
+
+  if (!VALID_TYPES.has(type)) {
     return NextResponse.json(
-      { error: "Nieznany typ pomiaru" },
+      { error: "Nieprawidłowy typ pomiaru" },
       { status: 400 }
     );
   }

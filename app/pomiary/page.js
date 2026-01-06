@@ -8,21 +8,21 @@ import toast from "react-hot-toast";
 import { useChat } from "@ai-sdk/react";
 import ListaPomiarow from "./ListaPomiarów";
 import { Loader2, PlusCircle, Sparkles, Bot, Save } from "lucide-react";
-
 import TrendMini from "@/components/UI/CentrumZdrowia/TrendMini";
 
+// Jednostki domyślne
 const defaults = {
-  ciśnienie: "mmHg",
-  cukier: "mg/dL",
-  waga: "kg",
-  tętno: "bpm",
+  BLOOD_PRESSURE: "mmHg",
+  GLUCOSE: "mg/dL",
+  WEIGHT: "kg",
+  HEART_RATE: "bpm",
 };
 
-const TYPE_TO_ENUM = {
-  ciśnienie: "BLOOD_PRESSURE",
-  cukier: "GLUCOSE",
-  waga: "WEIGHT",
-  tętno: "HEART_RATE",
+const typeDisplay = {
+  BLOOD_PRESSURE: { label: "Ciśnienie", icon: "💓" },
+  GLUCOSE: { label: "Cukier (Glukoza)", icon: "🍭" },
+  WEIGHT: { label: "Waga", icon: "⚖️" },
+  HEART_RATE: { label: "Tętno", icon: "❤️" },
 };
 
 function asBP(v) {
@@ -34,46 +34,59 @@ function isTextPart(p) {
   return p.type === "text" && typeof p.text === "string";
 }
 
-function checkNorms(t, v, n, unit, timing) {
-  if (!n) return { out: false };
-  if (t === "cukier") {
+function checkNorms(typeKey, value, norms, unit, timing) {
+  if (!norms) return { out: false };
+
+  if (typeKey === "GLUCOSE") {
     if (
       timing === "przed posiłkiem" &&
-      n.glucoseFastingMin != null &&
-      n.glucoseFastingMax != null
+      norms.glucoseFastingMin != null &&
+      norms.glucoseFastingMax != null
     ) {
-      const out = v < n.glucoseFastingMin || v > n.glucoseFastingMax;
+      const out =
+        value < norms.glucoseFastingMin || value > norms.glucoseFastingMax;
       return out
-        ? { out, msg: `Twój cukier ${v} ${unit} poza normą na czczo.` }
+        ? { out, msg: `Twój cukier ${value} ${unit} poza normą na czczo.` }
         : { out: false };
     }
-    if (timing === "po posiłku" && n.glucosePostMealMax != null) {
-      const out = v > n.glucosePostMealMax;
+    if (timing === "po posiłku" && norms.glucosePostMealMax != null) {
+      const out = value > norms.glucosePostMealMax;
       return out
         ? {
             out,
-            msg: `Po posiłku wynik ${v} ${unit} > ${n.glucosePostMealMax}.`,
+            msg: `Po posiłku wynik ${value} ${unit} > ${norms.glucosePostMealMax}.`,
           }
         : { out: false };
     }
   }
-  if (t === "waga" && n.weightMin != null && n.weightMax != null) {
-    const out = v < n.weightMin || v > n.weightMax;
-    return out ? { out, msg: `Waga poza normą.` } : { out: false };
+
+  if (
+    typeKey === "WEIGHT" &&
+    norms.weightMin != null &&
+    norms.weightMax != null
+  ) {
+    const out = value < norms.weightMin || value > norms.weightMax;
+    return out ? { out, msg: "Waga poza normą." } : { out: false };
   }
-  if (t === "tętno" && n.pulseMin != null && n.pulseMax != null) {
-    const out = v < n.pulseMin || v > n.pulseMax;
-    return out ? { out, msg: `Tętno poza normą.` } : { out: false };
+
+  if (
+    typeKey === "HEART_RATE" &&
+    norms.pulseMin != null &&
+    norms.pulseMax != null
+  ) {
+    const out = value < norms.pulseMin || value > norms.pulseMax;
+    return out ? { out, msg: "Tętno poza normą." } : { out: false };
   }
+
   return { out: false };
 }
 
 export default function Pomiary() {
   const { status } = useSession();
 
-  const [type, setType] = useState("ciśnienie");
+  const [type, setType] = useState("BLOOD_PRESSURE");
   const [value, setValue] = useState("");
-  const [unit, setUnit] = useState(defaults["ciśnienie"]);
+  const [unit, setUnit] = useState(defaults["BLOOD_PRESSURE"]);
 
   const [measurements, setMeasurements] = useState([]);
   const [filterType, setFilterType] = useState("all");
@@ -164,6 +177,8 @@ export default function Pomiary() {
     setUnit(defaults[type]);
   }, [type]);
 
+  const currentDisplay = typeDisplay[type] || { label: "Pomiar", icon: "" };
+
   const requestDelete = useCallback((id) => setConfirmDeleteId(id), []);
   const confirmDelete = useCallback(async () => {
     if (!confirmDeleteId) return;
@@ -191,7 +206,7 @@ export default function Pomiary() {
     if (isSubmitting) return;
 
     const now = Date.now();
-    if (lastSubmittedAt && now - lastSubmittedAt < 2000) return; // Krótszy debounce
+    if (lastSubmittedAt && now - lastSubmittedAt < 2000) return;
 
     setIsSubmitting(true);
     setLastSubmittedAt(now);
@@ -201,14 +216,14 @@ export default function Pomiary() {
     let alertDetails = "";
 
     let aiDataPayload = {
-      type: type,
+      type: currentDisplay.label,
       formattedValue: "",
       context: "",
       note: "",
     };
 
     try {
-      if (type === "ciśnienie") {
+      if (type === "BLOOD_PRESSURE") {
         const bp = asBP(value);
         if (!bp) {
           toast.error("Format: 120/80");
@@ -219,16 +234,14 @@ export default function Pomiary() {
         body.diastolic = bp.dia;
         body.note = pressureNote?.trim() || undefined;
 
-        // Dane dla AI
         aiDataPayload.formattedValue = `${bp.sys}/${bp.dia} ${unit}`;
         aiDataPayload.note = pressureNote;
 
-        if (
-          norms?.systolicMin != null &&
-          (bp.sys < norms.systolicMin || bp.sys > norms.systolicMax)
-        ) {
-          isOutOfNorm = true;
-          alertDetails = "Ciśnienie poza normą.";
+        if (norms?.systolicMin != null && norms?.systolicMax != null) {
+          if (bp.sys < norms.systolicMin || bp.sys > norms.systolicMax) {
+            isOutOfNorm = true;
+            alertDetails = "Ciśnienie poza normą.";
+          }
         }
       } else {
         const numeric = Number(String(value).replace(",", "."));
@@ -241,7 +254,7 @@ export default function Pomiary() {
 
         aiDataPayload.formattedValue = `${numeric} ${unit}`;
 
-        if (type === "cukier") {
+        if (type === "GLUCOSE") {
           body.context = glucoseTime || undefined;
           body.note = glucoseContext?.trim() || undefined;
           aiDataPayload.context = `${glucoseTime}, ${glucoseContext || ""}`;
@@ -252,8 +265,9 @@ export default function Pomiary() {
             alertDetails = res.msg;
           }
         }
-        if (type === "waga" || type === "tętno") {
-          if (type === "tętno") {
+
+        if (type === "WEIGHT" || type === "HEART_RATE") {
+          if (type === "HEART_RATE") {
             body.note = pulseNote?.trim() || undefined;
             aiDataPayload.note = pulseNote;
           }
@@ -283,7 +297,6 @@ export default function Pomiary() {
       setPressureNote("");
       setPulseNote("");
 
-      // Odświeżenie listy pomiarów
       setRefreshKey(Date.now());
 
       if (isOutOfNorm) toast.error(alertDetails);
@@ -302,19 +315,7 @@ export default function Pomiary() {
 
   const TrendSection = useMemo(
     () => (
-      <TrendMini
-        data={measurements}
-        type={TYPE_TO_ENUM[type] || "DEFAULT"}
-        title={
-          type === "ciśnienie"
-            ? "💓 Ciśnienie"
-            : type === "cukier"
-            ? "🍭 Glukoza"
-            : type === "waga"
-            ? "⚖️ Waga"
-            : "❤️ Tętno"
-        }
-      />
+      <TrendMini data={measurements} type={type} title={currentDisplay.label} />
     ),
     [measurements, type]
   );
@@ -382,30 +383,29 @@ export default function Pomiary() {
             </label>
             <div className="relative">
               <select
-                id="type"
                 value={type}
                 onChange={(e) => {
                   setType(e.target.value);
                   setValue("");
                 }}
-                className="w-full p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-700 font-medium "
+                className="w-full p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-700 font-medium"
               >
-                <option value="ciśnienie">💓 Ciśnienie</option>
-                <option value="cukier">🍭 Cukier (Glukoza)</option>
-                <option value="waga">⚖️ Waga</option>
-                <option value="tętno">❤️ Tętno</option>
+                <option value="BLOOD_PRESSURE">💓 Ciśnienie</option>
+                <option value="GLUCOSE">🍭 Cukier (Glukoza)</option>
+                <option value="WEIGHT">⚖️ Waga</option>
+                <option value="HEART_RATE">❤️ Tętno</option>
               </select>
             </div>
           </div>
 
           <div>
             <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
-              {type === "ciśnienie"
+              {type === "BLOOD_PRESSURE"
                 ? "Wynik (skurczowe/rozkurczowe)"
                 : "Wartość wyniku"}
             </label>
             <div className="relative">
-              {type === "ciśnienie" ? (
+              {type === "BLOOD_PRESSURE" ? (
                 <input
                   type="text"
                   inputMode="numeric"
@@ -413,7 +413,7 @@ export default function Pomiary() {
                   onChange={(e) => setValue(e.target.value)}
                   required
                   placeholder="np. 120/80"
-                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold  "
+                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold"
                 />
               ) : (
                 <input
@@ -423,8 +423,8 @@ export default function Pomiary() {
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
                   required
-                  placeholder={type === "tętno" ? "np. 72" : "np. 70.5"}
-                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold "
+                  placeholder="np. 70.5"
+                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold"
                 />
               )}
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-md">
@@ -433,7 +433,7 @@ export default function Pomiary() {
             </div>
           </div>
 
-          {type === "cukier" && (
+          {type === "GLUCOSE" && (
             <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
               <div>
                 <span className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
@@ -464,27 +464,27 @@ export default function Pomiary() {
                   value={glucoseContext}
                   onChange={(e) => setGlucoseContext(e.target.value)}
                   rows={1}
-                  className="w-full p-3 rounded-xl border border-gray-200 bg-white "
+                  className="w-full p-3 rounded-xl border border-gray-200 bg-white"
                 />
               </div>
             </div>
           )}
 
-          {(type === "ciśnienie" || type === "tętno") && (
+          {(type === "BLOOD_PRESSURE" || type === "HEART_RATE") && (
             <div className="animate-in fade-in slide-in-from-top-2">
               <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
                 Notatka
               </label>
               <textarea
-                value={type === "ciśnienie" ? pressureNote : pulseNote}
+                value={type === "BLOOD_PRESSURE" ? pressureNote : pulseNote}
                 onChange={(e) =>
-                  type === "ciśnienie"
+                  type === "BLOOD_PRESSURE"
                     ? setPressureNote(e.target.value)
                     : setPulseNote(e.target.value)
                 }
                 rows={1}
                 placeholder="np. stres, po kawie"
-                className="w-full p-3 rounded-xl border border-gray-200 bg-white "
+                className="w-full p-3 rounded-xl border border-gray-200 bg-white"
               />
             </div>
           )}
