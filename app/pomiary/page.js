@@ -440,27 +440,25 @@ export default function Pomiary() {
                   Pora pomiaru
                 </span>
                 <div className="grid grid-cols-2 gap-2">
-                  {["przed posiłkiem", "po posiłku", "rano", "wieczorem"].map(
-                    (t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setGlucoseTime(t)}
-                        className={`p-2.5 rounded-xl text-sm font-medium border transition-all ${
-                          glucoseTime === t
-                            ? "bg-amber-100 border-amber-300 text-amber-800"
-                            : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    )
-                  )}
+                  {["przed posiłkiem", "po posiłku"].map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setGlucoseTime(t)}
+                      className={`p-2.5 rounded-xl text-sm font-medium border transition-all ${
+                        glucoseTime === t
+                          ? "bg-amber-100 border-amber-300 text-amber-800"
+                          : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
                 </div>
               </div>
               <div>
                 <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
-                  Notatka / Posiłek
+                  Dodatkowa notatka (opcjonalnie)
                 </label>
                 <textarea
                   value={glucoseContext}

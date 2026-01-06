@@ -320,7 +320,7 @@ export default function ListaPomiarow({
                       {getStatusLabel(status)}
                     </div>
 
-                    <div className="pt-3 border-t border-gray-200 flex flex-col gap-1 text-xs text-gray-500">
+                    <div className="pt-3 border-t border-gray-200 flex flex-col gap-1.5 text-xs text-gray-500">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-gray-400" />
                         {new Date(m.createdAt).toLocaleString("pl-PL", {
@@ -331,12 +331,22 @@ export default function ListaPomiarow({
                         })}
                       </div>
 
-                      {(m.timing || m.note) && (
-                        <div
-                          className="mt-1 text-gray-400 italic truncate"
-                          title={m.note || m.timing}
-                        >
-                          {m.type === "GLUCOSE" && m.timing ? m.timing : m.note}
+                      {/* CONTEXT + NOTE – wyświetlamy tylko jeśli istnieje */}
+                      {(m.context || m.note) && (
+                        <div className="flex flex-col gap-1">
+                          {m.context && (
+                            <div className="text-gray-600 font-medium">
+                              {m.context}
+                            </div>
+                          )}
+                          {m.note && (
+                            <div
+                              className="text-gray-500 italic truncate max-w-full"
+                              title={m.note}
+                            >
+                              – {m.note}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

@@ -159,27 +159,30 @@ export async function POST() {
     const { text: summary } = await generateText({
       model: openai("gpt-4o"),
       temperature: 0.2,
-      prompt: `Jesteś asystentem medycznym AI. Generujesz profesjonalny raport PDF dla pacjenta.
-      
-      DANE PACJENTA I KONTEKST MEDYCZNY:
-      ${context}
+      prompt: `Jesteś asystentem medycznym AI generującym profesjonalny, zwięzły komentarz kliniczny do raportu PDF dla pacjenta.${context}
 
-      OSTATNIE POMIARY (JSON):
-      ${JSON.stringify(
-        user.measurements.map((m) => ({
-          type: m.type,
-          value: m.value,
-          value2: m.value2,
-          date: m.createdAt,
-        }))
-      )}
+OSTATNIE POMIARY (JSON – ostatnie 30):
+${JSON.stringify(
+  user.measurements.map((m) => ({
+    type: m.type,
+    value: m.value,
+    value2: m.value2,
+    date: m.createdAt,
+    context: m.context || null,
+    note: m.note || null,
+  }))
+)}
 
-      ZADANIE:
-      1. Przeanalizuj te pomiary w odniesieniu do indywidualnych norm pacjenta (jeśli istnieją) lub norm ogólnych.
-      2. Wskaż ewentualne niepokojące trendy (np. wzrost ciśnienia w ciągu ostatnich dni).
-      3. Bądź konkretny i rzeczowy.
-      4. Nie używaj Markdown. Używaj czystego tekstu.
-      `,
+ZADANIE – napisz wyłącznie komentarz kliniczny (bez nagłówków typu "Raport medyczny", "Dane pacjenta", "Normy pacjenta"):
+1. Skup się TYLKO na analizie trendów i odchyleń w pomiarach w odniesieniu do indywidualnych norm pacjenta.
+2. Wskaż konkretne niepokojące trendy lub odchylenia (np. wzrost ciśnienia w ostatnich dniach, spadek wagi, pojedyncze wartości poza normą).
+3. Jeśli wszystko w normie – napisz krótko o stabilności parametrów.
+4. Bądź zwięzły, konkretny i profesjonalny – maksymalnie 150-200 słów.
+5. Nie powtarzaj danych osobowych, norm, BMI ani listy chorób/leków – są już podane wyżej w raporcie.
+6. Nie używaj Markdown, nagłówków ani list numerowanych/bulleted na początku sekcji.
+7. Zakończ krótkim, praktycznym zaleceniem monitorowania (jeśli potrzebne).
+8. Używaj czystego tekstu.
+`,
     });
 
     // 3. Rysowanie PDF
@@ -353,10 +356,8 @@ export async function POST() {
           case "BLOOD_PRESSURE":
             const sys = m.value;
             const dia = m.value2;
-
             lineText = `• ${mDate} | Ciśnienie: ${sys}/${dia} mmHg`;
 
-            // Sprawdzenie górnych i dolnych norm ciśnienia
             if (norms.systolicMax && sys > norms.systolicMax) isAlarming = true;
             if (norms.systolicMin && sys < norms.systolicMin) isAlarming = true;
             if (norms.diastolicMax && dia > norms.diastolicMax)
@@ -367,34 +368,30 @@ export async function POST() {
 
           case "GLUCOSE":
             const glucose = m.value;
-            const contextLower = (m.context || "").toLowerCase();
 
             lineText = `• ${mDate} | Glukoza: ${glucose} mg/dL`;
-            if (m.context) lineText += ` (${m.context})`;
 
-            // Inteligentne sprawdzanie w zależności od kontekstu
-            if (
-              contextLower.includes("czczo") ||
-              contextLower.includes("na czczo")
-            ) {
+            // Wyświetlamy porę tylko jeśli istnieje context
+            if (m.context) {
+              lineText += ` (${m.context})`;
+            }
+
+            // Logika alarmu – wyłącznie na podstawie context
+            let useFastingNorm = true; // domyślnie na czczo
+
+            if (m.context) {
+              if (m.context.toLowerCase().includes("po posiłku")) {
+                useFastingNorm = false;
+              }
+              // „przed posiłkiem” → na czczo
+            }
+
+            if (useFastingNorm) {
               if (norms.glucoseFastingMax && glucose > norms.glucoseFastingMax)
                 isAlarming = true;
               if (norms.glucoseFastingMin && glucose < norms.glucoseFastingMin)
                 isAlarming = true;
-            } else if (
-              contextLower.includes("po posiłku") ||
-              contextLower.includes("po jedzeniu")
-            ) {
-              if (
-                norms.glucosePostMealMax &&
-                glucose > norms.glucosePostMealMax
-              )
-                isAlarming = true;
-              // Dolna granica po posiłku zwykle nie jest krytyczna, ale można dodać jeśli jest
             } else {
-              // Jeśli brak kontekstu – sprawdzamy obie górne granice
-              if (norms.glucoseFastingMax && glucose > norms.glucoseFastingMax)
-                isAlarming = true;
               if (
                 norms.glucosePostMealMax &&
                 glucose > norms.glucosePostMealMax
@@ -405,7 +402,7 @@ export async function POST() {
 
           case "HEART_RATE":
             const pulse = m.value;
-            lineText = `• ${mDate} | Tętno: ${m.value} bpm`;
+            lineText = `• ${mDate} | Tętno: ${pulse} bpm`;
 
             if (norms.pulseMax && pulse > norms.pulseMax) isAlarming = true;
             if (norms.pulseMin && pulse < norms.pulseMin) isAlarming = true;
@@ -421,12 +418,15 @@ export async function POST() {
             lineText = `• ${mDate} | ${m.type}: ${m.value}`;
         }
 
-        if (m.note) lineText += ` – "${m.note}"`;
+        // Dodajemy tylko note (ręczne uwagi użytkownika) – bez wpływu na logikę
+        if (m.note) {
+          lineText += ` – "${m.note.trim()}"`;
+        }
 
-        // Ostateczne oznaczenie alarmu
+        // Rysowanie linii
         if (isAlarming) {
-          lineText = lineText + "  ⚠"; // wyraźny symbol ostrzegawczy
-          drawLine(lineText, 11, rgb(0.85, 0.1, 0.1)); // intensywny czerwony, większa czcionka dla widoczności
+          lineText += "!";
+          drawLine(lineText, 11, rgb(0.85, 0.1, 0.1));
         } else {
           drawLine(lineText, 10);
         }
