@@ -242,8 +242,8 @@ export default function Pomiary() {
         aiDataPayload.formattedValue = `${numeric} ${unit}`;
 
         if (type === "cukier") {
-          body.context = glucoseContext?.trim() || undefined;
-          body.timing = glucoseTime;
+          body.context = glucoseTime || undefined;
+          body.note = glucoseContext?.trim() || undefined;
           aiDataPayload.context = `${glucoseTime}, ${glucoseContext || ""}`;
 
           const res = checkNorms(type, numeric, norms, unit, glucoseTime);

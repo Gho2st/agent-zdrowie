@@ -10,8 +10,6 @@ import { buildPersonalizedContext } from "@/lib/ai-context";
 
 export const runtime = "nodejs";
 
-// === POMOCNICZE FUNKCJE ===
-
 // 1. Łamanie tekstu (dla pdf-lib)
 const breakTextIntoLines = (text, font, size, maxWidth) => {
   if (!text) return [];
@@ -108,7 +106,7 @@ export async function POST() {
     if (!session?.user?.email)
       return new Response("Unauthorized", { status: 401 });
 
-    // 1. POBRANIE DANYCH Z NOWEJ STRUKTURY BAZY
+    // 1. Pobranie danych
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
@@ -137,7 +135,7 @@ export async function POST() {
       ? profile.conditions.map((c) => c.name).join(", ")
       : "Brak";
 
-    // Przygotowanie obiektu dla kontekstu AI (spłaszczamy strukturę)
+    // Przygotowanie obiektu dla kontekstu AI
     const contextUserMock = {
       name: user.name,
       birthdate: profile.birthdate,
@@ -157,7 +155,7 @@ export async function POST() {
     // Generowanie tekstowego kontekstu dla promptu
     const context = buildPersonalizedContext(contextUserMock);
 
-    // === 2. GENEROWANIE ANALIZY AI ===
+    // 2. Generowanie analizy
     const { text: summary } = await generateText({
       model: openai("gpt-4o"),
       temperature: 0.2,
@@ -171,7 +169,7 @@ export async function POST() {
         user.measurements.map((m) => ({
           type: m.type,
           value: m.value,
-          value2: m.value2, // dla ciśnienia
+          value2: m.value2,
           date: m.createdAt,
         }))
       )}
@@ -184,7 +182,7 @@ export async function POST() {
       `,
     });
 
-    // === 3. RYSOWANIE PDF ===
+    // 3. Rysowanie PDF
     const pdfDoc = await PDFDocument.create();
     pdfDoc.registerFontkit(fontkit);
 
@@ -351,48 +349,84 @@ export async function POST() {
         let lineText = "";
         let isAlarming = false;
 
-        // Logika wyświetlania zależna od typu pomiaru (Enumy z Prisma)
         switch (m.type) {
           case "BLOOD_PRESSURE":
             const sys = m.value;
-            const dia = m.value2; // value2 to rozkurczowe
+            const dia = m.value2;
+
             lineText = `• ${mDate} | Ciśnienie: ${sys}/${dia} mmHg`;
-            // Sprawdzanie przekroczeń
+
+            // Sprawdzenie górnych i dolnych norm ciśnienia
             if (norms.systolicMax && sys > norms.systolicMax) isAlarming = true;
+            if (norms.systolicMin && sys < norms.systolicMin) isAlarming = true;
             if (norms.diastolicMax && dia > norms.diastolicMax)
+              isAlarming = true;
+            if (norms.diastolicMin && dia < norms.diastolicMin)
               isAlarming = true;
             break;
 
           case "GLUCOSE":
-            lineText = `• ${mDate} | Glukoza: ${m.value} mg/dL`;
-            if (m.context) lineText += ` (${m.context})`; // np. "Na czczo"
+            const glucose = m.value;
+            const contextLower = (m.context || "").toLowerCase();
 
-            // Prosta logika alarmowa dla glukozy
-            if (norms.glucoseFastingMax && m.value > norms.glucoseFastingMax) {
-              // Jeśli kontekst to "po posiłku", można by sprawdzać glucosePostMealMax
-              isAlarming = true;
+            lineText = `• ${mDate} | Glukoza: ${glucose} mg/dL`;
+            if (m.context) lineText += ` (${m.context})`;
+
+            // Inteligentne sprawdzanie w zależności od kontekstu
+            if (
+              contextLower.includes("czczo") ||
+              contextLower.includes("na czczo")
+            ) {
+              if (norms.glucoseFastingMax && glucose > norms.glucoseFastingMax)
+                isAlarming = true;
+              if (norms.glucoseFastingMin && glucose < norms.glucoseFastingMin)
+                isAlarming = true;
+            } else if (
+              contextLower.includes("po posiłku") ||
+              contextLower.includes("po jedzeniu")
+            ) {
+              if (
+                norms.glucosePostMealMax &&
+                glucose > norms.glucosePostMealMax
+              )
+                isAlarming = true;
+              // Dolna granica po posiłku zwykle nie jest krytyczna, ale można dodać jeśli jest
+            } else {
+              // Jeśli brak kontekstu – sprawdzamy obie górne granice
+              if (norms.glucoseFastingMax && glucose > norms.glucoseFastingMax)
+                isAlarming = true;
+              if (
+                norms.glucosePostMealMax &&
+                glucose > norms.glucosePostMealMax
+              )
+                isAlarming = true;
             }
+            break;
+
+          case "HEART_RATE":
+            const pulse = m.value;
+            lineText = `• ${mDate} | Tętno: ${m.value} bpm`;
+
+            if (norms.pulseMax && pulse > norms.pulseMax) isAlarming = true;
+            if (norms.pulseMin && pulse < norms.pulseMin) isAlarming = true;
             break;
 
           case "WEIGHT":
             lineText = `• ${mDate} | Waga: ${m.value} kg`;
-            break;
-
-          case "HEART_RATE":
-            lineText = `• ${mDate} | Tętno: ${m.value} bpm`;
-            if (norms.pulseMax && m.value > norms.pulseMax) isAlarming = true;
+            if (norms.weightMax && m.value > norms.weightMax) isAlarming = true;
+            if (norms.weightMin && m.value < norms.weightMin) isAlarming = true;
             break;
 
           default:
-            // Fallback dla innych typów
             lineText = `• ${mDate} | ${m.type}: ${m.value}`;
         }
 
         if (m.note) lineText += ` – "${m.note}"`;
 
+        // Ostateczne oznaczenie alarmu
         if (isAlarming) {
-          lineText += " [!]";
-          drawLine(lineText, 10, rgb(0.8, 0, 0)); // Czerwony kolor dla alarmów
+          lineText = lineText + "  ⚠"; // wyraźny symbol ostrzegawczy
+          drawLine(lineText, 11, rgb(0.85, 0.1, 0.1)); // intensywny czerwony, większa czcionka dla widoczności
         } else {
           drawLine(lineText, 10);
         }
