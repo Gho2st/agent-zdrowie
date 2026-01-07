@@ -73,7 +73,7 @@ export async function POST(req) {
     }
 
     // Specjalna logika dla WAGI (aktualizacja profilu i BMI)
-    if (dbType === "WEIGHT") {
+    if (type === "WEIGHT") {
       const profile = user.healthProfile;
 
       // Aktualizujemy tylko, jeśli użytkownik ma utworzony profil zdrowotny
