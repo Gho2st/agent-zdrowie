@@ -32,7 +32,7 @@ export async function POST(req) {
   let finalValue = null;
   let finalValue2 = null;
 
-  if (dbType === "BLOOD_PRESSURE") {
+  if (type === "BLOOD_PRESSURE") {
     if (typeof systolic !== "number" || typeof diastolic !== "number") {
       return NextResponse.json(
         { error: "Wymagane wartości skurczowe i rozkurczowe" },
@@ -110,7 +110,7 @@ export async function POST(req) {
     const measurement = await prisma.measurement.create({
       data: {
         userId: user.id,
-        type: dbType,
+        type: type,
         unit: unit || "",
         value: finalValue,
         value2: finalValue2,
