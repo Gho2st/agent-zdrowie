@@ -10,7 +10,6 @@ import ListaPomiarow from "./ListaPomiarów";
 import { Loader2, PlusCircle, Sparkles, Bot, Save } from "lucide-react";
 import TrendMini from "@/components/UI/CentrumZdrowia/TrendMini";
 
-// Jednostki domyślne
 const defaults = {
   BLOOD_PRESSURE: "mmHg",
   GLUCOSE: "mg/dL",
