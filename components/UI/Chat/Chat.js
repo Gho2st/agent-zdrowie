@@ -3,6 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Send, Bot, User, Sparkles } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 export default function ChatPage() {
   const { messages, input, handleInputChange, handleSubmit, status } = useChat({
@@ -12,6 +13,7 @@ export default function ChatPage() {
 
   const [localError, setLocalError] = useState(null);
   const messagesEndRef = useRef(null);
+  const { data: session } = useSession();
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -102,7 +104,20 @@ export default function ChatPage() {
                 }`}
               >
                 {msg.role === "user" ? (
-                  <User className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 shadow-sm border border-gray-200">
+                    {session.user?.image ? (
+                      <img
+                        src={session.user?.image}
+                        alt="Avatar użytkownika"
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-emerald-600 flex items-center justify-center">
+                        <User className="w-5 h-5 text-white" />
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <Bot className="w-5 h-5" />
                 )}

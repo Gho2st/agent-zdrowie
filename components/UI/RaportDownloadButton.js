@@ -31,15 +31,13 @@ export default function RaportDownloadButton() {
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
 
-      // 1. Pobieramy dzisiejszą datę w formacie RRRR-MM-DD
       const date = new Date().toISOString().slice(0, 10);
 
-      // 2. Tworzymy dynamiczną nazwę pliku
       const fileName = `Raport_Medyczny_${date}.pdf`;
 
       const link = document.createElement("a");
       link.href = url;
-      // 3. Przypisujemy dynamiczną nazwę
+      //  Przypisujemy dynamiczną nazwę pliku
       link.download = fileName;
 
       document.body.appendChild(link);
