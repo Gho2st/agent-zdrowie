@@ -10,6 +10,8 @@ import {
   Droplets,
   History,
   CalendarClock,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 
 const TYPE_CONFIG = {
@@ -17,31 +19,57 @@ const TYPE_CONFIG = {
     label: "Ciśnienie",
     icon: Activity,
     colorClass: "bg-indigo-50 text-indigo-600",
-    textClass: "text-indigo-700",
   },
   GLUCOSE: {
     label: "Glukoza",
     icon: Droplets,
     colorClass: "bg-amber-50 text-amber-600",
-    textClass: "text-amber-700",
   },
   WEIGHT: {
     label: "Masa ciała",
     icon: Scale,
     colorClass: "bg-teal-50 text-teal-600",
-    textClass: "text-teal-700",
   },
   HEART_RATE: {
     label: "Tętno",
     icon: Heart,
     colorClass: "bg-rose-50 text-rose-600",
-    textClass: "text-rose-700",
   },
   DEFAULT: {
     label: "Pomiar",
     icon: Activity,
     colorClass: "bg-gray-50 text-gray-600",
-    textClass: "text-gray-700",
+  },
+};
+
+const STATUS_CONFIG = {
+  normal: {
+    bg: "bg-emerald-50",
+    border: "border-emerald-200",
+    text: "text-emerald-700",
+    icon: CheckCircle2,
+    label: "W normie",
+  },
+  high: {
+    bg: "bg-rose-50",
+    border: "border-rose-200",
+    text: "text-rose-700",
+    icon: AlertTriangle,
+    label: "Za wysoko",
+  },
+  low: {
+    bg: "bg-amber-50",
+    border: "border-amber-200",
+    text: "text-amber-700",
+    icon: AlertTriangle,
+    label: "Za nisko",
+  },
+  unknown: {
+    bg: "bg-gray-50",
+    border: "border-gray-200",
+    text: "text-gray-600",
+    icon: null,
+    label: "Brak norm",
   },
 };
 
@@ -115,6 +143,8 @@ export default function OstatniePomiary() {
         {dane.map((pomiar) => {
           const config = TYPE_CONFIG[pomiar.type] || TYPE_CONFIG.DEFAULT;
           const Icon = config.icon;
+          const statusStyle =
+            STATUS_CONFIG[pomiar.status] || STATUS_CONFIG.unknown;
 
           const dateObj = new Date(pomiar.createdAt);
           const dateStr = dateObj.toLocaleDateString("pl-PL", {
@@ -126,17 +156,17 @@ export default function OstatniePomiary() {
             minute: "2-digit",
           });
 
-          let valueDisplay = "";
-          if (pomiar.type === "BLOOD_PRESSURE") {
-            valueDisplay = `${pomiar.value}/${pomiar.value2 ?? "?"}`;
-          } else {
-            valueDisplay = pomiar.value;
-          }
+          const valueDisplay =
+            pomiar.type === "BLOOD_PRESSURE"
+              ? `${pomiar.value}/${pomiar.value2 ?? "?"}`
+              : pomiar.value;
+
+          const StatusIcon = statusStyle.icon;
 
           return (
             <li
               key={pomiar.id}
-              className="flex items-center justify-between p-3 rounded-2xl bg-gray-50 border border-gray-200"
+              className={`flex items-center justify-between p-3 rounded-2xl ${statusStyle.bg} ${statusStyle.border} border transition-all hover:brightness-105`}
             >
               <div className="flex items-center gap-4">
                 <div
@@ -146,7 +176,7 @@ export default function OstatniePomiary() {
                 </div>
 
                 <div className="flex flex-col">
-                  <span className="font-bold text-gray-700 text-sm">
+                  <span className="font-bold text-gray-800 text-sm">
                     {config.label}
                   </span>
                   <div className="flex items-center text-xs text-gray-500 mt-0.5 gap-1">
@@ -159,13 +189,30 @@ export default function OstatniePomiary() {
               </div>
 
               <div className="text-right">
+                <div className="flex items-baseline justify-end gap-2">
+                  <span
+                    className={`font-bold text-xl leading-none ${statusStyle.text}`}
+                  >
+                    {valueDisplay}
+                  </span>
+                  {StatusIcon && (
+                    <StatusIcon className={`w-5 h-5 ${statusStyle.text}`} />
+                  )}
+                </div>
+
+                <div className="text-xs text-gray-600 mt-1">
+                  <span className="font-medium uppercase">{pomiar.unit}</span>
+                  {pomiar.reference && (
+                    <span className="ml-2 opacity-75">
+                      norma: {pomiar.reference}
+                    </span>
+                  )}
+                </div>
+
                 <span
-                  className={`block font-bold text-lg leading-none ${config.textClass}`}
+                  className={`mt-1 inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyle.text} bg-white/60`}
                 >
-                  {valueDisplay}
-                </span>
-                <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wider mt-1 block">
-                  {pomiar.unit}
+                  {pomiar.statusLabel}
                 </span>
               </div>
             </li>

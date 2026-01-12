@@ -143,7 +143,6 @@ export default function StreakTrackerDynamic({ userTimeZone }) {
           </p>
         </div>
 
-        {/* Ostatnie 7 dni – bez skalowania */}
         <div className="flex justify-center gap-3 w-full">
           {last7.map(({ iso, done, dayName }) => (
             <div key={iso} className="flex flex-col items-center gap-1">

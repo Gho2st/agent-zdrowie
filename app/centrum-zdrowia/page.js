@@ -85,7 +85,8 @@ export default function CentrumZdrowia() {
             title="❤️ Tętno"
             color="#ec4899"
           />
-
+        </div>
+        <div className="mt-8">
           <CeleZdrowotne />
         </div>
       </div>
