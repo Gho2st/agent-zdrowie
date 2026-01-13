@@ -15,60 +15,37 @@ import {
   Activity,
 } from "lucide-react";
 
-// Komponent pomocniczy kafelka
-const ConditionCard = ({ label, subtext, icon: Icon, value, onChange }) => {
+const ConditionPill = ({ label, icon: Icon, value, onChange }) => {
   return (
-    <div
+    <button
+      type="button"
       onClick={() => onChange(!value)}
-      className={`relative flex flex-col p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 group ${
-        value
-          ? "border-emerald-500 bg-emerald-50 shadow-sm"
-          : "border-gray-100 bg-white hover:border-emerald-200 hover:shadow-md"
-      }`}
+      className={`
+        flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium
+        transition-all duration-200 border-2 select-none
+        ${
+          value
+            ? "border-emerald-600 bg-emerald-50 text-emerald-800 shadow-sm"
+            : "border-gray-200 hover:border-emerald-300 hover:bg-emerald-50/40 text-gray-700"
+        }
+      `}
     >
-      <div className="flex items-start justify-between mb-3">
-        <div
-          className={`p-2 rounded-lg transition-colors ${
-            value
-              ? "bg-white text-emerald-600"
-              : "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100"
-          }`}
-        >
-          <Icon className="w-6 h-6" strokeWidth={1.5} />
-        </div>
-
-        <div
-          className={`w-6 h-6 rounded-full border flex items-center justify-center transition-colors ${
-            value
-              ? "bg-emerald-500 border-emerald-500"
-              : "border-gray-200 bg-white"
-          }`}
-        >
-          {value && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
-        </div>
-      </div>
-
-      <span
-        className={`font-semibold mb-1 ${
-          value ? "text-emerald-900" : "text-gray-700"
-        }`}
-      >
-        {label}
-      </span>
-      <span className="text-xs text-gray-500 leading-tight">{subtext}</span>
-    </div>
+      <Icon className="w-4 h-4" strokeWidth={2} />
+      {label}
+      {value && (
+        <Check className="w-4 h-4 ml-1 text-emerald-600" strokeWidth={3} />
+      )}
+    </button>
   );
 };
 
 export default function RejestracjaDodatkowa() {
-  // Podstawowe dane
   const [birthdate, setBirthdate] = useState("");
   const [gender, setGender] = useState("MALE");
   const [height, setHeight] = useState(170);
   const [inputWeight, setInputWeight] = useState("70");
   const [activityLevel, setActivityLevel] = useState("MODERATE");
 
-  // Bezpośrednie stany dla chorób
   const [hasPrediabetes, setHasPrediabetes] = useState(false);
   const [hasDiabetes, setHasDiabetes] = useState(false);
   const [hasHypertension, setHasHypertension] = useState(false);
@@ -123,14 +100,12 @@ export default function RejestracjaDodatkowa() {
       return;
     }
 
-    // Sprawdzenie zgody – toast jeśli brak
     if (!healthDataConsent) {
       toast.error("Musisz wyrazić zgodę na przetwarzanie danych zdrowotnych");
-      setConsentError(true); // aktywujemy czerwone podświetlenie
-      return; // blokujemy dalsze wykonanie
+      setConsentError(true);
+      return;
     }
 
-    // Jeśli wszystko OK – czyścimy ewentualny błąd
     setConsentError(false);
 
     const loadingToast = toast.loading("Tworzenie profilu medycznego...");
@@ -167,7 +142,7 @@ export default function RejestracjaDodatkowa() {
       router.refresh();
     } catch (error) {
       console.error(error);
-      toast.error(error.message);
+      toast.error(error.message || "Coś poszło nie tak...");
     } finally {
       toast.dismiss(loadingToast);
     }
@@ -204,6 +179,7 @@ export default function RejestracjaDodatkowa() {
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
               Parametry Ciała
             </h2>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-gray-700">
@@ -256,32 +232,27 @@ export default function RejestracjaDodatkowa() {
               </div>
             </div>
 
-            <div className="mt-5 space-y-1.5">
+            <div className="mt-6 space-y-1.5">
               <label className="text-sm font-medium text-gray-700">
                 Aktywność fizyczna
               </label>
-              <div className="relative">
-                <select
-                  value={activityLevel}
-                  onChange={(e) => setActivityLevel(e.target.value)}
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none transition-all appearance-none text-gray-800"
-                >
-                  <option value="LOW">Niski (siedzący tryb życia)</option>
-                  <option value="MODERATE">
-                    Umiarkowany (spacery, lekki trening)
-                  </option>
-                  <option value="HIGH">
-                    Wysoki (regularny sport, praca fizyczna)
-                  </option>
-                </select>
-                <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
-                  <ChevronRight className="w-4 h-4 rotate-90" />
-                </div>
-              </div>
+              <select
+                value={activityLevel}
+                onChange={(e) => setActivityLevel(e.target.value)}
+                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none appearance-none text-gray-800"
+              >
+                <option value="LOW">Niski (siedzący tryb życia)</option>
+                <option value="MODERATE">
+                  Umiarkowany (spacery, lekki trening)
+                </option>
+                <option value="HIGH">
+                  Wysoki (regularny sport, praca fizyczna)
+                </option>
+              </select>
             </div>
           </section>
 
-          <hr className="border-gray-100" />
+          <hr className="border-gray-100 my-8" />
 
           <section>
             <div className="flex items-center justify-between mb-5">
@@ -294,48 +265,45 @@ export default function RejestracjaDodatkowa() {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <ConditionCard
-                label="Stan Przedcukrzycowy"
-                subtext="Podwyższony cukier (nie cukrzyca)."
-                icon={Activity}
-                value={hasPrediabetes}
-                onChange={setHasPrediabetes}
-              />
-              <ConditionCard
+            <div className="flex flex-wrap gap-3">
+              <ConditionPill
                 label="Cukrzyca"
-                subtext="Cukrzyca typu 1 lub 2."
                 icon={Droplet}
                 value={hasDiabetes}
                 onChange={setHasDiabetes}
               />
-              <ConditionCard
+              <ConditionPill
+                label="Stan przedcukrzycowy"
+                icon={Activity}
+                value={hasPrediabetes}
+                onChange={setHasPrediabetes}
+              />
+              <ConditionPill
                 label="Nadciśnienie"
-                subtext="Leczysz się na nadciśnienie."
                 icon={Gauge}
                 value={hasHypertension}
                 onChange={setHasHypertension}
               />
-              <ConditionCard
-                label="Choroby Serca (CVD)"
-                subtext="Przebyty zawał, choroba wieńcowa."
+              <ConditionPill
+                label="Choroby serca"
                 icon={HeartPulse}
                 value={hasHeartDisease}
                 onChange={setHasHeartDisease}
               />
-              <div className="sm:col-span-2 lg:col-span-1">
-                <ConditionCard
-                  label="Choroby Nerek (CKD)"
-                  subtext="Przewlekła niewydolność nerek."
-                  icon={Stethoscope}
-                  value={hasKidneyDisease}
-                  onChange={setHasKidneyDisease}
-                />
-              </div>
+              <ConditionPill
+                label="Choroba nerek"
+                icon={Stethoscope}
+                value={hasKidneyDisease}
+                onChange={setHasKidneyDisease}
+              />
             </div>
+
+            <p className="mt-4 text-xs text-gray-500">
+              Zaznacz wszystkie schorzenia, które Cię dotyczą
+            </p>
           </section>
 
-          {/*  RODO */}
+          {/* Zgoda */}
           <section className="border-t border-gray-100 pt-8">
             <div
               className={`rounded-xl p-6 transition-all duration-300 ${
@@ -350,7 +318,7 @@ export default function RejestracjaDodatkowa() {
                   checked={healthDataConsent}
                   onChange={(e) => {
                     setHealthDataConsent(e.target.checked);
-                    if (e.target.checked) setConsentError(false); // czyścimy błąd po zaznaczeniu
+                    if (e.target.checked) setConsentError(false);
                   }}
                   className="mt-1 w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 border-gray-300"
                 />
@@ -359,23 +327,20 @@ export default function RejestracjaDodatkowa() {
                     Wyrażam wyraźną zgodę
                   </span>{" "}
                   na przetwarzanie moich danych dotyczących zdrowia (wiek, waga,
-                  wzrost, choroby współistniejące, pomiary parametrów
-                  zdrowotnych itp.) w celu personalizacji norm i generowania
-                  porad przez aplikację Agent Zdrowie.
+                  wzrost, choroby współistniejące itp.) w celu personalizacji
+                  norm i generowania porad przez aplikację.
                   <br />
-                  <br />
-                  Zdaję sobie sprawę, że są to dane wrażliwe (kategoria
-                  specjalna – art. 9 RODO). Mogę wycofać zgodę w dowolnym
-                  momencie w ustawieniach profilu.
+                  Zdaję sobie sprawę, że są to dane wrażliwe (art. 9 RODO). Mogę
+                  wycofać zgodę w dowolnym momencie w ustawieniach profilu.
                 </div>
               </label>
             </div>
           </section>
 
-          <div className="pt-4">
+          <div className="pt-6">
             <button
               onClick={handleSubmit}
-              className="group w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-200 shadow-lg shadow-emerald-200 hover:shadow-emerald-300 flex items-center justify-center gap-2 cursor-pointer"
+              className="group w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-200 shadow-lg shadow-emerald-200 hover:shadow-emerald-300 flex items-center justify-center gap-2"
             >
               <span>Zakończ konfigurację</span>
               <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
