@@ -251,8 +251,10 @@ export default function Statistics() {
       ];
     }
 
-    const NORM_COLOR = "rgba(16, 185, 129, 0.08)";
-    const BORDER_COLOR = "rgba(16, 185, 129, 0.3)";
+    const NORM_BG = "rgba(16, 185, 129, 0.22)";
+    const NORM_BORDER = "#10b981";
+    const NORM_BORDER_WIDTH = 2.5;
+    const NORM_SHADOW = "0 4px 12px rgba(16, 185, 129, 0.25)";
 
     if (norms) {
       if (category === "ciśnienie" && norms.systolicMin) {
@@ -260,52 +262,60 @@ export default function Statistics() {
           type: "box",
           yMin: norms.systolicMin,
           yMax: norms.systolicMax,
-          backgroundColor: NORM_COLOR,
-          borderColor: BORDER_COLOR,
-          borderWidth: 1,
-          borderDash: [5, 5],
+          backgroundColor: NORM_BG,
+          borderColor: NORM_BORDER,
+          borderWidth: NORM_BORDER_WIDTH,
+          borderDash: [0, 0],
+          shadowOffsetX: 0,
+          shadowOffsetY: 4,
+          shadowBlur: 12,
+          shadowColor: NORM_SHADOW,
         };
+
         if (norms.diastolicMin) {
           annotations.diastolicNorm = {
             type: "box",
             yMin: norms.diastolicMin,
             yMax: norms.diastolicMax,
-            backgroundColor: NORM_COLOR,
-            borderColor: BORDER_COLOR,
-            borderWidth: 1,
-            borderDash: [5, 5],
+            backgroundColor: NORM_BG,
+            borderColor: NORM_BORDER,
+            borderWidth: NORM_BORDER_WIDTH,
+            borderDash: [0, 0],
+            shadowOffsetX: 0,
+            shadowOffsetY: 4,
+            shadowBlur: 12,
+            shadowColor: NORM_SHADOW,
           };
         }
-      } else if (category === "cukier" && norms.glucoseFastingMin) {
-        annotations.normArea = {
-          type: "box",
-          yMin: norms.glucoseFastingMin,
-          yMax: norms.glucosePostMealMax || 180,
-          backgroundColor: NORM_COLOR,
-          borderColor: BORDER_COLOR,
-          borderWidth: 1,
-          borderDash: [5, 5],
-        };
-      } else if (category === "waga" && norms.weightMin) {
-        annotations.normArea = {
-          type: "box",
-          yMin: norms.weightMin,
-          yMax: norms.weightMax,
-          backgroundColor: NORM_COLOR,
-          borderColor: BORDER_COLOR,
-          borderWidth: 1,
-          borderDash: [5, 5],
-        };
-      } else if (category === "tętno" && norms.pulseMin) {
-        annotations.normArea = {
-          type: "box",
-          yMin: norms.pulseMin,
-          yMax: norms.pulseMax,
-          backgroundColor: NORM_COLOR,
-          borderColor: BORDER_COLOR,
-          borderWidth: 1,
-          borderDash: [5, 5],
-        };
+      } else {
+        let yMin, yMax;
+
+        if (category === "cukier" && norms.glucoseFastingMin) {
+          yMin = norms.glucoseFastingMin;
+          yMax = norms.glucosePostMealMax || 180;
+        } else if (category === "waga" && norms.weightMin) {
+          yMin = norms.weightMin;
+          yMax = norms.weightMax;
+        } else if (category === "tętno" && norms.pulseMin) {
+          yMin = norms.pulseMin;
+          yMax = norms.pulseMax;
+        }
+
+        if (yMin !== undefined && yMax !== undefined) {
+          annotations.normArea = {
+            type: "box",
+            yMin,
+            yMax,
+            backgroundColor: NORM_BG,
+            borderColor: NORM_BORDER,
+            borderWidth: NORM_BORDER_WIDTH,
+            borderDash: [0, 0],
+            shadowOffsetX: 0,
+            shadowOffsetY: 4,
+            shadowBlur: 12,
+            shadowColor: NORM_SHADOW,
+          };
+        }
       }
     }
 
