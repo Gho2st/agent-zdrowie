@@ -121,13 +121,30 @@ export async function POST(request) {
 
     const { dateFrom, dateTo } = await request.json();
 
-    const dateFilter = {};
-    if (dateFrom || dateTo) {
-      dateFilter.createdAt = {
-        ...(dateFrom && { gte: new Date(dateFrom) }),
-        ...(dateTo && { lte: new Date(`${dateTo}T23:59:59.999Z`) }),
-      };
+    // 1. Walidacja serwerowa dat
+    if (!dateFrom || !dateTo) {
+      return new Response("Wymagane daty od/do", { status: 400 });
     }
+
+    const d1 = new Date(dateFrom);
+    const d2 = new Date(dateTo);
+    const diffTime = Math.abs(d2 - d1);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays > 366) {
+      return new Response("Zakres raportu nie może przekraczać 1 roku.", {
+        status: 400,
+      });
+    }
+
+    const SAFETY_LIMIT = 1460; // 365 * 4
+
+    const dateFilter = {
+      createdAt: {
+        gte: new Date(dateFrom),
+        lte: new Date(`${dateTo}T23:59:59.999Z`),
+      },
+    };
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
@@ -135,6 +152,7 @@ export async function POST(request) {
         measurements: {
           where: dateFilter,
           orderBy: { createdAt: "desc" },
+          take: SAFETY_LIMIT,
         },
         healthProfile: {
           include: {
@@ -147,53 +165,61 @@ export async function POST(request) {
 
     if (!user) return new Response("User not found", { status: 404 });
 
+    const measurements = user.measurements;
     const profile = user.healthProfile || {};
     const norms = profile.norms || {};
     const conditionsList = profile.conditions
       ? profile.conditions.map((c) => c.name).join(", ")
       : "Brak";
 
-    const measurementsJson = JSON.stringify(
-      user.measurements.map((m) => ({
-        type: m.type,
-        value: m.value,
-        value2: m.value2,
-        date: m.createdAt.toISOString().split("T")[0],
-        context: m.context || null,
-        note: m.note || null,
-      })),
-    );
+    const chronologicalData = [...measurements].reverse();
+
+    const dataForAI = chronologicalData
+      .map((m) => {
+        const d = m.createdAt.toISOString().slice(0, 10);
+        // Skracanie typów
+        let type = "Inne";
+        if (m.type === "BLOOD_PRESSURE") type = "BP";
+        else if (m.type === "HEART_RATE") type = "HR";
+        else if (m.type === "GLUCOSE") type = "GLU";
+        else if (m.type === "WEIGHT") type = "WAGA";
+
+        let val = `${m.value}`;
+        if (m.value2) val += `/${m.value2}`;
+
+        return `${d}|${type}|${val}${m.context ? `|${m.context}` : ""}`;
+      })
+      .join("\n");
+
+    const limitNote =
+      measurements.length === SAFETY_LIMIT
+        ? "(dane ograniczone do 1000 wpisów)"
+        : "";
 
     const { text: aiComment } = await generateText({
       model: openai("gpt-4o"),
       temperature: 0.3,
-      maxTokens: 420,
+      maxTokens: 450,
       prompt: `
-Jesteś inteligentnym asystentem analizy danych zdrowotnych. Twoim zadaniem jest przygotowanie technicznego podsumowania trendów w pomiarach użytkownika.
+Jesteś analitykiem medycznym.
+Dane pacjenta: Wiek ${calculateAge(profile.birthdate) || "?"}, Płeć ${profile.gender || "?"}, Schorzenia: ${conditionsList}.
+Indywidualne cele: ${norms.weightMax ? `Waga < ${norms.weightMax}` : ""} ${norms.systolicMax ? `BP < ${norms.systolicMax}/${norms.diastolicMax}` : ""}.
 
-Dane użytkownika:
-- Wiek: ${calculateAge(profile.birthdate) || "?"} lat
-- Płeć: ${profile.gender === "MALE" ? "Mężczyzna" : profile.gender === "FEMALE" ? "Kobieta" : "?"}
-- Wzrost: ${profile.height ? profile.height + " cm" : "?"}
-- Waga: ${profile.weight ? profile.weight + " kg" : "?"}
-- Schorzenia: ${conditionsList}
-- Leki: ${profile.medications || "brak informacji"}
+Historia pomiarów (${dateFrom} do ${dateTo}) ${limitNote}:
+FORMAT: Data | Typ | Wynik | Kontekst
+---
+${dataForAI}
+---
 
-Historia pomiarów:
-${measurementsJson}
-
-Instrukcje:
-1. Przeanalizuj dane pod kątem statystycznym (trendy rosnące/malejące, stabilność, nagłe skoki).
-2. Wskaż odchylenia od ogólnie przyjętych norm, używając języka opartego na danych (np. "odnotowano podwyższone wartości", "parametry w górnej granicy normy").
-3. WAŻNE: Nie stawiaj diagnoz medycznych ani nie sugeruj zmiany leczenia. Nie wcielaj się w rolę lekarza.
-4. Styl wypowiedzi: obiektywny, rzeczowy, informacyjny.
-
-Formatowanie:
-- Brak nagłówków.
-- Nie powtarzaj imienia ani listy chorób na wstępie.
-- Długość: 120–220 słów.
+Zadanie:
+1. Przeanalizuj trendy w tym okresie (czy parametry się poprawiają/pogarszają/są stabilne?).
+2. Zwróć uwagę na anomalie lub częste przekroczenia norm.
+3. Napisz zwięzłe podsumowanie dla pacjenta.
+4. Język profesjonalny, ale zrozumiały. NIE stawiaj diagnoz. Max 150 słów.
       `.trim(),
     });
+
+    // Generowanie PDF
 
     const pdfDoc = await PDFDocument.create();
     pdfDoc.registerFontkit(fontkit);
@@ -208,7 +234,9 @@ Formatowanie:
       font = await pdfDoc.embedFont(fontBytes);
     } catch (e) {
       console.error("Brak czcionki Roboto", e);
-      return new Response("Missing font file", { status: 500 });
+      return new Response("Missing font file - check public/fonts folder", {
+        status: 500,
+      });
     }
 
     let page = pdfDoc.addPage([595.28, 841.89]);
@@ -216,7 +244,6 @@ Formatowanie:
     const margin = 52;
     let y = height - 110;
 
-    // Funkcja do rysowania zwykłego tekstu
     const drawLine = (
       text,
       size = 11,
@@ -224,7 +251,6 @@ Formatowanie:
       customX = margin,
     ) => {
       const cleaned = cleanAiText(text);
-      // Używamy width - customX - margin, żeby tekst nie wychodził poza prawy margines
       const availableWidth = width - margin - customX;
       const lines = breakTextIntoLines(cleaned, font, size, availableWidth);
       const lineHeight = size * 1.42;
@@ -237,10 +263,10 @@ Formatowanie:
         page.drawText(line, { x: customX, y, size, font, color });
         y -= lineHeight;
       });
-      y -= 3; // Odstęp po akapicie
+      y -= 3;
     };
 
-    // ── Nagłówek ────────────────────────────────────────────────
+    // Nagłówek Raportu
     page.drawRectangle({
       x: 0,
       y: height - 100,
@@ -267,17 +293,18 @@ Formatowanie:
 
     y = height - 125;
 
-    // Sekcje
-
-    // Okres
-    const period =
-      dateFrom || dateTo
-        ? `Okres: ${dateFrom || "Start"} – ${dateTo || "Teraz"}`
-        : "Wszystkie dostępne pomiary";
+    const period = `Okres raportu: ${dateFrom} – ${dateTo}`;
     drawLine(period, 11, rgb(0.4, 0.4, 0.4));
+    if (measurements.length === SAFETY_LIMIT) {
+      drawLine(
+        `(Uwaga: Osiągnięto limit ${SAFETY_LIMIT} najnowszych pomiarów)`,
+        10,
+        rgb(0.8, 0.2, 0.2),
+      );
+    }
     y -= 18;
 
-    // Pacjent
+    //  Pacjent
     drawLine("Dane pacjenta", 14, rgb(0.02, 0.62, 0.42));
     y -= 8;
     let patientLine = `Pacjent: ${user.name || user.email}`;
@@ -303,8 +330,8 @@ Formatowanie:
     );
     y -= 18;
 
-    // Komentarz AI
-    drawLine("Komentarz kliniczny", 14, rgb(0.02, 0.62, 0.42));
+    // Analiza AI
+    drawLine("Analiza trendów (AI)", 14, rgb(0.02, 0.62, 0.42));
     y -= 8;
     if (aiComment && aiComment.trim().length > 20) {
       aiComment.split(/\n\s*\n/).forEach((p) => {
@@ -312,20 +339,28 @@ Formatowanie:
         y -= 3;
       });
     } else {
-      drawLine("Brak danych do analizy.", 11, rgb(0.6, 0.6, 0.6));
+      drawLine(
+        "Brak wystarczających danych do analizy.",
+        11,
+        rgb(0.6, 0.6, 0.6),
+      );
     }
     y -= 18;
 
-    // POMIARY
-    drawLine("Pomiary", 14, rgb(0.02, 0.62, 0.42));
+    // Tabela Pomiarów
+    drawLine("Szczegółowy rejestr pomiarów", 14, rgb(0.02, 0.62, 0.42));
     y -= 12;
 
-    if (user.measurements.length === 0) {
-      drawLine("Brak pomiarów.", 11, rgb(0.6, 0.6, 0.6));
+    if (measurements.length === 0) {
+      drawLine(
+        "Brak zarejestrowanych pomiarów w tym okresie.",
+        11,
+        rgb(0.6, 0.6, 0.6),
+      );
     } else {
       const dateColumnWidth = 85;
 
-      for (const m of user.measurements) {
+      for (const m of measurements) {
         if (y < 60) {
           page = pdfDoc.addPage([595.28, 841.89]);
           y = height - 60;
@@ -337,8 +372,6 @@ Formatowanie:
         const year = d.getFullYear();
         const hour = padZero(d.getHours());
         const minute = padZero(d.getMinutes());
-
-        // Wynik: "18.01.2026, 13:03"
         const dateStr = `${day}.${month}.${year}, ${hour}:${minute}`;
 
         let valueText = "";
@@ -405,11 +438,11 @@ Formatowanie:
           y: y,
           size: 10,
           font,
-          color: rgb(0.45, 0.45, 0.45), // Szary
+          color: rgb(0.45, 0.45, 0.45),
         });
 
         const contentX = margin + dateColumnWidth;
-        const textColor = isAlarm ? rgb(0.85, 0.1, 0.1) : rgb(0, 0, 0); // Czerwony dla alarmu
+        const textColor = isAlarm ? rgb(0.85, 0.1, 0.1) : rgb(0, 0, 0);
 
         const availableWidth = width - contentX - margin;
         const lines = breakTextIntoLines(valueText, font, 11, availableWidth);
@@ -430,7 +463,6 @@ Formatowanie:
       }
     }
 
-    // Stopka
     const lastPage = pdfDoc.getPages()[pdfDoc.getPageCount() - 1];
     lastPage.drawText("Raport wygenerowany automatycznie", {
       x: margin,
@@ -446,7 +478,7 @@ Formatowanie:
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="Raport_${new Date().toISOString().slice(0, 10)}.pdf"`,
+        "Content-Disposition": `attachment; filename="Raport_${dateFrom}_${dateTo}.pdf"`,
       },
     });
   } catch (error) {
