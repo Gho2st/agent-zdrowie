@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Send, Bot, User, Sparkles } from "lucide-react";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 
 export default function ChatPage() {
   const { messages, input, handleInputChange, handleSubmit, status } = useChat({
@@ -106,11 +107,13 @@ export default function ChatPage() {
                 {msg.role === "user" ? (
                   <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 shadow-sm border border-gray-200">
                     {session.user?.image ? (
-                      <img
+                      <Image
                         src={session.user?.image}
                         alt="Avatar użytkownika"
                         className="w-full h-full object-cover"
                         referrerPolicy="no-referrer"
+                        width={50}
+                        height={50}
                       />
                     ) : (
                       <div className="w-full h-full bg-emerald-600 flex items-center justify-center">

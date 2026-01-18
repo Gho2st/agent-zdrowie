@@ -316,7 +316,7 @@ export default function Pomiary() {
     () => (
       <TrendMini data={measurements} type={type} title={currentDisplay.label} />
     ),
-    [measurements, type]
+    [measurements, type, currentDisplay.label],
   );
 
   const ListSection = useMemo(
@@ -339,7 +339,7 @@ export default function Pomiary() {
       norms,
       requestDelete,
       confirmDelete,
-    ]
+    ],
   );
 
   if (status === "loading") {

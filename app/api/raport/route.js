@@ -165,7 +165,7 @@ export async function POST(request) {
     );
 
     const { text: aiComment } = await generateText({
-      model: openai("gpt-4o-mini"),
+      model: openai("gpt-4o"),
       temperature: 0.3,
       maxTokens: 420,
       prompt: `
@@ -214,7 +214,6 @@ Formatowanie:
     let page = pdfDoc.addPage([595.28, 841.89]);
     const { width, height } = page.getSize();
     const margin = 52;
-    const contentWidth = width - margin * 2;
     let y = height - 110;
 
     // Funkcja do rysowania zwykłego tekstu
