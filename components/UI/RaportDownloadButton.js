@@ -74,7 +74,6 @@ export default function RaportDownloadForm() {
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const todayDate = new Date().toISOString().slice(0, 10);
       const fileName = `Raport_${finalFrom}_${finalTo}.pdf`;
 
       const link = document.createElement("a");
