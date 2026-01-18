@@ -6,46 +6,68 @@ import { openai } from "@ai-sdk/openai";
 import fs from "fs/promises";
 import path from "path";
 import fontkit from "@pdf-lib/fontkit";
-import { buildPersonalizedContext } from "@/lib/ai-context";
 
 export const runtime = "nodejs";
 
-// 1. Łamanie tekstu (dla pdf-lib)
-const breakTextIntoLines = (text, font, size, maxWidth) => {
+function breakTextIntoLines(text, font, size, maxWidth) {
   if (!text) return [];
-  const words = text.split(" ");
+  const words = text.split(/\s+/);
   const lines = [];
-  let currentLine = words[0];
+  let currentLine = "";
 
-  for (let i = 1; i < words.length; i++) {
-    const word = words[i];
-    const width = font.widthOfTextAtSize(currentLine + " " + word, size);
-    if (width < maxWidth) {
-      currentLine += " " + word;
+  for (const word of words) {
+    if (word.length > 22) {
+      let remaining = word;
+      while (remaining.length > 0) {
+        const chunk = remaining.slice(0, 20);
+        const test = currentLine ? currentLine + " " + chunk : chunk;
+        if (font.widthOfTextAtSize(test, size) <= maxWidth) {
+          currentLine = test;
+        } else {
+          if (currentLine) lines.push(currentLine);
+          currentLine = chunk;
+        }
+        remaining = remaining.slice(20);
+      }
+      continue;
+    }
+
+    const testLine = currentLine ? currentLine + " " + word : word;
+    if (font.widthOfTextAtSize(testLine, size) <= maxWidth) {
+      currentLine = testLine;
     } else {
-      lines.push(currentLine);
+      if (currentLine) lines.push(currentLine);
       currentLine = word;
     }
   }
-  lines.push(currentLine);
-  return lines;
-};
 
-// 2. Obliczanie wieku
-const calculateAge = (birthDate) => {
+  if (currentLine) lines.push(currentLine);
+  return lines;
+}
+
+function cleanAiText(text) {
+  return (text || "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/([.,!?;:])([^\s])/g, "$1 $2")
+    .trim();
+}
+
+function calculateAge(birthDate) {
   if (!birthDate) return null;
   const today = new Date();
   const birth = new Date(birthDate);
   let age = today.getFullYear() - birth.getFullYear();
   const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-    age--;
-  }
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
   return age;
-};
+}
 
-// 3. Helper do budowania tekstu norm z obiektu HealthNorms
-const getNormsText = (normsObj) => {
+function padZero(num) {
+  return num.toString().padStart(2, "0");
+}
+
+function getNormsText(normsObj) {
   const list = [];
   if (!normsObj) {
     list.push("• Brak zdefiniowanych indywidualnych norm w profilu.");
@@ -53,7 +75,6 @@ const getNormsText = (normsObj) => {
     return list;
   }
 
-  // Ciśnienie
   if (normsObj.systolicMax || normsObj.diastolicMax) {
     const sys = normsObj.systolicMax
       ? `${normsObj.systolicMin || 90}-${normsObj.systolicMax}`
@@ -64,58 +85,57 @@ const getNormsText = (normsObj) => {
     list.push(`• Ciśnienie docelowe: ${sys} / ${dia} mmHg`);
   }
 
-  // Tętno
   if (normsObj.pulseMin || normsObj.pulseMax) {
     list.push(
-      `• Tętno spoczynkowe: ${normsObj.pulseMin || 60} – ${
-        normsObj.pulseMax || 100
-      } ud./min`
+      `• Tętno spoczynkowe: ${normsObj.pulseMin || 60}–${normsObj.pulseMax || 100} ud./min`,
     );
   }
 
-  // Glukoza
   if (normsObj.glucoseFastingMax) {
     list.push(
-      `• Glukoza (na czczo): ${normsObj.glucoseFastingMin || 70} – ${
-        normsObj.glucoseFastingMax
-      } mg/dL`
+      `• Glukoza na czczo: ${normsObj.glucoseFastingMin || 70}–${normsObj.glucoseFastingMax} mg/dL`,
     );
   }
   if (normsObj.glucosePostMealMax) {
-    list.push(`• Glukoza (po posiłku): < ${normsObj.glucosePostMealMax} mg/dL`);
+    list.push(`• Glukoza po posiłku: < ${normsObj.glucosePostMealMax} mg/dL`);
   }
 
-  // Waga/BMI
   if (normsObj.weightMin || normsObj.weightMax) {
     list.push(
-      `• Waga docelowa: ${normsObj.weightMin || "?"} – ${
-        normsObj.weightMax || "?"
-      } kg`
+      `• Waga docelowa: ${normsObj.weightMin || "?"}–${normsObj.weightMax || "?"} kg`,
     );
   }
   if (normsObj.bmi) {
-    list.push(`• Twoje obecne BMI: ${normsObj.bmi}`);
+    list.push(`• Aktualne BMI: ${normsObj.bmi}`);
   }
 
   return list;
-};
+}
 
-export async function POST() {
+export async function POST(request) {
   try {
     const session = await auth();
-    if (!session?.user?.email)
+    if (!session?.user?.email) {
       return new Response("Unauthorized", { status: 401 });
+    }
 
-    // 1. Pobranie danych
+    const { dateFrom, dateTo } = await request.json();
+
+    const dateFilter = {};
+    if (dateFrom || dateTo) {
+      dateFilter.createdAt = {
+        ...(dateFrom && { gte: new Date(dateFrom) }),
+        ...(dateTo && { lte: new Date(`${dateTo}T23:59:59.999Z`) }),
+      };
+    }
+
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
-        // Pobieramy pomiary
         measurements: {
-          take: 30,
+          where: dateFilter,
           orderBy: { createdAt: "desc" },
         },
-        // Pobieramy profil zdrowotny z normami i chorobami
         healthProfile: {
           include: {
             norms: true,
@@ -129,336 +149,309 @@ export async function POST() {
 
     const profile = user.healthProfile || {};
     const norms = profile.norms || {};
-
-    // Konwersja chorób (relacja wiele-do-wielu) na string
     const conditionsList = profile.conditions
       ? profile.conditions.map((c) => c.name).join(", ")
       : "Brak";
 
-    // Przygotowanie obiektu dla kontekstu AI
-    const contextUserMock = {
-      name: user.name,
-      birthdate: profile.birthdate,
-      gender: profile.gender,
-      height: profile.height,
-      weight: profile.weight,
-      conditions: conditionsList,
-      medications: profile.medications,
-      // Flagi chorobowe
-      hasDiabetes: profile.hasDiabetes,
-      hasHypertension: profile.hasHypertension,
-      hasHeartDisease: profile.hasHeartDisease,
-      // Normy
-      ...norms,
-    };
+    const measurementsJson = JSON.stringify(
+      user.measurements.map((m) => ({
+        type: m.type,
+        value: m.value,
+        value2: m.value2,
+        date: m.createdAt.toISOString().split("T")[0],
+        context: m.context || null,
+        note: m.note || null,
+      })),
+    );
 
-    // Generowanie tekstowego kontekstu dla promptu
-    const context = buildPersonalizedContext(contextUserMock);
+    const { text: aiComment } = await generateText({
+      model: openai("gpt-4o-mini"),
+      temperature: 0.3,
+      maxTokens: 420,
+      prompt: `
+Jesteś inteligentnym asystentem analizy danych zdrowotnych. Twoim zadaniem jest przygotowanie technicznego podsumowania trendów w pomiarach użytkownika.
 
-    // 2. Generowanie analizy
-    const { text: summary } = await generateText({
-      model: openai("gpt-4o"),
-      temperature: 0.2,
-      prompt: `Jesteś asystentem medycznym AI generującym profesjonalny, zwięzły komentarz kliniczny do raportu PDF dla pacjenta.${context}
+Dane użytkownika:
+- Wiek: ${calculateAge(profile.birthdate) || "?"} lat
+- Płeć: ${profile.gender === "MALE" ? "Mężczyzna" : profile.gender === "FEMALE" ? "Kobieta" : "?"}
+- Wzrost: ${profile.height ? profile.height + " cm" : "?"}
+- Waga: ${profile.weight ? profile.weight + " kg" : "?"}
+- Schorzenia: ${conditionsList}
+- Leki: ${profile.medications || "brak informacji"}
 
-OSTATNIE POMIARY (JSON – ostatnie 30):
-${JSON.stringify(
-  user.measurements.map((m) => ({
-    type: m.type,
-    value: m.value,
-    value2: m.value2,
-    date: m.createdAt,
-    context: m.context || null,
-    note: m.note || null,
-  }))
-)}
+Historia pomiarów:
+${measurementsJson}
 
-ZADANIE – napisz wyłącznie komentarz kliniczny (bez nagłówków typu "Raport medyczny", "Dane pacjenta", "Normy pacjenta"):
-1. Skup się TYLKO na analizie trendów i odchyleń w pomiarach w odniesieniu do indywidualnych norm pacjenta.
-2. Wskaż konkretne niepokojące trendy lub odchylenia (np. wzrost ciśnienia w ostatnich dniach, spadek wagi, pojedyncze wartości poza normą).
-3. Jeśli wszystko w normie – napisz krótko o stabilności parametrów.
-4. Bądź zwięzły, konkretny i profesjonalny – maksymalnie 150-200 słów.
-5. Nie powtarzaj danych osobowych, norm, BMI ani listy chorób/leków – są już podane wyżej w raporcie.
-6. Nie używaj Markdown, nagłówków ani list numerowanych/bulleted na początku sekcji.
-7. Zakończ krótkim, praktycznym zaleceniem monitorowania (jeśli potrzebne).
-8. Używaj czystego tekstu.
-`,
+Instrukcje:
+1. Przeanalizuj dane pod kątem statystycznym (trendy rosnące/malejące, stabilność, nagłe skoki).
+2. Wskaż odchylenia od ogólnie przyjętych norm, używając języka opartego na danych (np. "odnotowano podwyższone wartości", "parametry w górnej granicy normy").
+3. WAŻNE: Nie stawiaj diagnoz medycznych ani nie sugeruj zmiany leczenia. Nie wcielaj się w rolę lekarza.
+4. Styl wypowiedzi: obiektywny, rzeczowy, informacyjny.
+
+Formatowanie:
+- Brak nagłówków.
+- Nie powtarzaj imienia ani listy chorób na wstępie.
+- Długość: 120–220 słów.
+      `.trim(),
     });
 
-    // 3. Rysowanie PDF
     const pdfDoc = await PDFDocument.create();
     pdfDoc.registerFontkit(fontkit);
 
-    // Ścieżka do czcionki (wymagana dla polskich znaków)
     const fontPath = path.join(
       process.cwd(),
-      "public/fonts/Roboto-Regular.ttf"
+      "public/fonts/Roboto-Regular.ttf",
     );
     let font;
-
     try {
       const fontBytes = await fs.readFile(fontPath);
       font = await pdfDoc.embedFont(fontBytes);
-    } catch {
-      console.error(
-        "Błąd ładowania czcionki. Upewnij się, że plik istnieje w public/fonts/"
-      );
-      return new Response("Server configuration error (font missing)", {
-        status: 500,
-      });
+    } catch (e) {
+      console.error("Brak czcionki Roboto", e);
+      return new Response("Missing font file", { status: 500 });
     }
 
-    let page = pdfDoc.addPage([595.28, 841.89]); // A4
+    let page = pdfDoc.addPage([595.28, 841.89]);
     const { width, height } = page.getSize();
-    const margin = 50;
+    const margin = 52;
     const contentWidth = width - margin * 2;
-    let yPosition = height - 120;
+    let y = height - 110;
 
-    // Helper do rysowania linii z obsługą nowej strony
-    const drawLine = (text, fontSize = 11, color = rgb(0, 0, 0)) => {
-      const lines = breakTextIntoLines(text, font, fontSize, contentWidth);
-      const lineHeight = fontSize * 1.5;
+    // Funkcja do rysowania zwykłego tekstu
+    const drawLine = (
+      text,
+      size = 11,
+      color = rgb(0, 0, 0),
+      customX = margin,
+    ) => {
+      const cleaned = cleanAiText(text);
+      // Używamy width - customX - margin, żeby tekst nie wychodził poza prawy margines
+      const availableWidth = width - margin - customX;
+      const lines = breakTextIntoLines(cleaned, font, size, availableWidth);
+      const lineHeight = size * 1.42;
 
       lines.forEach((line) => {
-        if (yPosition < 50) {
+        if (y < 60) {
           page = pdfDoc.addPage([595.28, 841.89]);
-          yPosition = height - 50;
+          y = height - 60;
         }
-        page.drawText(line, {
-          x: margin,
-          y: yPosition,
-          size: fontSize,
-          font,
-          color,
-        });
-        yPosition -= lineHeight;
+        page.drawText(line, { x: customX, y, size, font, color });
+        y -= lineHeight;
       });
-      yPosition -= 3;
+      y -= 3; // Odstęp po akapicie
     };
 
-    // -- NAGŁÓWEK GRAFICZNY --
+    // ── Nagłówek ────────────────────────────────────────────────
     page.drawRectangle({
       x: 0,
       y: height - 100,
       width,
       height: 100,
-      color: rgb(0.02, 0.6, 0.4), // Szmaragdowy kolor (Emerald)
+      color: rgb(0.02, 0.62, 0.42),
     });
 
-    page.drawText("Raport Zdrowotny", {
+    page.drawText("RAPORT ZDROWOTNY", {
       x: margin,
-      y: height - 50,
-      size: 24,
+      y: height - 55,
+      size: 23,
       font,
       color: rgb(1, 1, 1),
     });
 
-    const todayStr = new Date().toLocaleDateString("pl-PL", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-    page.drawText(`Data generowania: ${todayStr}`, {
+    page.drawText(`Wygenerowano: ${new Date().toLocaleDateString("pl-PL")}`, {
       x: margin,
-      y: height - 80,
+      y: height - 82,
       size: 10,
       font,
-      color: rgb(0.9, 0.9, 0.9),
+      color: rgb(0.97, 0.97, 0.97),
     });
 
-    // -- DANE OSOBOWE --
-    drawLine("Podsumowanie Profilu:", 14, rgb(0.02, 0.6, 0.4));
-    yPosition -= 5;
+    y = height - 125;
 
+    // Sekcje
+
+    // Okres
+    const period =
+      dateFrom || dateTo
+        ? `Okres: ${dateFrom || "Start"} – ${dateTo || "Teraz"}`
+        : "Wszystkie dostępne pomiary";
+    drawLine(period, 11, rgb(0.4, 0.4, 0.4));
+    y -= 18;
+
+    // Pacjent
+    drawLine("Dane pacjenta", 14, rgb(0.02, 0.62, 0.42));
+    y -= 8;
+    let patientLine = `Pacjent: ${user.name || user.email}`;
     const age = calculateAge(profile.birthdate);
-    let headerInfo = `Pacjent: ${user.name || user.email}`;
-    if (age) headerInfo += `  •  Wiek: ${age} lat`;
-    if (profile.gender) {
-      const genderPL = profile.gender === "MALE" ? "Mężczyzna" : "Kobieta";
-      headerInfo += `  •  Płeć: ${genderPL}`;
-    }
-    drawLine(headerInfo, 11);
+    if (age) patientLine += ` • ${age} lat`;
+    if (profile.gender)
+      patientLine += ` • ${profile.gender === "MALE" ? "M" : "K"}`;
+    drawLine(patientLine, 11);
 
-    let bioInfo = "";
-    if (profile.height) bioInfo += `Wzrost: ${profile.height} cm   `;
-    if (profile.weight) bioInfo += `Waga: ${profile.weight} kg   `;
-    if (norms.bmi) bioInfo += `BMI: ${norms.bmi}`;
+    let bioLine = "";
+    if (profile.height) bioLine += `Wzrost ${profile.height} cm`;
+    if (profile.weight)
+      bioLine += (bioLine ? " • " : "") + `Waga ${profile.weight} kg`;
+    if (norms.bmi) bioLine += (bioLine ? " • " : "") + `BMI ${norms.bmi}`;
+    if (bioLine) drawLine(bioLine, 11);
+    y -= 18;
 
-    if (bioInfo) drawLine(bioInfo, 11);
+    // Normy
+    drawLine("Indywidualne normy", 14, rgb(0.02, 0.62, 0.42));
+    y -= 8;
+    getNormsText(norms).forEach((l) =>
+      drawLine(l, 10.5, rgb(0.28, 0.28, 0.28)),
+    );
+    y -= 18;
 
-    if (conditionsList && conditionsList !== "Brak") {
-      drawLine(`Zdiagnozowane schorzenia: ${conditionsList}`, 11);
-    }
-    if (profile.medications) {
-      drawLine(`Przyjmowane leki: ${profile.medications}`, 11);
-    }
-    // Flagi chorobowe (jeśli nie ma w conditionsList, a są zaznaczone)
-    const flags = [];
-    if (profile.hasDiabetes) flags.push("Cukrzyca");
-    if (profile.hasHypertension) flags.push("Nadciśnienie");
-    if (profile.hasHeartDisease) flags.push("Choroby serca");
-    if (flags.length > 0) {
-      drawLine(
-        `Uwagi kliniczne (flagi): ${flags.join(", ")}`,
-        11,
-        rgb(0.5, 0.5, 0.5)
-      );
-    }
-
-    yPosition -= 15;
-
-    // -- NORMY --
-    drawLine("Twoje Indywidualne Normy:", 12, rgb(0.02, 0.6, 0.4));
-    yPosition -= 2;
-
-    const normsTextLines = getNormsText(norms);
-    normsTextLines.forEach((t) => drawLine(t, 10, rgb(0.3, 0.3, 0.3)));
-
-    yPosition -= 15;
-
-    // -- ANALIZA AI --
-    drawLine("Komentarz AI (Analiza trendów):", 14, rgb(0.02, 0.6, 0.4));
-    yPosition -= 5;
-
-    if (summary) {
-      const paragraphs = summary.split("\n").filter((l) => l.trim().length > 0);
-      paragraphs.forEach((p) => {
-        // Usuwamy ewentualne pozostałości markdowna
-        const clean = p
-          .replace(/\*\*/g, "")
-          .replace(/\*/g, "-")
-          .replace(/#/g, "");
-        drawLine(clean, 11);
+    // Komentarz AI
+    drawLine("Komentarz kliniczny", 14, rgb(0.02, 0.62, 0.42));
+    y -= 8;
+    if (aiComment && aiComment.trim().length > 20) {
+      aiComment.split(/\n\s*\n/).forEach((p) => {
+        if (p.trim()) drawLine(p.trim(), 11, rgb(0.12, 0.12, 0.12));
+        y -= 3;
       });
     } else {
-      drawLine("Brak wystarczających danych do wygenerowania analizy.", 11);
+      drawLine("Brak danych do analizy.", 11, rgb(0.6, 0.6, 0.6));
     }
+    y -= 18;
 
-    yPosition -= 20;
+    // POMIARY
+    drawLine("Pomiary", 14, rgb(0.02, 0.62, 0.42));
+    y -= 12;
 
-    // -- LISTA POMIARÓW --
-    drawLine("Dziennik Ostatnich Pomiarów:", 14, rgb(0.02, 0.6, 0.4));
-    yPosition -= 5;
+    if (user.measurements.length === 0) {
+      drawLine("Brak pomiarów.", 11, rgb(0.6, 0.6, 0.6));
+    } else {
+      const dateColumnWidth = 85;
 
-    if (user.measurements.length > 0) {
-      user.measurements.forEach((m) => {
-        const mDate = new Date(m.createdAt).toLocaleDateString("pl-PL", {
-          day: "2-digit",
-          month: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
+      for (const m of user.measurements) {
+        if (y < 60) {
+          page = pdfDoc.addPage([595.28, 841.89]);
+          y = height - 60;
+        }
 
-        let lineText = "";
-        let isAlarming = false;
+        const d = new Date(m.createdAt);
+        const day = padZero(d.getDate());
+        const month = padZero(d.getMonth() + 1);
+        const year = d.getFullYear();
+        const hour = padZero(d.getHours());
+        const minute = padZero(d.getMinutes());
+
+        // Wynik: "18.01.2026, 13:03"
+        const dateStr = `${day}.${month}.${year}, ${hour}:${minute}`;
+
+        let valueText = "";
+        let isAlarm = false;
 
         switch (m.type) {
           case "BLOOD_PRESSURE":
-            const sys = m.value;
-            const dia = m.value2;
-            lineText = `• ${mDate} | Ciśnienie: ${sys}/${dia} mmHg`;
-
-            if (norms.systolicMax && sys > norms.systolicMax) isAlarming = true;
-            if (norms.systolicMin && sys < norms.systolicMin) isAlarming = true;
-            if (norms.diastolicMax && dia > norms.diastolicMax)
-              isAlarming = true;
-            if (norms.diastolicMin && dia < norms.diastolicMin)
-              isAlarming = true;
+            const s = Number(m.value);
+            const dVal = Number(m.value2 || 0);
+            valueText = `Ciśnienie: ${s}/${dVal} mmHg`;
+            if (
+              (norms.systolicMax && s > norms.systolicMax) ||
+              (norms.diastolicMax && dVal > norms.diastolicMax) ||
+              (norms.systolicMin && s < norms.systolicMin) ||
+              (norms.diastolicMin && dVal < norms.diastolicMin)
+            )
+              isAlarm = true;
             break;
 
           case "GLUCOSE":
-            const glucose = m.value;
-
-            lineText = `• ${mDate} | Glukoza: ${glucose} mg/dL`;
-
-            // Wyświetlamy porę tylko jeśli istnieje context
-            if (m.context) {
-              lineText += ` (${m.context})`;
+            const g = Number(m.value);
+            valueText = `Glukoza: ${g} mg/dL`;
+            if (m.context?.toLowerCase().includes("po posiłku")) {
+              if (norms.glucosePostMealMax && g > norms.glucosePostMealMax)
+                isAlarm = true;
+            } else if (
+              (norms.glucoseFastingMax && g > norms.glucoseFastingMax) ||
+              (norms.glucoseFastingMin && g < norms.glucoseFastingMin)
+            ) {
+              isAlarm = true;
             }
-
-            // Logika alarmu – wyłącznie na podstawie context
-            let useFastingNorm = true; // domyślnie na czczo
-
-            if (m.context) {
-              if (m.context.toLowerCase().includes("po posiłku")) {
-                useFastingNorm = false;
-              }
-              // „przed posiłkiem” → na czczo
-            }
-
-            if (useFastingNorm) {
-              if (norms.glucoseFastingMax && glucose > norms.glucoseFastingMax)
-                isAlarming = true;
-              if (norms.glucoseFastingMin && glucose < norms.glucoseFastingMin)
-                isAlarming = true;
-            } else {
-              if (
-                norms.glucosePostMealMax &&
-                glucose > norms.glucosePostMealMax
-              )
-                isAlarming = true;
-            }
+            if (m.context) valueText += ` (${m.context})`;
             break;
 
           case "HEART_RATE":
-            const pulse = m.value;
-            lineText = `• ${mDate} | Tętno: ${pulse} bpm`;
-
-            if (norms.pulseMax && pulse > norms.pulseMax) isAlarming = true;
-            if (norms.pulseMin && pulse < norms.pulseMin) isAlarming = true;
+            const p = Number(m.value);
+            valueText = `Tętno: ${p} bpm`;
+            if (
+              (norms.pulseMax && p > norms.pulseMax) ||
+              (norms.pulseMin && p < norms.pulseMin)
+            )
+              isAlarm = true;
             break;
 
           case "WEIGHT":
-            lineText = `• ${mDate} | Waga: ${m.value} kg`;
-            if (norms.weightMax && m.value > norms.weightMax) isAlarming = true;
-            if (norms.weightMin && m.value < norms.weightMin) isAlarming = true;
+            const w = Number(m.value);
+            valueText = `Waga: ${w} kg`;
+            if (
+              (norms.weightMax && w > norms.weightMax) ||
+              (norms.weightMin && w < norms.weightMin)
+            )
+              isAlarm = true;
             break;
 
           default:
-            lineText = `• ${mDate} | ${m.type}: ${m.value}`;
+            valueText = `${m.type}: ${m.value}`;
         }
 
-        // Dodajemy tylko note (ręczne uwagi użytkownika) – bez wpływu na logikę
-        if (m.note) {
-          lineText += ` – "${m.note.trim()}"`;
+        if (m.note) valueText += `  – ${m.note.trim()}`;
+        if (isAlarm) valueText += "  !";
+
+        page.drawText(dateStr, {
+          x: margin,
+          y: y,
+          size: 10,
+          font,
+          color: rgb(0.45, 0.45, 0.45), // Szary
+        });
+
+        const contentX = margin + dateColumnWidth;
+        const textColor = isAlarm ? rgb(0.85, 0.1, 0.1) : rgb(0, 0, 0); // Czerwony dla alarmu
+
+        const availableWidth = width - contentX - margin;
+        const lines = breakTextIntoLines(valueText, font, 11, availableWidth);
+        const lineHeight = 11 * 1.42;
+
+        for (let i = 0; i < lines.length; i++) {
+          page.drawText(lines[i], {
+            x: contentX,
+            y: y - i * lineHeight,
+            size: 11,
+            font,
+            color: textColor,
+          });
         }
 
-        // Rysowanie linii
-        if (isAlarming) {
-          lineText += "!";
-          drawLine(lineText, 11, rgb(0.85, 0.1, 0.1));
-        } else {
-          drawLine(lineText, 10);
-        }
-      });
-    } else {
-      drawLine("Brak zapisanych pomiarów w historii.", 11);
+        const rowsUsed = lines.length > 0 ? lines.length : 1;
+        y -= rowsUsed * lineHeight + 6;
+      }
     }
 
     // Stopka
-    page.drawText(
-      "Raport wygenerowany przez system Agent Zdrowie. Nie stanowi porady lekarskiej.",
-      {
-        x: margin,
-        y: 30,
-        size: 8,
-        font,
-        color: rgb(0.6, 0.6, 0.6),
-      }
-    );
+    const lastPage = pdfDoc.getPages()[pdfDoc.getPageCount() - 1];
+    lastPage.drawText("Raport wygenerowany automatycznie", {
+      x: margin,
+      y: 38,
+      size: 8,
+      font,
+      color: rgb(0.6, 0.6, 0.6),
+    });
 
     const pdfBytes = await pdfDoc.save();
-    const safeDate = new Date().toISOString().slice(0, 10);
-    const fileName = `Raport_${safeDate}.pdf`;
 
     return new Response(pdfBytes, {
+      status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${fileName}"`,
+        "Content-Disposition": `attachment; filename="Raport_${new Date().toISOString().slice(0, 10)}.pdf"`,
       },
     });
   } catch (error) {
-    console.error("PDF Generation Error:", error);
-    return new Response("Internal Server Error", { status: 500 });
+    console.error("PDF generation error:", error);
+    return new Response("Internal server error", { status: 500 });
   }
 }

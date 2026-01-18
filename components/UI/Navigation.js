@@ -114,9 +114,9 @@ export default function Navigation({ isCollapsed, toggleSidebar }) {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1 custom-scrollbar overflow-x-hidden">
+        <nav className="flex-1 overflow-y-auto py-8 px-4 space-y-2 custom-scrollbar overflow-x-hidden">
           {!isCollapsed && (
-            <p className="px-3 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 transition-opacity duration-200 whitespace-nowrap">
+            <p className="px-4 text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 transition-opacity duration-200 whitespace-nowrap">
               Aplikacja
             </p>
           )}
@@ -132,25 +132,25 @@ export default function Navigation({ isCollapsed, toggleSidebar }) {
                 onClick={() => setIsMobileOpen(false)}
                 title={isCollapsed ? item.label : ""}
                 className={`
-                  group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200
+                  group flex items-center gap-4 px-4 py-3 rounded-xl text-base font-medium transition-all duration-200
                   ${
                     isActive
                       ? "bg-emerald-50 text-emerald-700 shadow-sm ring-1 ring-emerald-100"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                   }
                   ${isCollapsed ? "lg:justify-center lg:px-0" : ""}
                 `}
               >
                 <Icon
-                  className={`w-5 h-5 shrink-0 transition-colors ${
+                  className={`w-6 h-6 shrink-0 transition-colors ${
                     isActive
                       ? "text-emerald-600"
-                      : "text-slate-400 group-hover:text-emerald-500"
+                      : "text-slate-500 group-hover:text-emerald-600"
                   }`}
                 />
 
                 <span
-                  className={`whitespace-nowrap transition-all duration-200 ${
+                  className={`whitespace-nowrap transition-all duration-200 text-base ${
                     isCollapsed
                       ? "lg:w-0 lg:opacity-0 lg:overflow-hidden"
                       : "w-auto opacity-100"
@@ -160,26 +160,26 @@ export default function Navigation({ isCollapsed, toggleSidebar }) {
                 </span>
 
                 {isActive && !isCollapsed && (
-                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
+                  <div className="ml-auto w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                 )}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+        <div className="p-5 border-t border-slate-100 bg-slate-50/60">
           {session?.user ? (
             <div
-              className={`flex items-center gap-3 ${
-                isCollapsed ? "lg:justify-center lg:p-0" : "p-2.5"
+              className={`flex items-center gap-4 ${
+                isCollapsed ? "lg:justify-center lg:p-2" : "p-3"
               } rounded-xl bg-white border border-slate-200 shadow-sm transition-all`}
             >
               <div className="relative shrink-0">
                 <Image
                   src={session.user?.image || "/images/placeholder-avatar.png"}
                   alt="Avatar"
-                  width={36}
-                  height={36}
+                  width={44}
+                  height={44}
                   className="rounded-full bg-slate-100 object-cover"
                 />
               </div>
@@ -189,10 +189,10 @@ export default function Navigation({ isCollapsed, toggleSidebar }) {
                   isCollapsed ? "lg:w-0 lg:opacity-0 lg:hidden" : "block"
                 }`}
               >
-                <p className="text-sm font-bold text-slate-900 truncate">
+                <p className="text-base font-bold text-slate-900 truncate">
                   {session.user.name?.split(" ")[0]}
                 </p>
-                <p className="text-[10px] text-slate-500 truncate">
+                <p className="text-xs text-slate-500 truncate mt-0.5">
                   {session.user.email}
                 </p>
               </div>
@@ -200,9 +200,9 @@ export default function Navigation({ isCollapsed, toggleSidebar }) {
               {!isCollapsed && (
                 <button
                   onClick={() => signOut()}
-                  className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
+                  className="p-2 text-slate-500 hover:text-red-600 transition-colors"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-5 h-5" />
                 </button>
               )}
             </div>
@@ -210,13 +210,11 @@ export default function Navigation({ isCollapsed, toggleSidebar }) {
             <Link
               href="/logowanie"
               className={`flex items-center justify-center ${
-                isCollapsed ? "w-10 h-10 p-0" : "w-full py-2.5 gap-2"
-              } bg-slate-900 text-white rounded-xl transition-all`}
+                isCollapsed ? "w-12 h-12 p-0" : "w-full py-3 gap-3"
+              } bg-slate-900 text-white rounded-xl transition-all text-base font-medium`}
             >
-              <LogIn className="w-4 h-4" />
-              {!isCollapsed && (
-                <span className="text-sm font-medium">Zaloguj</span>
-              )}
+              <LogIn className="w-5 h-5" />
+              {!isCollapsed && <span>Zaloguj się</span>}
             </Link>
           )}
         </div>
