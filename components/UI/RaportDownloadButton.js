@@ -12,14 +12,6 @@ export default function RaportDownloadForm() {
   const [dateTo, setDateTo] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Obliczanie różnicy dni
-  const getDaysDifference = (start, end) => {
-    const d1 = new Date(start);
-    const d2 = new Date(end);
-    const diffTime = Math.abs(d2 - d1);
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
-
   const handleDownload = async (overrideFrom = null, overrideTo = null) => {
     if (status !== "authenticated") {
       toast.error("Musisz być zalogowany, aby pobrać raport.");
@@ -30,8 +22,7 @@ export default function RaportDownloadForm() {
     let finalFrom = typeof overrideFrom === "string" ? overrideFrom : dateFrom;
     let finalTo = typeof overrideTo === "string" ? overrideTo : dateTo;
 
-    // Jeśli user nie wpisał nic, a kliknął "Pobierz PDF"
-    // domyślnie ustawiamy ostatni rok
+    // Domyślne ustawienie na ostatni rok, jeśli pola są puste
     if (!finalFrom && !finalTo && !overrideFrom) {
       const today = new Date();
       finalTo = today.toISOString().split("T")[0];
@@ -41,17 +32,20 @@ export default function RaportDownloadForm() {
       toast("Domyślnie wybrano okres ostatniego roku.", { icon: "ℹ️" });
     }
 
-    // Walidacja logiczna
-    if (finalFrom && finalTo && new Date(finalFrom) > new Date(finalTo)) {
+    const dFrom = new Date(finalFrom);
+    const dTo = new Date(finalTo);
+
+    if (finalFrom && finalTo && dFrom > dTo) {
       toast.error("Data „od” nie może być późniejsza niż „do”.");
       return;
     }
 
-    //  Walidacja długości okresu (Max 366 dni), margines błędu + lata przestępne
     if (finalFrom && finalTo) {
-      const days = getDaysDifference(finalFrom, finalTo);
-      if (days > 366) {
-        toast.error("Maksymalny okres raportu to 1 rok (365 dni).");
+      const maxAllowedDate = new Date(dFrom);
+      maxAllowedDate.setFullYear(maxAllowedDate.getFullYear() + 1);
+
+      if (dTo > maxAllowedDate) {
+        toast.error("Maksymalny okres raportu to 1 rok.");
         return;
       }
     }
@@ -132,7 +126,7 @@ export default function RaportDownloadForm() {
 
       <div className="flex flex-col sm:flex-row gap-4">
         <button
-          onClick={handleDownload}
+          onClick={() => handleDownload()}
           disabled={isLoading || status !== "authenticated"}
           className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg disabled:opacity-50"
         >
@@ -146,7 +140,7 @@ export default function RaportDownloadForm() {
           onClick={() => {
             const end = new Date();
             const start = new Date();
-            start.setFullYear(end.getFullYear() - 1); // Cofamy dokładnie o 1 rok
+            start.setFullYear(end.getFullYear() - 1);
 
             const dateEndStr = end.toISOString().split("T")[0];
             const dateStartStr = start.toISOString().split("T")[0];
