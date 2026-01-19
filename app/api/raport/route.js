@@ -218,7 +218,7 @@ ${contextForAI}
     try {
       const fontBytes = await fs.readFile(fontPath);
       font = await pdfDoc.embedFont(fontBytes);
-    } catch (e) {
+    } catch {
       return new Response("Missing font file", { status: 500 });
     }
 
