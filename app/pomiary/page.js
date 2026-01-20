@@ -89,8 +89,6 @@ export default function Pomiary() {
     try {
       setMessages([]);
 
-      const isHighRisk = analysisResult.status?.includes("HIGH_RISK") || false;
-
       const calculateAge = (birthdate) => {
         if (!birthdate) return "nieznany";
         const birthDate = new Date(birthdate);
@@ -118,36 +116,37 @@ export default function Pomiary() {
         : "nieznany";
       const userConditions = norms?.conditions || "brak";
       const userMedications = norms?.medications || "brak";
-      const userRisk = norms?.hasHighRisk
-        ? "wysokie ryzyko sercowo-naczyniowe"
-        : "niskie/średnie";
 
       const promptContent = `
-Użytkownik: ${userGender}, ${userAge} lata, wzrost ${userHeight} cm, waga ~${userWeight} kg, BMI ${userBMI}, aktywność fizyczna: ${userActivity}.
-Choroby/stany: ${userConditions}. Leki/suplementy: ${userMedications}.
-Grupa ryzyka: ${userRisk}.
+Użytkownik: ${userGender}, około ${userAge} lat, wzrost ${userHeight} cm, waga ~${userWeight} kg (BMI ${userBMI}), poziom aktywności fizycznej: ${userActivity}.
+Stany zdrowotne / choroby: ${userConditions || "brak podanych"}
+Leki i suplementy: ${userMedications || "brak podanych"}
 
-Dane pomiaru:
-- Typ: ${currentData.type}
+Ostatni pomiar:
+- Typ: ${currentDisplay.label}
 - Wartość: ${currentData.formattedValue}
-- Kontekst: ${currentData.context || "Brak"}
-- Notatka użytkownika: ${currentData.note || "Brak"}
+- Kontekst: ${currentData.context || "brak"}
+- Notatka: "${currentData.note || "brak"}"
 
-Analiza systemowa:
+Wynik analizy systemu:
 - Status: ${analysisResult?.status || "UNKNOWN"}
-- Komunikat: "${analysisResult?.message || ""}"
-- Poza normą: ${analysisResult?.isOutOfNorm ? "TAK" : "NIE"}
-${isHighRisk ? "- Pacjent należy do grupy wysokiego ryzyka sercowo-naczyniowego" : ""}
+- Komunikat systemowy: "${analysisResult?.message || "—"}"
+- Poza normą: ${analysisResult?.isOutOfNorm ? "tak" : "nie"}
 
-Zadanie:
-Daj krótką (2-4 zdania) poradę w języku polskim, uwzględniając kontekst użytkownika (wiek, płeć, aktywność, leki, stany zdrowotne).
-- Jeśli OPTIMAL → pochwal użytkownika, zasugeruj utrzymanie stylu życia
-- Jeśli ELEVATED → delikatna sugestia zmiany stylu życia, dostosowana do aktywności/leków
-- Jeśli ELEVATED_HIGH_RISK → wyraźniejsza sugestia konsultacji / korekty, uwzględnij ryzyko
-- Jeśli ALARM / CRITICAL → pilny kontakt z lekarzem, podkreśl wiek/ryzyko
-Porada powinna być empatyczna, konkretna i motywująca.
-      `;
+Napisz po polsku krótką, ciepłą i konkretną poradę (3–5 zdań, maksymalnie 100 słów). 
 
+Zasady:
+• Zawsze bądź empatyczny i wspierający, ale nie przesadzaj z pochwałami.
+• Dostosuj radę do wieku, aktywności, chorób współistniejących i leków użytkownika.
+• Przy statusie OPTIMAL / IN_TARGET – pochwal i podaj jedną prostą sugestię, jak utrzymać dobry wynik.
+• Przy ELEVATED lub ELEVATED_HIGH_RISK – zaproponuj 1–2 realistyczne zmiany w stylu życia.
+• Przy ALARM / CRITICAL / HIGH / LOW – wyraźnie poleć pilny kontakt z lekarzem, podkreśl dlaczego (ryzyko, wiek, choroby).
+• Nigdy nie zmieniaj dawek leków, nie stawiaj diagnozy, nie bagatelizuj wyników poza normą.
+• Używaj naturalnego, przyjaznego języka – jakbyś rozmawiał z kimś bliskim, komu zależy na zdrowiu.
+
+Odpowiedz wyłącznie treścią porady – bez wstępu, bez podpisów, bez cudzysłowów. `;
+
+      console.log(promptContent);
       await append({
         id: `msg-${Date.now()}`,
         role: "user",
@@ -585,9 +584,6 @@ Porada powinna być empatyczna, konkretna i motywująca.
                       }}
                       required
                     />
-                    
-
-                   
                   </div>
                 </div>
               ) : (
