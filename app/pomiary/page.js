@@ -534,9 +534,9 @@ Porada powinna być empatyczna, konkretna i motywująca.
           </div>
 
           <div>
-            <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
+            <label className="text-xs font-bold text-gray-600 block mb-1.5 ml-1">
               {type === "BLOOD_PRESSURE"
-                ? "Wynik (skurczowe / rozkurczowe)"
+                ? "Wynik (skurczowe / rozkurczowe) mm/Hg"
                 : "Wartość wyniku"}
             </label>
             <div className="relative">
@@ -585,10 +585,9 @@ Porada powinna być empatyczna, konkretna i motywująca.
                       }}
                       required
                     />
+                    
 
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded pointer-events-none">
-                      {unit}
-                    </span>
+                   
                   </div>
                 </div>
               ) : (
