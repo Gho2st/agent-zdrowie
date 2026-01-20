@@ -44,6 +44,7 @@ function asBP(v) {
 
   return null;
 }
+
 function isTextPart(p) {
   return p.type === "text" && typeof p.text === "string";
 }
@@ -63,7 +64,7 @@ export default function Pomiary() {
   const [glucoseTime, setGlucoseTime] = useState("przed posiłkiem");
   const [pressureNote, setPressureNote] = useState("");
   const [pulseNote, setPulseNote] = useState("");
-  const [pulseContext, setPulseContext] = useState("spoczynkowe"); // ← NOWOŚĆ
+  const [pulseContext, setPulseContext] = useState("spoczynkowe");
 
   const [norms, setNorms] = useState(null);
   const [hasHighRisk, setHasHighRisk] = useState(false);
@@ -83,7 +84,7 @@ export default function Pomiary() {
     },
   });
 
-  //   PORADA AI – po dodaniu pomiaru
+  // --- PORADA AI ---
   const fetchAgentAdvice = async (currentData, analysisResult) => {
     try {
       setMessages([]);
@@ -174,7 +175,7 @@ Porada powinna być empatyczna, konkretna i motywująca.
     return null;
   }, [messages]);
 
-  //   ŁADOWANIE DANYCH
+  // --- ŁADOWANIE DANYCH ---
   useEffect(() => {
     if (status !== "authenticated") return;
 
@@ -210,7 +211,7 @@ Porada powinna być empatyczna, konkretna i motywująca.
 
   const currentDisplay = typeDisplay[type] || { label: "Pomiar", icon: "" };
 
-  //   USUWANIE POMIARU
+  // --- USUWANIE POMIARU ---
   const requestDelete = useCallback((id) => setConfirmDeleteId(id), []);
 
   const confirmDelete = useCallback(async () => {
@@ -233,7 +234,7 @@ Porada powinna być empatyczna, konkretna i motywująca.
     }
   }, [confirmDeleteId]);
 
-  //   ZAPIS POMIARU + TOASTY
+  // --- SUBMIT ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (status !== "authenticated") {
@@ -261,7 +262,7 @@ Porada powinna być empatyczna, konkretna i motywująca.
       if (type === "BLOOD_PRESSURE") {
         const bp = asBP(value);
         if (!bp) {
-          toast.error("Format ciśnienia: 120/80");
+          toast.error("Uzupełnij oba pola ciśnienia (np. 120 i 80)");
           return;
         }
         body.systolic = bp.sys;
@@ -321,7 +322,7 @@ Porada powinna być empatyczna, konkretna i motywująca.
         }
       }
 
-      // Zapis do bazy
+      // Zapis
       const res = await fetch("/api/measurement", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -334,7 +335,7 @@ Porada powinna być empatyczna, konkretna i motywująca.
         return;
       }
 
-      // Reset formularza
+      // Reset
       setValue("");
       setGlucoseContext("");
       setPressureNote("");
@@ -428,7 +429,6 @@ Porada powinna być empatyczna, konkretna i motywująca.
         );
       }
 
-      // Zawsze informacja o zapisie
       setTimeout(() => {
         toast.success("Pomiar zapisany", {
           duration: 3000,
@@ -436,7 +436,6 @@ Porada powinna być empatyczna, konkretna i motywująca.
         });
       }, 800);
 
-      // Uruchomienie AI
       setTimeout(() => {
         fetchAgentAdvice(aiDataPayload, analysisResult);
       }, 1200);
@@ -448,7 +447,6 @@ Porada powinna być empatyczna, konkretna i motywująca.
     }
   };
 
-  //   RENDER
   const TrendSection = useMemo(
     () => (
       <TrendMini data={measurements} type={type} title={currentDisplay.label} />
@@ -504,7 +502,7 @@ Porada powinna być empatyczna, konkretna i motywująca.
             ${isSubmitting ? "opacity-75 pointer-events-none" : ""}
           `}
         >
-          {/* Nagłówek formularza */}
+          {/* Header formularza */}
           <div className="flex items-center gap-3 mb-2 border-b border-gray-100 pb-4">
             <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
               <PlusCircle className="w-6 h-6" />
@@ -515,7 +513,7 @@ Porada powinna być empatyczna, konkretna i motywująca.
             </div>
           </div>
 
-          {/* Typ pomiaru */}
+          {/* Wybór typu */}
           <div>
             <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
               Typ pomiaru
@@ -535,7 +533,6 @@ Porada powinna być empatyczna, konkretna i motywująca.
             </select>
           </div>
 
-          {/* Wartość */}
           <div>
             <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
               {type === "BLOOD_PRESSURE"
@@ -544,34 +541,77 @@ Porada powinna być empatyczna, konkretna i motywująca.
             </label>
             <div className="relative">
               {type === "BLOOD_PRESSURE" ? (
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  required
-                  placeholder="np. 120/80"
-                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold"
-                />
+                <div className="flex items-center gap-3">
+                  {/* Pole Skurczowe */}
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      placeholder="120"
+                      className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold text-center focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 outline-none transition-all"
+                      // Bierzemy część przed slashem
+                      value={value.includes("/") ? value.split("/")[0] : value}
+                      onChange={(e) => {
+                        const newSys = e.target.value;
+                        const currentDia = value.includes("/")
+                          ? value.split("/")[1]
+                          : "";
+                        setValue(`${newSys}/${currentDia}`);
+                      }}
+                      required
+                    />
+                  </div>
+
+                  <span className="text-2xl text-gray-300 font-light relative -top-1">
+                    /
+                  </span>
+
+                  {/* Pole Rozkurczowe */}
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      placeholder="80"
+                      className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold text-center focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 outline-none transition-all"
+                      value={
+                        value.includes("/") ? value.split("/")[1] || "" : ""
+                      }
+                      onChange={(e) => {
+                        const currentSys = value.includes("/")
+                          ? value.split("/")[0]
+                          : value;
+                        const newDia = e.target.value;
+                        setValue(`${currentSys}/${newDia}`);
+                      }}
+                      required
+                    />
+
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded pointer-events-none">
+                      {unit}
+                    </span>
+                  </div>
+                </div>
               ) : (
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="any"
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  required
-                  placeholder="np. 70.5"
-                  className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold"
-                />
+                <>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="any"
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    required
+                    placeholder="np. 70.5"
+                    className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-md">
+                    {unit}
+                  </span>
+                </>
               )}
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-md">
-                {unit}
-              </span>
             </div>
           </div>
 
-          {/* Dodatkowe pola w zależności od typu */}
+          {/* Dodatkowe pola zależne od typu */}
           {type === "GLUCOSE" && (
             <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
               <div>
@@ -669,7 +709,7 @@ Porada powinna być empatyczna, konkretna i motywująca.
             </div>
           )}
 
-          {/* Przycisk zapisu */}
+          {/* Przycisk Zapisz */}
           <div className="mt-auto">
             <button
               type="submit"
@@ -687,7 +727,7 @@ Porada powinna być empatyczna, konkretna i motywująca.
           </div>
         </form>
 
-        {/* Prawy panel – trend + AI */}
+        {/* Prawy panel – Trend + AI */}
         <div className="flex flex-col gap-6 h-full">
           <div className="shrink-0 h-[300px] xl:h-[320px]">{TrendSection}</div>
 
