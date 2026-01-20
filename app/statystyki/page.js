@@ -27,6 +27,8 @@ import {
   CalendarRange,
 } from "lucide-react";
 
+// Import funkcji analyzeMeasurement – zmień ścieżkę jeśli jest inna
+import { analyzeMeasurement } from "../utils/healthAnalysis";
 ChartJS.register(
   LineElement,
   PointElement,
@@ -36,7 +38,7 @@ ChartJS.register(
   Legend,
   Filler,
   CategoryScale,
-  annotationPlugin
+  annotationPlugin,
 );
 
 const CONFIG = {
@@ -179,7 +181,7 @@ export default function Statistics() {
     }
 
     const inNormCount = filtered.filter((m) =>
-      checkIsNormal(m.value, m.value2, category, norms)
+      checkIsNormal(m.value, m.value2, category, norms),
     ).length;
     const normPercentage = Math.round((inNormCount / filtered.length) * 100);
 
@@ -193,7 +195,7 @@ export default function Statistics() {
       max: category === "ciśnienie" ? `${max1}/${max2}` : max1,
       normPercentage,
       dataForChart: filtered.sort(
-        (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+        (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
       ),
     };
   };
@@ -205,15 +207,36 @@ export default function Statistics() {
     const config = CONFIG[category];
 
     if (category === "ciśnienie") {
+      // Oblicz status i kolory dla każdego punktu
+      const pointColors = data.map((m) => {
+        const result = analyzeMeasurement(
+          "BLOOD_PRESSURE",
+          { sys: m.value, dia: m.value2 },
+          norms,
+        );
+        switch (result.status) {
+          case "CRITICAL":
+            return "#ef4444"; // red-500
+          case "ALARM":
+            return "#f97316"; // orange-500
+          case "ELEVATED":
+            return "#eab308"; // yellow-500
+          default:
+            return "#4f46e5"; // indigo-600 dla optimal
+        }
+      });
+
       datasets = [
         {
           label: "Skurczowe",
           data: data.map((m) => ({ x: new Date(m.createdAt), y: m.value })),
           borderColor: "#4f46e5",
           backgroundColor: "rgba(79, 70, 229, 0.1)",
-          tension: 0.4,
-          pointRadius: 3,
-          pointHoverRadius: 6,
+          pointBackgroundColor: pointColors,
+          pointBorderColor: pointColors,
+          pointRadius: 4,
+          pointHoverRadius: 7,
+          tension: 0.3,
           fill: true,
         },
         {
@@ -221,9 +244,11 @@ export default function Statistics() {
           data: data.map((m) => ({ x: new Date(m.createdAt), y: m.value2 })),
           borderColor: "#ec4899",
           backgroundColor: "rgba(236, 72, 153, 0.1)",
-          tension: 0.4,
-          pointRadius: 3,
-          pointHoverRadius: 6,
+          pointBackgroundColor: pointColors, // ten sam kolor co skurczowe
+          pointBorderColor: pointColors,
+          pointRadius: 4,
+          pointHoverRadius: 7,
+          tension: 0.3,
           fill: true,
         },
       ];
@@ -287,6 +312,41 @@ export default function Statistics() {
             shadowColor: NORM_SHADOW,
           };
         }
+
+        // Dodatkowe strefy alarmowe i krytyczne
+        const alarmMin =
+          Math.max(norms.systolicMax || 130, norms.diastolicMax || 80) + 1;
+        annotations.alarmZone = {
+          type: "box",
+          yMin: alarmMin,
+          yMax: 179,
+          backgroundColor: "rgba(245, 158, 11, 0.12)", // pomarańczowe
+          borderColor: "transparent",
+          label: {
+            enabled: true,
+            content: "↑ Podwyższone / Alarm",
+            position: "center",
+            backgroundColor: "rgba(245, 158, 11, 0.7)",
+            color: "white",
+            font: { size: 11 },
+          },
+        };
+
+        annotations.criticalZone = {
+          type: "box",
+          yMin: 180,
+          backgroundColor: "rgba(239, 68, 68, 0.15)", // czerwone
+          borderColor: "transparent",
+          label: {
+            enabled: true,
+            content: "!!! Krytyczne",
+            position: "start",
+            yAdjust: -20,
+            backgroundColor: "rgba(239, 68, 68, 0.85)",
+            color: "white",
+            font: { size: 11 },
+          },
+        };
       } else {
         let yMin, yMax;
 

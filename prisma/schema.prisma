@@ -61,6 +61,7 @@ model HealthProfile {
   hasHypertension  Boolean     @default(false) // Nadciśnienie
   hasHeartDisease  Boolean     @default(false) // CVD (Choroby serca)
   hasKidneyDisease Boolean     @default(false) // CKD (Choroby nerek)
+  hasHighBloodPressure Boolean @default(false) // Podwyzszone cisnienie
   // Pozostałe choroby (np. astma, alergie) nadal mogą być tutaj
   conditions       Condition[]
   medications      String?

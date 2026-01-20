@@ -4,14 +4,19 @@ import prisma from "@/lib/prisma";
 import { getHealthNorms } from "@/lib/norms";
 
 function calculateAge(birthdate) {
+  if (!birthdate) return 30;
   const birth = new Date(birthdate);
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-    age--;
-  }
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
   return age;
+}
+
+function calculateBMI(heightCm, weightKg) {
+  if (!heightCm || !weightKg || heightCm <= 0 || weightKg <= 0) return null;
+  const heightM = heightCm / 100;
+  return Number((weightKg / (heightM * heightM)).toFixed(1));
 }
 
 const VALID_ACTIVITY_LEVELS = new Set(["LOW", "MODERATE", "HIGH"]);
@@ -25,15 +30,23 @@ function flattenProfileData(healthProfile) {
     ? conditions.map((c) => c.name).join(", ")
     : "";
 
+  const hasHighRisk =
+    rest.hasDiabetes ||
+    rest.hasPrediabetes ||
+    rest.hasHypertension ||
+    rest.hasHighBloodPressure ||
+    rest.hasHeartDisease ||
+    rest.hasKidneyDisease;
+
   return {
     ...rest,
     activityLevel: rest.activityLevel,
     conditions: conditionsString,
     ...norms,
+    hasHighRisk,
   };
 }
 
-// --- GET pobieranie profilu z normami ---
 export async function GET() {
   try {
     const session = await auth();
@@ -43,14 +56,7 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: {
-        healthProfile: {
-          include: {
-            norms: true,
-            conditions: true,
-          },
-        },
-      },
+      select: { healthProfile: { include: { norms: true, conditions: true } } },
     });
 
     if (!user || !user.healthProfile) {
@@ -59,12 +65,11 @@ export async function GET() {
 
     return NextResponse.json(flattenProfileData(user.healthProfile));
   } catch (error) {
-    console.error("Błąd pobierania profilu:", error);
+    console.error("Błąd GET /api/user/norms:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
 
-// --- PATCH aktualizacja profilu z przeliczeniem norm ---
 export async function PATCH(req) {
   try {
     const session = await auth();
@@ -73,148 +78,187 @@ export async function PATCH(req) {
     }
 
     const body = await req.json();
-    const {
-      medications,
-      conditions,
-      activityLevel,
-      height,
-      weight,
-      hasDiabetes,
-      hasPrediabetes,
-      hasHypertension,
-      hasHeartDisease,
-      hasKidneyDisease,
-    } = body;
+    const { reset, medications, conditions, activityLevel, height, weight } =
+      body;
 
-    // Przygotowanie danych do aktualizacji
     const updateData = {};
+    const heightChanged = height !== undefined;
+    const weightChanged = weight !== undefined;
 
-    // Walidacja i konwersja liczbowych pól
-    if (height !== undefined) {
-      const h = Number(height);
-      if (isNaN(h) || h <= 0) {
-        return NextResponse.json(
-          { error: "Wzrost musi być dodatnią liczbą" },
-          { status: 400 }
-        );
-      }
-      updateData.height = h;
-    }
-
-    if (weight !== undefined) {
-      const w = Number(weight);
-      if (isNaN(w) || w <= 0) {
-        return NextResponse.json(
-          { error: "Waga musi być dodatnią liczbą" },
-          { status: 400 }
-        );
-      }
-      updateData.weight = w;
-    }
-
-    // Walidacja activityLevel
-    if (activityLevel !== undefined) {
-      if (!VALID_ACTIVITY_LEVELS.has(activityLevel)) {
-        return NextResponse.json(
-          { error: "Nieprawidłowy poziom aktywności (LOW, MODERATE, HIGH)" },
-          { status: 400 }
-        );
-      }
+    if (heightChanged) updateData.height = Number(height);
+    if (weightChanged) updateData.weight = Number(weight);
+    if (activityLevel && VALID_ACTIVITY_LEVELS.has(activityLevel)) {
       updateData.activityLevel = activityLevel;
     }
-
-    // Pozostałe pola
-    if (medications !== undefined) updateData.medications = medications;
-    if (hasDiabetes !== undefined)
-      updateData.hasDiabetes = Boolean(hasDiabetes);
-    if (hasPrediabetes !== undefined)
-      updateData.hasPrediabetes = Boolean(hasPrediabetes);
-    if (hasHypertension !== undefined)
-      updateData.hasHypertension = Boolean(hasHypertension);
-    if (hasHeartDisease !== undefined)
-      updateData.hasHeartDisease = Boolean(hasHeartDisease);
-    if (hasKidneyDisease !== undefined)
-      updateData.hasKidneyDisease = Boolean(hasKidneyDisease);
-
-    // Obsługa listy chorób (całkowite nadpisanie)
-    if (conditions !== undefined) {
-      const conditionsArray = Array.isArray(conditions)
-        ? conditions
-        : conditions
-            .split(",")
-            .map((c) => c.trim())
-            .filter(Boolean);
-
-      updateData.conditions = {
-        set: [], // odłączamy wszystkie stare
-        connectOrCreate: conditionsArray.map((name) => ({
-          where: { name },
-          create: { name },
-        })),
-      };
+    if (medications !== undefined) {
+      updateData.medications = (medications || "").trim();
     }
 
-    // Pobranie aktualnego profilu
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true, healthProfile: true },
+    const booleanFields = [
+      "hasDiabetes",
+      "hasPrediabetes",
+      "hasHighBloodPressure",
+      "hasHypertension",
+      "hasHeartDisease",
+      "hasKidneyDisease",
+    ];
+
+    booleanFields.forEach((field) => {
+      if (body[field] !== undefined) {
+        updateData[field] = !!body[field];
+      }
     });
 
-    if (!user?.healthProfile) {
-      return NextResponse.json({ error: "No profile" }, { status: 404 });
-    }
+    const MANUAL_NORM_FIELDS = [
+      "systolicMin",
+      "systolicMax",
+      "diastolicMin",
+      "diastolicMax",
+      "glucoseFastingMin",
+      "glucoseFastingMax",
+      "glucosePostMealMax",
+      "weightMin",
+      "weightMax",
+      "pulseMin",
+      "pulseMax",
+      "maxHeartRate",
+      "targetHeartRateMin",
+      "targetHeartRateMax",
+    ];
 
-    const currentProfile = user.healthProfile;
+    let hasManualNorms = false;
+    const manualNorms = {};
 
-    // Czy trzeba przeliczyć normy?
-    const needRecalculateNorms =
-      height !== undefined ||
-      weight !== undefined ||
-      activityLevel !== undefined ||
-      hasDiabetes !== undefined ||
-      hasPrediabetes !== undefined ||
-      hasHypertension !== undefined ||
-      hasHeartDisease !== undefined ||
-      hasKidneyDisease !== undefined;
+    MANUAL_NORM_FIELDS.forEach((field) => {
+      if (field in body) {
+        hasManualNorms = true;
+        const val = body[field];
+        manualNorms[field] = val === "" || val == null ? null : Number(val);
+      }
+    });
 
-    if (needRecalculateNorms) {
-      const age = calculateAge(currentProfile.birthdate);
+    const diseaseChanged = booleanFields.some(
+      (field) => body[field] !== undefined,
+    );
+    const activityChanged = activityLevel !== undefined;
 
-      const normsResult = getHealthNorms(
-        age,
-        currentProfile.gender,
-        updateData.height ?? currentProfile.height,
-        updateData.weight ?? currentProfile.weight,
-        updateData.activityLevel ?? currentProfile.activityLevel,
-        updateData.hasDiabetes ?? currentProfile.hasDiabetes,
-        updateData.hasHypertension ?? currentProfile.hasHypertension,
-        updateData.hasHeartDisease ?? currentProfile.hasHeartDisease,
-        updateData.hasKidneyDisease ?? currentProfile.hasKidneyDisease,
-        updateData.hasPrediabetes ?? currentProfile.hasPrediabetes
-      );
+    const shouldRecalcDefault =
+      heightChanged ||
+      weightChanged ||
+      reset ||
+      diseaseChanged ||
+      activityChanged;
 
-      if (normsResult.error) {
-        return NextResponse.json({ error: normsResult.error }, { status: 400 });
+    let normsUpdate = null;
+
+    if (shouldRecalcDefault || hasManualNorms) {
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        select: { healthProfile: { include: { norms: true } } },
+      });
+
+      if (!user?.healthProfile) {
+        return NextResponse.json({ error: "Brak profilu" }, { status: 404 });
       }
 
-      updateData.norms = {
+      const profile = user.healthProfile;
+      const currentNorms = profile.norms || {};
+
+      const cleanCurrentNorms = { ...currentNorms };
+
+      let finalNorms;
+
+      if (reset || (shouldRecalcDefault && !hasManualNorms)) {
+        const calculationData = {
+          age: calculateAge(profile.birthdate),
+          gender: profile.gender,
+          height: updateData.height ?? profile.height ?? 0,
+          weight: updateData.weight ?? profile.weight ?? 0,
+          activityLevel:
+            updateData.activityLevel ?? profile.activityLevel ?? "MODERATE",
+          hasDiabetes: updateData.hasDiabetes ?? profile.hasDiabetes ?? false,
+          hasPrediabetes:
+            updateData.hasPrediabetes ?? profile.hasPrediabetes ?? false,
+          hasHighBloodPressure:
+            updateData.hasHighBloodPressure ??
+            profile.hasHighBloodPressure ??
+            false,
+          hasHypertension:
+            updateData.hasHypertension ?? profile.hasHypertension ?? false,
+          hasHeartDisease:
+            updateData.hasHeartDisease ?? profile.hasHeartDisease ?? false,
+          hasKidneyDisease:
+            updateData.hasKidneyDisease ?? profile.hasKidneyDisease ?? false,
+        };
+
+        finalNorms = getHealthNorms(
+          calculationData.age,
+          calculationData.height,
+          calculationData.weight,
+          calculationData.activityLevel,
+          calculationData.hasDiabetes,
+          calculationData.hasHypertension,
+          calculationData.hasHeartDisease,
+          calculationData.hasKidneyDisease,
+          calculationData.hasPrediabetes,
+          calculationData.hasHighBloodPressure,
+        );
+      } else if (hasManualNorms) {
+        const bmi = calculateBMI(
+          updateData.height ?? profile.height,
+          updateData.weight ?? profile.weight,
+        );
+        finalNorms = { ...cleanCurrentNorms, ...manualNorms, bmi };
+      } else {
+        const bmi = calculateBMI(
+          updateData.height ?? profile.height,
+          updateData.weight ?? profile.weight,
+        );
+        finalNorms = { ...cleanCurrentNorms, bmi };
+      }
+
+      normsUpdate = {
         upsert: {
-          create: normsResult,
-          update: normsResult,
+          create: finalNorms,
+          update: finalNorms,
         },
       };
     }
 
-    // Wykonanie aktualizacji
+    const userForId = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+
     const updatedProfile = await prisma.healthProfile.update({
-      where: { userId: user.id },
-      data: updateData,
+      where: { userId: userForId.id },
+      data: {
+        ...updateData,
+        ...(normsUpdate && { norms: normsUpdate }),
+        ...(conditions !== undefined && {
+          conditions: {
+            set: [],
+            connectOrCreate: (Array.isArray(conditions)
+              ? conditions
+              : typeof conditions === "string"
+                ? conditions
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                : []
+            ).map((name) => ({
+              where: { name },
+              create: { name },
+            })),
+          },
+        }),
+      },
       include: { norms: true, conditions: true },
     });
 
     return NextResponse.json(flattenProfileData(updatedProfile));
   } catch (error) {
-    console.error("Błąd aktualizacji profilu:", error);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    console.error("Błąd PATCH /api/user/norms:", error);
+    return NextResponse.json({ error: "Błąd serwera" }, { status: 500 });
   }
 }

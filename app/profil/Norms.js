@@ -2,9 +2,16 @@
 
 import toast from "react-hot-toast";
 import { useState, useEffect, useRef } from "react";
-import { Edit2, Save, Loader2, CheckCircle, Settings2 } from "lucide-react";
+import {
+  Edit2,
+  Save,
+  Loader2,
+  CheckCircle,
+  Settings2,
+  RotateCcw,
+} from "lucide-react"; // <-- Dodałem RotateCcw
 
-// Definicja etykiet dla pól norm
+// ... (fieldLabels bez zmian) ...
 const fieldLabels = {
   systolicMin: "Ciśnienie skurczowe (min)",
   systolicMax: "Ciśnienie skurczowe (max)",
@@ -25,43 +32,100 @@ const fieldLabels = {
 export default function Norms({ norms, handleChange, onUpdate }) {
   const [editingNorms, setEditingNorms] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
   const [highlight, setHighlight] = useState(false);
   const prevNormsRef = useRef(norms);
-
+  const [initialNorms, setInitialNorms] = useState({});
   const fields = Object.keys(fieldLabels);
 
   useEffect(() => {
     if (JSON.stringify(prevNormsRef.current) !== JSON.stringify(norms)) {
       setHighlight(true);
-      const timer = setTimeout(() => setHighlight(false), 2000); // 2 sekundy podświetlenia
+      const timer = setTimeout(() => setHighlight(false), 2000);
       prevNormsRef.current = norms;
       return () => clearTimeout(timer);
     }
   }, [norms]);
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    const dataToSend = Object.fromEntries(
-      fields.map((key) => [key, norms[key] === "" ? null : norms[key]])
-    );
+  const startEditing = () => {
+    setInitialNorms({ ...norms });
+    setEditingNorms(true);
+  };
 
+  // --- NOWA FUNKCJA RESETU ---
+  const handleReset = async () => {
+    if (!confirm("Czy na pewno chcesz przywrócić domyślne normy medyczne?"))
+      return;
+
+    setIsSaving(true);
     try {
+      // Wysyłamy flagę reset: true
       const res = await fetch("/api/user/norms", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dataToSend),
+        body: JSON.stringify({ reset: true }),
       });
 
       if (res.ok) {
         const updatedData = await res.json();
         if (onUpdate) onUpdate(updatedData);
-        toast.success("Zapisano normy");
+        toast.success("Przywrócono wartości domyślne");
+        setEditingNorms(false); // Wychodzimy z trybu edycji
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Błąd resetowania");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Błąd połączenia");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    const changedData = {};
+
+    fields.forEach((key) => {
+      let current = norms[key];
+      let initial = initialNorms[key];
+
+      if (current === "") current = null;
+      if (initial === "") initial = null;
+
+      const numCurrent = current !== null ? Number(current) : null;
+      const numInitial = initial !== null ? Number(initial) : null;
+
+      if (numCurrent !== numInitial) {
+        changedData[key] = current;
+      }
+    });
+
+    if (Object.keys(changedData).length === 0) {
+      toast("Nic nie zmieniono", { icon: "ℹ️" });
+      setIsSaving(false);
+      setEditingNorms(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/user/norms", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(changedData),
+      });
+
+      if (res.ok) {
+        const updatedData = await res.json();
+        if (onUpdate) onUpdate(updatedData);
+        toast.success("Zapisano zmiany");
         setEditingNorms(false);
       } else {
-        toast.error("Wystąpił błąd podczas zapisywania");
+        const err = await res.json();
+        toast.error(err.error || "Błąd podczas zapisywania");
       }
-    } catch {
+    } catch (err) {
+      console.error(err);
       toast.error("Błąd połączenia");
     } finally {
       setIsSaving(false);
@@ -92,7 +156,7 @@ export default function Norms({ norms, handleChange, onUpdate }) {
 
         {!editingNorms && (
           <button
-            onClick={() => setEditingNorms(true)}
+            onClick={startEditing}
             className="p-2.5 bg-white border border-gray-200 text-gray-500 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50 rounded-xl transition-all shadow-sm"
             title="Edytuj ręcznie"
           >
@@ -108,11 +172,7 @@ export default function Norms({ norms, handleChange, onUpdate }) {
               key={field}
               className={`
                 flex flex-col border-b border-gray-100 pb-2 last:border-0 rounded-lg px-2 transition-all duration-700
-                ${
-                  highlight
-                    ? "bg-emerald-50/60 border-emerald-100 scale-[1.02]"
-                    : "bg-transparent"
-                }
+                ${highlight ? "bg-emerald-50/60 border-emerald-100 scale-[1.02]" : "bg-transparent"}
               `}
             >
               <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">
@@ -146,20 +206,21 @@ export default function Norms({ norms, handleChange, onUpdate }) {
                 <input
                   type="number"
                   name={field}
-                  value={norms[field] || ""}
+                  value={norms[field] ?? ""}
                   onChange={handleChange}
-                  placeholder="Brak"
+                  placeholder="Auto"
                   className="block w-full bg-gray-50/50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 outline-none transition-all"
                 />
               </label>
             ))}
           </div>
 
-          <div className="flex gap-3 pt-4 border-t border-gray-100 mt-auto">
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-100 mt-auto">
+            {/* PRZYCISK ZAPISZ */}
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className={`flex-1 flex justify-center items-center gap-2 px-4 py-3 rounded-xl font-bold text-white transition-all shadow-lg active:scale-95 ${
+              className={`flex-1 order-1 sm:order-2 flex justify-center items-center gap-2 px-4 py-3 rounded-xl font-bold text-white transition-all shadow-lg active:scale-95 ${
                 isSaving
                   ? "bg-emerald-400 cursor-not-allowed shadow-none"
                   : "bg-gradient-to-r from-emerald-500 to-teal-600 shadow-emerald-200 hover:shadow-emerald-300 hover:scale-[1.02]"
@@ -170,14 +231,27 @@ export default function Norms({ norms, handleChange, onUpdate }) {
               ) : (
                 <Save className="w-4 h-4" />
               )}
-              {isSaving ? "Zapisywanie..." : "Zapisz zmiany"}
+              {isSaving ? "Zapisywanie..." : "Zapisz"}
             </button>
+
+            {/* PRZYCISK ANULUJ */}
             <button
               disabled={isSaving}
               onClick={() => setEditingNorms(false)}
-              className="px-6 py-3 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl font-bold transition-colors"
+              className="order-2 sm:order-3 px-4 py-3 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl font-bold transition-colors"
             >
               Anuluj
+            </button>
+
+            {/* PRZYCISK RESET (NOWY) */}
+            <button
+              onClick={handleReset}
+              disabled={isSaving}
+              className="order-3 sm:order-1 px-3 py-3 text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
+              title="Przywróć wartości domyślne"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span className="sm:hidden">Reset</span>
             </button>
           </div>
         </div>

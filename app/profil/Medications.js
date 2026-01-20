@@ -89,6 +89,7 @@ export default function MedicationsAndConditions({
   const medicalFlags = [
     { id: "hasPrediabetes", label: "Stan Przedcukrzycowy", icon: Activity },
     { id: "hasDiabetes", label: "Cukrzyca", icon: Droplet },
+    { id: "hasHighBloodPressure", label: "Podwyższone ciśnienie", icon: Gauge },
     { id: "hasHypertension", label: "Nadciśnienie", icon: Gauge },
     { id: "hasHeartDisease", label: "Choroby Serca", icon: HeartPulse },
     { id: "hasKidneyDisease", label: "Choroby Nerek", icon: Stethoscope },
@@ -136,6 +137,7 @@ export default function MedicationsAndConditions({
       conditions: norms.conditions.join(","),
       hasDiabetes: !!norms.hasDiabetes,
       hasPrediabetes: !!norms.hasPrediabetes,
+      hasHighBloodPressure: !!norms.hasHighBloodPressure,
       hasHypertension: !!norms.hasHypertension,
       hasHeartDisease: !!norms.hasHeartDisease,
       hasKidneyDisease: !!norms.hasKidneyDisease,

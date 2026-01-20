@@ -51,6 +51,7 @@ export default function RejestracjaDodatkowa() {
   const [hasHypertension, setHasHypertension] = useState(false);
   const [hasHeartDisease, setHasHeartDisease] = useState(false);
   const [hasKidneyDisease, setHasKidneyDisease] = useState(false);
+  const [hasHighBloodPressure, setHasHighBloodPressure] = useState(false);
 
   const [healthDataConsent, setHealthDataConsent] = useState(false);
   const [consentError, setConsentError] = useState(false);
@@ -122,6 +123,7 @@ export default function RejestracjaDodatkowa() {
         hasHypertension,
         hasHeartDisease,
         hasKidneyDisease,
+        hasHighBloodPressure,
         healthDataConsent: true,
       };
 
@@ -277,6 +279,12 @@ export default function RejestracjaDodatkowa() {
                 icon={Activity}
                 value={hasPrediabetes}
                 onChange={setHasPrediabetes}
+              />
+              <ConditionPill
+                label="Podwyższone ciśnienie"
+                icon={Gauge}
+                value={hasHighBloodPressure}
+                onChange={setHasHighBloodPressure}
               />
               <ConditionPill
                 label="Nadciśnienie"

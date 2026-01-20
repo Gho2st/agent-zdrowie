@@ -31,6 +31,7 @@ export default function Profil() {
     hasHypertension: false,
     hasHeartDisease: false,
     hasKidneyDisease: false,
+    hasHighBloodPressure: false,
   });
 
   const handleDataUpdate = (newData) => {
@@ -39,7 +40,7 @@ export default function Profil() {
       ...newData,
       conditions: Array.isArray(newData.conditions)
         ? newData.conditions.join(",")
-        : newData.conditions ?? prev.conditions,
+        : (newData.conditions ?? prev.conditions),
     }));
   };
 
@@ -55,6 +56,7 @@ export default function Profil() {
     hasHypertension: norms.hasHypertension,
     hasHeartDisease: norms.hasHeartDisease,
     hasKidneyDisease: norms.hasKidneyDisease,
+    hasHighBloodPressure: norms.hasHighBloodPressure,
   };
 
   const setMedicationNorms = (action) => {
@@ -70,6 +72,7 @@ export default function Profil() {
         hasHypertension: prev.hasHypertension,
         hasHeartDisease: prev.hasHeartDisease,
         hasKidneyDisease: prev.hasKidneyDisease,
+        hasHighBloodPressure: prev.hasHighBloodPressure,
       };
 
       const result =
@@ -87,6 +90,7 @@ export default function Profil() {
         hasHypertension: result.hasHypertension ?? false,
         hasHeartDisease: result.hasHeartDisease ?? false,
         hasKidneyDisease: result.hasKidneyDisease ?? false,
+        hasHighBloodPressure: result.hasHighBloodPressure ?? false,
       };
     });
   };
@@ -189,8 +193,8 @@ export default function Profil() {
 
   const numericNorms = Object.fromEntries(
     Object.entries(norms).filter(
-      ([, val]) => typeof val === "number" || val === null || val === ""
-    )
+      ([, val]) => typeof val === "number" || val === null || val === "",
+    ),
   );
 
   return (

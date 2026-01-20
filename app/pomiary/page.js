@@ -9,6 +9,7 @@ import { useChat } from "@ai-sdk/react";
 import ListaPomiarow from "./ListaPomiarów";
 import { Loader2, PlusCircle, Sparkles, Bot, Save } from "lucide-react";
 import TrendMini from "@/components/UI/CentrumZdrowia/TrendMini";
+import { analyzeMeasurement } from "../utils/healthAnalysis";
 
 const defaults = {
   BLOOD_PRESSURE: "mmHg",
@@ -25,59 +26,26 @@ const typeDisplay = {
 };
 
 function asBP(v) {
-  const m = v.replace(/\s+/g, "").match(/^(\d{2,3})\/(\d{2,3})$/);
-  return m ? { sys: Number(m[1]), dia: Number(m[2]) } : null;
-}
+  const cleaned = v
+    .replace(/\s+/g, "")
+    .replace(/[:;,\-–—._|]/g, "/")
+    .replace(/\\+/g, "/");
 
+  const m = cleaned.match(/^(\d{2,3})\/(\d{2,3})$/);
+
+  if (m) {
+    return { sys: Number(m[1]), dia: Number(m[2]) };
+  }
+
+  const spaceMatch = v.replace(/\s+/g, " ").match(/^(\d{2,3})\s+(\d{2,3})$/);
+  if (spaceMatch) {
+    return { sys: Number(spaceMatch[1]), dia: Number(spaceMatch[2]) };
+  }
+
+  return null;
+}
 function isTextPart(p) {
   return p.type === "text" && typeof p.text === "string";
-}
-
-function checkNorms(typeKey, value, norms, unit, timing) {
-  if (!norms) return { out: false };
-
-  if (typeKey === "GLUCOSE") {
-    if (
-      timing === "przed posiłkiem" &&
-      norms.glucoseFastingMin != null &&
-      norms.glucoseFastingMax != null
-    ) {
-      const out =
-        value < norms.glucoseFastingMin || value > norms.glucoseFastingMax;
-      return out
-        ? { out, msg: `Twój cukier ${value} ${unit} poza normą na czczo.` }
-        : { out: false };
-    }
-    if (timing === "po posiłku" && norms.glucosePostMealMax != null) {
-      const out = value > norms.glucosePostMealMax;
-      return out
-        ? {
-            out,
-            msg: `Po posiłku wynik ${value} ${unit} > ${norms.glucosePostMealMax}.`,
-          }
-        : { out: false };
-    }
-  }
-
-  if (
-    typeKey === "WEIGHT" &&
-    norms.weightMin != null &&
-    norms.weightMax != null
-  ) {
-    const out = value < norms.weightMin || value > norms.weightMax;
-    return out ? { out, msg: "Waga poza normą." } : { out: false };
-  }
-
-  if (
-    typeKey === "HEART_RATE" &&
-    norms.pulseMin != null &&
-    norms.pulseMax != null
-  ) {
-    const out = value < norms.pulseMin || value > norms.pulseMax;
-    return out ? { out, msg: "Tętno poza normą." } : { out: false };
-  }
-
-  return { out: false };
 }
 
 export default function Pomiary() {
@@ -95,8 +63,10 @@ export default function Pomiary() {
   const [glucoseTime, setGlucoseTime] = useState("przed posiłkiem");
   const [pressureNote, setPressureNote] = useState("");
   const [pulseNote, setPulseNote] = useState("");
+  const [pulseContext, setPulseContext] = useState("spoczynkowe"); // ← NOWOŚĆ
 
   const [norms, setNorms] = useState(null);
+  const [hasHighRisk, setHasHighRisk] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -108,32 +78,82 @@ export default function Pomiary() {
     api: "/api/chat",
     id: chatId,
     onError: (err) => {
-      console.error("Chat error", err);
+      console.error("Chat error:", err);
       toast.error("Błąd generowania porady AI");
     },
   });
 
-  const fetchAgentAdvice = async (currentData) => {
+  //   PORADA AI – po dodaniu pomiaru
+  const fetchAgentAdvice = async (currentData, analysisResult) => {
     try {
       setMessages([]);
 
+      const isHighRisk = analysisResult.status?.includes("HIGH_RISK") || false;
+
+      const calculateAge = (birthdate) => {
+        if (!birthdate) return "nieznany";
+        const birthDate = new Date(birthdate);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (
+          monthDiff < 0 ||
+          (monthDiff === 0 && today.getDate() < birthDate.getDate())
+        ) {
+          age--;
+        }
+        return age;
+      };
+
+      const userAge = norms?.birthdate
+        ? calculateAge(norms.birthdate)
+        : "nieznany";
+      const userGender = norms?.gender === "MALE" ? "mężczyzna" : "kobieta";
+      const userHeight = norms?.height || "nieznany";
+      const userWeight = norms?.weight || "nieznany";
+      const userBMI = norms?.bmi || "nieznany";
+      const userActivity = norms?.activityLevel
+        ? norms.activityLevel.toLowerCase()
+        : "nieznany";
+      const userConditions = norms?.conditions || "brak";
+      const userMedications = norms?.medications || "brak";
+      const userRisk = norms?.hasHighRisk
+        ? "wysokie ryzyko sercowo-naczyniowe"
+        : "niskie/średnie";
+
       const promptContent = `
-        Oceń ten konkretny, nowy wynik zdrowotny. Nie analizuj historii, tylko ten jeden pomiar:
-        - Typ: ${currentData.type}
-        - Wartość: ${currentData.formattedValue}
-        - Pora/Kontekst: ${currentData.context || "Brak"}
-        - Notatka użytkownika: ${currentData.note || "Brak"}
-        
-        Czy ten wynik jest w normie? Daj krótką, empatyczną wskazówkę (max 2-3 zdania).
+Użytkownik: ${userGender}, ${userAge} lata, wzrost ${userHeight} cm, waga ~${userWeight} kg, BMI ${userBMI}, aktywność fizyczna: ${userActivity}.
+Choroby/stany: ${userConditions}. Leki/suplementy: ${userMedications}.
+Grupa ryzyka: ${userRisk}.
+
+Dane pomiaru:
+- Typ: ${currentData.type}
+- Wartość: ${currentData.formattedValue}
+- Kontekst: ${currentData.context || "Brak"}
+- Notatka użytkownika: ${currentData.note || "Brak"}
+
+Analiza systemowa:
+- Status: ${analysisResult?.status || "UNKNOWN"}
+- Komunikat: "${analysisResult?.message || ""}"
+- Poza normą: ${analysisResult?.isOutOfNorm ? "TAK" : "NIE"}
+${isHighRisk ? "- Pacjent należy do grupy wysokiego ryzyka sercowo-naczyniowego" : ""}
+
+Zadanie:
+Daj krótką (2-4 zdania) poradę w języku polskim, uwzględniając kontekst użytkownika (wiek, płeć, aktywność, leki, stany zdrowotne).
+- Jeśli OPTIMAL → pochwal użytkownika, zasugeruj utrzymanie stylu życia
+- Jeśli ELEVATED → delikatna sugestia zmiany stylu życia, dostosowana do aktywności/leków
+- Jeśli ELEVATED_HIGH_RISK → wyraźniejsza sugestia konsultacji / korekty, uwzględnij ryzyko
+- Jeśli ALARM / CRITICAL → pilny kontakt z lekarzem, podkreśl wiek/ryzyko
+Porada powinna być empatyczna, konkretna i motywująca.
       `;
 
       await append({
         id: `msg-${Date.now()}`,
         role: "user",
-        content: promptContent,
+        content: promptContent.trim(),
       });
     } catch (e) {
-      console.error("AI advice error", e);
+      console.error("AI advice error:", e);
     }
   };
 
@@ -141,79 +161,95 @@ export default function Pomiary() {
     const lastAssistant = [...messages]
       .reverse()
       .find((m) => m.role === "assistant");
-    const c = lastAssistant?.content;
-    if (!c) return undefined;
-    if (typeof c === "string") return c;
-    if (Array.isArray(c)) {
-      return c
+    if (!lastAssistant?.content) return null;
+
+    if (typeof lastAssistant.content === "string") return lastAssistant.content;
+
+    if (Array.isArray(lastAssistant.content)) {
+      return lastAssistant.content
         .filter(isTextPart)
         .map((p) => p.text)
         .join("\n");
     }
-    return undefined;
+    return null;
   }, [messages]);
 
+  //   ŁADOWANIE DANYCH
   useEffect(() => {
     if (status !== "authenticated") return;
+
     (async () => {
       try {
         const [mRes, nRes] = await Promise.all([
           fetch("/api/measurement", { cache: "no-store" }),
           fetch("/api/user/norms", { cache: "no-store" }),
         ]);
-        if (!mRes.ok || !nRes.ok) throw new Error("fetch");
-        const m = await mRes.json();
-        const n = await nRes.json();
-        if (Array.isArray(m)) setMeasurements(m);
-        setNorms(n);
-      } catch (e) {
-        console.error(e);
+
+        if (!mRes.ok || !nRes.ok) throw new Error("Błąd pobierania danych");
+
+        const [measurementsData, normsData] = await Promise.all([
+          mRes.json(),
+          nRes.json(),
+        ]);
+
+        setMeasurements(
+          Array.isArray(measurementsData) ? measurementsData : [],
+        );
+        setNorms(normsData);
+        setHasHighRisk(!!normsData?.hasHighRisk);
+      } catch (err) {
+        console.error("Błąd ładowania:", err);
+        toast.error("Nie udało się wczytać pomiarów");
       }
     })();
   }, [status, refreshKey]);
 
   useEffect(() => {
-    setUnit(defaults[type]);
+    setUnit(defaults[type] || "—");
   }, [type]);
 
   const currentDisplay = typeDisplay[type] || { label: "Pomiar", icon: "" };
 
+  //   USUWANIE POMIARU
   const requestDelete = useCallback((id) => setConfirmDeleteId(id), []);
+
   const confirmDelete = useCallback(async () => {
     if (!confirmDeleteId) return;
-    setMeasurements((p) => p.filter((m) => String(m.id) !== confirmDeleteId));
+
+    const idToDelete = confirmDeleteId;
+    setMeasurements((prev) => prev.filter((m) => String(m.id) !== idToDelete));
+
     try {
-      const res = await fetch(`/api/measurement/${confirmDeleteId}`, {
+      const res = await fetch(`/api/measurement/${idToDelete}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error();
-      toast.success("Usunięto");
+      toast.success("Pomiar usunięty");
     } catch {
-      setRefreshKey((prev) => prev + 1);
-      toast.error("Błąd usuwania");
+      toast.error("Nie udało się usunąć pomiaru");
+      setRefreshKey((k) => k + 1);
     } finally {
       setConfirmDeleteId(null);
     }
   }, [confirmDeleteId]);
 
+  //   ZAPIS POMIARU + TOASTY
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (status !== "authenticated") {
-      toast.error("Zaloguj się");
+      toast.error("Musisz być zalogowany");
       return;
     }
     if (isSubmitting) return;
 
     const now = Date.now();
-    if (lastSubmittedAt && now - lastSubmittedAt < 2000) return;
+    if (lastSubmittedAt && now - lastSubmittedAt < 1800) return;
 
     setIsSubmitting(true);
     setLastSubmittedAt(now);
 
     const body = { type, unit };
-    let isOutOfNorm = false;
-    let alertDetails = "";
-
+    let analysisResult = { status: "UNKNOWN", message: "", isOutOfNorm: false };
     let aiDataPayload = {
       type: currentDisplay.label,
       formattedValue: "",
@@ -225,8 +261,7 @@ export default function Pomiary() {
       if (type === "BLOOD_PRESSURE") {
         const bp = asBP(value);
         if (!bp) {
-          toast.error("Format: 120/80");
-          setIsSubmitting(false);
+          toast.error("Format ciśnienia: 120/80");
           return;
         }
         body.systolic = bp.sys;
@@ -236,48 +271,57 @@ export default function Pomiary() {
         aiDataPayload.formattedValue = `${bp.sys}/${bp.dia} ${unit}`;
         aiDataPayload.note = pressureNote;
 
-        if (norms?.systolicMin != null && norms?.systolicMax != null) {
-          if (bp.sys < norms.systolicMin || bp.sys > norms.systolicMax) {
-            isOutOfNorm = true;
-            alertDetails = "Ciśnienie poza normą.";
-          }
-        }
+        analysisResult = analyzeMeasurement(type, bp, norms, {}, hasHighRisk);
       } else {
         const numeric = Number(String(value).replace(",", "."));
         if (!Number.isFinite(numeric) || numeric < 0) {
-          toast.error("Błędna wartość");
-          setIsSubmitting(false);
+          toast.error("Wprowadź poprawną wartość liczbową");
           return;
         }
         body.amount = numeric;
-
         aiDataPayload.formattedValue = `${numeric} ${unit}`;
 
         if (type === "GLUCOSE") {
           body.context = glucoseTime || undefined;
           body.note = glucoseContext?.trim() || undefined;
-          aiDataPayload.context = `${glucoseTime}, ${glucoseContext || ""}`;
+          aiDataPayload.context = glucoseTime;
+          if (glucoseContext?.trim())
+            aiDataPayload.context += `, ${glucoseContext.trim()}`;
 
-          const res = checkNorms(type, numeric, norms, unit, glucoseTime);
-          if (res.out) {
-            isOutOfNorm = true;
-            alertDetails = res.msg;
-          }
-        }
+          analysisResult = analyzeMeasurement(
+            type,
+            numeric,
+            norms,
+            { timing: glucoseTime },
+            hasHighRisk,
+          );
+        } else if (type === "HEART_RATE") {
+          body.note = pulseNote?.trim() || undefined;
+          body.context =
+            pulseContext !== "spoczynkowe" ? pulseContext : undefined;
 
-        if (type === "WEIGHT" || type === "HEART_RATE") {
-          if (type === "HEART_RATE") {
-            body.note = pulseNote?.trim() || undefined;
-            aiDataPayload.note = pulseNote;
-          }
-          const res = checkNorms(type, numeric, norms, unit);
-          if (res.out) {
-            isOutOfNorm = true;
-            alertDetails = res.msg;
-          }
+          aiDataPayload.note = pulseNote;
+          aiDataPayload.context = pulseContext;
+
+          analysisResult = analyzeMeasurement(
+            type,
+            numeric,
+            norms,
+            { context: pulseContext },
+            hasHighRisk,
+          );
+        } else {
+          analysisResult = analyzeMeasurement(
+            type,
+            numeric,
+            norms,
+            {},
+            hasHighRisk,
+          );
         }
       }
 
+      // Zapis do bazy
       const res = await fetch("/api/measurement", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -285,8 +329,8 @@ export default function Pomiary() {
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "Błąd");
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Nie udało się zapisać pomiaru");
         return;
       }
 
@@ -295,23 +339,116 @@ export default function Pomiary() {
       setGlucoseContext("");
       setPressureNote("");
       setPulseNote("");
+      setRefreshKey((k) => k + 1);
 
-      setRefreshKey(Date.now());
+      // TOASTY
+      const { status: stat, message } = analysisResult;
 
-      if (isOutOfNorm) toast.error(alertDetails);
-      else toast.success("Zapisano!");
+      if (stat === "CRITICAL" || stat === "ALARM") {
+        toast.error(message, {
+          duration: 9000,
+          icon: "🚨",
+          style: {
+            border: "2px solid #dc2626",
+            background: "#fef2f2",
+            color: "#991b1b",
+          },
+        });
+      } else if (stat === "ELEVATED_HIGH_RISK") {
+        toast(message, {
+          duration: 7500,
+          icon: "⚠️🔴",
+          style: {
+            borderRadius: "12px",
+            background: "#fffbeb",
+            color: "#92400e",
+            border: "2px solid #f59e0b",
+            boxShadow: "0 4px 12px rgba(245,158,11,0.2)",
+          },
+        });
+      } else if (stat === "ELEVATED") {
+        toast(message, {
+          duration: 6000,
+          icon: "⚠️",
+          style: {
+            borderRadius: "10px",
+            background: "#fff7ed",
+            color: "#c2410c",
+            border: "1px solid #fdba74",
+          },
+        });
+      } else if (stat === "HIGH") {
+        toast(message || "Wartość wyraźnie powyżej normy", {
+          duration: 7000,
+          icon: "🚨",
+          style: {
+            borderRadius: "12px",
+            background: "#fef2f2",
+            color: "#991b1b",
+            border: "2px solid #dc2626",
+            boxShadow: "0 4px 12px rgba(220,38,38,0.15)",
+          },
+        });
+      } else if (stat === "LOW") {
+        toast(message, {
+          duration: 6000,
+          icon: "🔵",
+          style: {
+            background: "#eff6ff",
+            color: "#1e40af",
+            border: "1px solid #93c5fd",
+          },
+        });
+      } else if (stat === "IN_TARGET") {
+        toast.success(message, { duration: 5000, icon: "🏃‍♂️💚" });
+      } else if (stat === "BELOW_TARGET") {
+        toast(message, {
+          duration: 6000,
+          icon: "⚡",
+          style: {
+            background: "#fffbeb",
+            color: "#92400e",
+            border: "1px solid #f59e0b",
+          },
+        });
+      } else if (stat === "ABOVE_TARGET") {
+        toast(message, {
+          duration: 7000,
+          icon: "🔥",
+          style: {
+            background: "#fef2f2",
+            color: "#991b1b",
+            border: "1px solid #f87171",
+          },
+        });
+      } else {
+        toast.success(
+          hasHighRisk ? "Wynik w docelowym zakresie ✓" : "Świetny wynik! 👏",
+          { duration: 4500 },
+        );
+      }
 
+      // Zawsze informacja o zapisie
       setTimeout(() => {
-        fetchAgentAdvice(aiDataPayload);
-      }, 100);
+        toast.success("Pomiar zapisany", {
+          duration: 3000,
+          style: { background: "#ecfdf5", border: "1px solid #6ee7b7" },
+        });
+      }, 800);
+
+      // Uruchomienie AI
+      setTimeout(() => {
+        fetchAgentAdvice(aiDataPayload, analysisResult);
+      }, 1200);
     } catch (err) {
       console.error(err);
-      toast.error("Wystąpił błąd");
+      toast.error("Wystąpił nieoczekiwany błąd");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  //   RENDER
   const TrendSection = useMemo(
     () => (
       <TrendMini data={measurements} type={type} title={currentDisplay.label} />
@@ -361,11 +498,13 @@ export default function Pomiary() {
         <form
           onSubmit={handleSubmit}
           className={`
-            h-full relative bg-white/80 backdrop-blur-xl border border-white/40 p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 
+            h-full relative bg-white/80 backdrop-blur-xl border border-white/40 
+            p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 
             flex flex-col gap-5 transition-all duration-300
-            ${isSubmitting ? "opacity-80 pointer-events-none" : ""}
+            ${isSubmitting ? "opacity-75 pointer-events-none" : ""}
           `}
         >
+          {/* Nagłówek formularza */}
           <div className="flex items-center gap-3 mb-2 border-b border-gray-100 pb-4">
             <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
               <PlusCircle className="w-6 h-6" />
@@ -376,31 +515,31 @@ export default function Pomiary() {
             </div>
           </div>
 
+          {/* Typ pomiaru */}
           <div>
             <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
               Typ pomiaru
             </label>
-            <div className="relative">
-              <select
-                value={type}
-                onChange={(e) => {
-                  setType(e.target.value);
-                  setValue("");
-                }}
-                className="w-full p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-700 font-medium"
-              >
-                <option value="BLOOD_PRESSURE">💓 Ciśnienie</option>
-                <option value="GLUCOSE">🍭 Cukier (Glukoza)</option>
-                <option value="WEIGHT">⚖️ Waga</option>
-                <option value="HEART_RATE">❤️ Tętno</option>
-              </select>
-            </div>
+            <select
+              value={type}
+              onChange={(e) => {
+                setType(e.target.value);
+                setValue("");
+              }}
+              className="w-full p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-700 font-medium"
+            >
+              <option value="BLOOD_PRESSURE">💓 Ciśnienie</option>
+              <option value="GLUCOSE">🍭 Cukier (Glukoza)</option>
+              <option value="WEIGHT">⚖️ Waga</option>
+              <option value="HEART_RATE">❤️ Tętno</option>
+            </select>
           </div>
 
+          {/* Wartość */}
           <div>
             <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
               {type === "BLOOD_PRESSURE"
-                ? "Wynik (skurczowe/rozkurczowe)"
+                ? "Wynik (skurczowe / rozkurczowe)"
                 : "Wartość wyniku"}
             </label>
             <div className="relative">
@@ -432,6 +571,7 @@ export default function Pomiary() {
             </div>
           </div>
 
+          {/* Dodatkowe pola w zależności od typu */}
           {type === "GLUCOSE" && (
             <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
               <div>
@@ -469,30 +609,72 @@ export default function Pomiary() {
             </div>
           )}
 
-          {(type === "BLOOD_PRESSURE" || type === "HEART_RATE") && (
+          {type === "HEART_RATE" && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+              <div>
+                <span className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
+                  Kiedy zmierzono tętno?
+                </span>
+                <div className="grid grid-cols-2 gap-3">
+                  {["spoczynkowe", "podczas treningu"].map((ctx) => (
+                    <button
+                      key={ctx}
+                      type="button"
+                      onClick={() => setPulseContext(ctx)}
+                      className={`
+              py-3 px-4 rounded-xl text-sm font-medium border transition-all
+              flex items-center justify-center gap-2
+              ${
+                pulseContext === ctx
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-md"
+                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+              }
+            `}
+                    >
+                      {ctx === "spoczynkowe"
+                        ? "🪑 Spoczynkowe"
+                        : "🏃 Podczas treningu"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
+                  Notatka / dodatkowe informacje (opcjonalnie)
+                </label>
+                <textarea
+                  value={pulseNote}
+                  onChange={(e) => setPulseNote(e.target.value)}
+                  rows={2}
+                  placeholder="np. stres..."
+                  className="w-full p-3 rounded-xl border border-gray-200 bg-white resize-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {type === "BLOOD_PRESSURE" && (
             <div className="animate-in fade-in slide-in-from-top-2">
               <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
                 Notatka
               </label>
               <textarea
-                value={type === "BLOOD_PRESSURE" ? pressureNote : pulseNote}
-                onChange={(e) =>
-                  type === "BLOOD_PRESSURE"
-                    ? setPressureNote(e.target.value)
-                    : setPulseNote(e.target.value)
-                }
+                value={pressureNote}
+                onChange={(e) => setPressureNote(e.target.value)}
                 rows={1}
-                placeholder="np. stres, po kawie"
+                placeholder="np. stres, po kawie, wieczorem"
                 className="w-full p-3 rounded-xl border border-gray-200 bg-white"
               />
             </div>
           )}
 
+          {/* Przycisk zapisu */}
           <div className="mt-auto">
             <button
               type="submit"
               disabled={status !== "authenticated" || isSubmitting}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transition-all disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -505,6 +687,7 @@ export default function Pomiary() {
           </div>
         </form>
 
+        {/* Prawy panel – trend + AI */}
         <div className="flex flex-col gap-6 h-full">
           <div className="shrink-0 h-[300px] xl:h-[320px]">{TrendSection}</div>
 
@@ -524,25 +707,26 @@ export default function Pomiary() {
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar relative">
-              {isLoading ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center space-y-3 bg-white/50 backdrop-blur-sm z-10">
+              {isLoading && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center space-y-3 bg-white/60 backdrop-blur-sm z-10">
                   <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
                   <span className="text-sm font-medium text-violet-600 animate-pulse">
                     Analizuję wynik...
                   </span>
                 </div>
-              ) : null}
+              )}
 
               {gptResponse ? (
-                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 pb-2">
-                  <div className="bg-violet-50/50 p-4 rounded-2xl border border-violet-100 text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 pb-4">
+                  <div className="bg-violet-50/60 p-4 rounded-2xl border border-violet-100 text-sm text-gray-800 leading-relaxed whitespace-pre-line">
                     {gptResponse}
                   </div>
+
                   {!isLoading && (
-                    <div className="mt-3 flex justify-end">
+                    <div className="mt-4 flex justify-end">
                       <button
                         type="button"
-                        className="text-xs flex items-center gap-1.5 text-violet-600 hover:text-violet-800 font-medium bg-white px-3 py-1.5 rounded-lg border border-violet-100 shadow-sm transition-colors"
+                        className="text-xs flex items-center gap-1.5 text-violet-700 hover:text-violet-900 font-medium bg-white px-3 py-1.5 rounded-lg border border-violet-200 shadow-sm hover:shadow transition-all"
                         onClick={() =>
                           append({
                             role: "user",
@@ -550,17 +734,17 @@ export default function Pomiary() {
                           })
                         }
                       >
-                        <Sparkles className="w-3 h-3" />
-                        Dopytaj
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Dopytaj AI
                       </button>
                     </div>
                   )}
                 </div>
               ) : (
                 !isLoading && (
-                  <div className="h-full flex flex-col items-center justify-center text-center py-4">
+                  <div className="h-full flex flex-col items-center justify-center text-center py-8">
                     <p className="text-gray-400 text-sm italic">
-                      Dodaj pomiar, aby otrzymać analizę.
+                      Dodaj pomiar, aby otrzymać analizę i poradę AI
                     </p>
                   </div>
                 )

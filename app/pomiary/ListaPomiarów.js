@@ -14,7 +14,11 @@ import {
   Calendar,
   AlertCircle,
   CheckCircle2,
+  Info,
+  AlertTriangle,
 } from "lucide-react";
+
+import { analyzeMeasurement } from "../utils/healthAnalysis";
 
 const ITEMS_PER_PAGE = 12;
 
@@ -24,108 +28,70 @@ const MEASUREMENT_STYLES = {
     icon: Activity,
     bg: "bg-indigo-50",
     text: "text-indigo-600",
-    border: "border-indigo-100",
-    badge: "bg-indigo-100 text-indigo-700",
   },
   GLUCOSE: {
     label: "Glukoza",
     icon: Droplets,
     bg: "bg-amber-50",
     text: "text-amber-600",
-    border: "border-amber-100",
-    badge: "bg-amber-100 text-amber-700",
   },
   WEIGHT: {
     label: "Waga",
     icon: Scale,
     bg: "bg-teal-50",
     text: "text-teal-600",
-    border: "border-teal-100",
-    badge: "bg-teal-100 text-teal-700",
   },
   HEART_RATE: {
     label: "Tętno",
     icon: Heart,
     bg: "bg-rose-50",
     text: "text-rose-600",
-    border: "border-rose-100",
-    badge: "bg-rose-100 text-rose-700",
   },
   DEFAULT: {
     label: "Inne",
     icon: Activity,
     bg: "bg-gray-50",
     text: "text-gray-600",
-    border: "border-gray-100",
-    badge: "bg-gray-100 text-gray-700",
   },
 };
 
-const getNormStatus = (m, n) => {
-  if (!n) return "UNKNOWN";
-
-  if (m.type === "BLOOD_PRESSURE") {
-    const sys = m.systolic || m.value;
-    const dia = m.diastolic || m.value2;
-    if (sys == null || dia == null) return "UNKNOWN";
-    if (sys > n.systolicMax || dia > n.diastolicMax) return "HIGH";
-    if (sys < n.systolicMin || dia < n.diastolicMin) return "LOW";
-    return "IN_RANGE";
-  }
-
-  const value = m.amount || m.value;
-  const timing = m.timing;
-
-  if (m.type === "GLUCOSE") {
-    if (
-      timing?.includes("przed") &&
-      n.glucoseFastingMin != null &&
-      n.glucoseFastingMax != null
-    ) {
-      if (value < n.glucoseFastingMin || value > n.glucoseFastingMax)
-        return value < n.glucoseFastingMin ? "LOW" : "HIGH";
-    }
-    if (
-      timing?.includes("po") &&
-      n.glucosePostMealMax != null &&
-      value > n.glucosePostMealMax
-    )
-      return "HIGH";
-    return "IN_RANGE";
-  }
-
-  if (m.type === "WEIGHT" && n.weightMin != null && n.weightMax != null) {
-    if (value < n.weightMin || value > n.weightMax)
-      return value < n.weightMin ? "LOW" : "HIGH";
-  }
-  if (m.type === "HEART_RATE" && n.pulseMin != null && n.pulseMax != null) {
-    if (value < n.pulseMin || value > n.pulseMax)
-      return value < n.pulseMin ? "LOW" : "HIGH";
-  }
-  return "IN_RANGE";
+const STATUS_LABELS = {
+  CRITICAL: "Krytyczny",
+  ALARM: "Powyżej normy",
+  ELEVATED: "Podwyższony",
+  HIGH: "Za wysoki",
+  LOW: "Za niski",
+  OPTIMAL: "Optymalny",
+  IN_RANGE: "W normie",
+  OK: "OK",
+  UNKNOWN: "Brak norm",
+  IN_TARGET: "W strefie",
+  BELOW_TARGET: "Poniżej strefy",
+  ABOVE_TARGET: "Powyżej strefy",
 };
 
-const getStatusLabel = (s) =>
-  ({
-    HIGH: "Podwyższony",
-    LOW: "Zbyt niski",
-    IN_RANGE: "W normie",
-    UNKNOWN: "Brak norm",
-  }[s] || "Brak norm");
+const COLOR_STYLES = {
+  red: "text-red-600 bg-red-50 border-red-100",
+  orange: "text-orange-600 bg-orange-50 border-orange-100",
+  yellow: "text-amber-700 bg-amber-50 border-amber-200",
+  green: "text-emerald-600 bg-emerald-50 border-emerald-100",
+  blue: "text-blue-600 bg-blue-50 border-blue-100",
+  gray: "text-gray-500 bg-gray-50 border-gray-100",
+};
 
-const getStatusColorClass = (s) =>
-  ({
-    HIGH: "text-rose-600 bg-rose-50 border-rose-100",
-    LOW: "text-amber-600 bg-amber-50 border-amber-100",
-    IN_RANGE: "text-emerald-600 bg-emerald-50 border-emerald-100",
-    UNKNOWN: "text-gray-500 bg-gray-50 border-gray-100",
-  }[s]);
-
-const getStatusIcon = (s) => {
-  if (s === "IN_RANGE") return <CheckCircle2 className="w-3.5 h-3.5" />;
-  if (s === "HIGH" || s === "LOW")
-    return <AlertCircle className="w-3.5 h-3.5" />;
-  return null;
+const getStatusIcon = (color) => {
+  switch (color) {
+    case "green":
+      return <CheckCircle2 className="w-3.5 h-3.5" />;
+    case "red":
+    case "orange":
+      return <AlertTriangle className="w-3.5 h-3.5" />;
+    case "blue":
+    case "yellow":
+      return <AlertCircle className="w-3.5 h-3.5" />;
+    default:
+      return null;
+  }
 };
 
 const getMeasurementDisplay = (m) => {
@@ -139,6 +105,14 @@ const getMeasurementDisplay = (m) => {
     default:
       return "—";
   }
+};
+
+const VALID_CONTEXTS = ["przed posiłkiem", "po posiłku", "podczas treningu"];
+
+const getValidContext = (raw) => {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  return VALID_CONTEXTS.includes(trimmed) ? trimmed : null;
 };
 
 export default function ListaPomiarow({
@@ -175,9 +149,11 @@ export default function ListaPomiarow({
         return new Date(b.createdAt) - new Date(a.createdAt);
       if (sortOrder === "dateAsc")
         return new Date(a.createdAt) - new Date(b.createdAt);
-      const va = a.amount || a.value || a.systolic || 0;
-      const vb = b.amount || b.value || b.systolic || 0;
-      return sortOrder === "valueDesc" ? vb - va : va - vb;
+
+      const getVal = (item) => item.amount || item.value || item.systolic || 0;
+      return sortOrder === "valueDesc"
+        ? getVal(b) - getVal(a)
+        : getVal(a) - getVal(b);
     });
 
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -210,7 +186,7 @@ export default function ListaPomiarow({
 
   return (
     <div className="mt-10">
-      <div className="bg-white border border-gray-200 rounded-3xl p-6 mb-8">
+      <div className="bg-white border border-gray-200 rounded-3xl p-6 mb-8 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex flex-col gap-3">
             <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -221,7 +197,7 @@ export default function ListaPomiarow({
               <select
                 value={filterType}
                 onChange={handleFilterChange}
-                className="appearance-none w-full md:w-64 pl-4 pr-10 py-2.5 rounded-xl bg-gray-50 border border-gray-300 text-gray-700 text-sm font-medium outline-none"
+                className="appearance-none w-full md:w-64 pl-4 pr-10 py-2.5 rounded-xl bg-gray-50 border border-gray-300 text-gray-700 text-sm font-medium outline-none focus:ring-2 focus:ring-blue-100 transition-all"
               >
                 <option value="all">Wszystkie typy</option>
                 <option value="BLOOD_PRESSURE">💓 Ciśnienie</option>
@@ -270,13 +246,75 @@ export default function ListaPomiarow({
               const style =
                 MEASUREMENT_STYLES[m.type] || MEASUREMENT_STYLES.DEFAULT;
               const Icon = style.icon;
-              const status = getNormStatus(m, norms);
-              const statusClass = getStatusColorClass(status);
+
+              const valueForAnalysis =
+                m.type === "BLOOD_PRESSURE"
+                  ? { sys: m.systolic || m.value, dia: m.diastolic || m.value2 }
+                  : m.amount || m.value;
+
+              const validContext = getValidContext(m.context);
+
+              let analysisContext = {};
+
+              if (m.type === "GLUCOSE") {
+                if (
+                  validContext === "przed posiłkiem" ||
+                  validContext === "po posiłku"
+                ) {
+                  analysisContext.timing = validContext;
+                }
+              } else if (m.type === "HEART_RATE") {
+                if (validContext === "podczas treningu") {
+                  analysisContext.context = "podczas treningu";
+                } else {
+                  analysisContext.context = "spoczynkowe"; // domyślny
+                }
+              }
+
+              const analysis = analyzeMeasurement(
+                m.type,
+                valueForAnalysis,
+                norms,
+                analysisContext,
+                norms?.hasHighRisk ?? false,
+              );
+
+              let normHint = "";
+              if (norms) {
+                if (m.type === "BLOOD_PRESSURE" && norms.systolicMax) {
+                  normHint = `Limit: < ${norms.systolicMax}/${norms.diastolicMax}`;
+                } else if (m.type === "GLUCOSE") {
+                  if (
+                    analysisContext.timing === "przed posiłkiem" &&
+                    norms.glucoseFastingMax
+                  ) {
+                    normHint = `Norma na czczo: < ${norms.glucoseFastingMax}`;
+                  } else if (
+                    analysisContext.timing === "po posiłku" &&
+                    norms.glucosePostMealMax
+                  ) {
+                    normHint = `Norma po posiłku: < ${norms.glucosePostMealMax}`;
+                  }
+                } else if (m.type === "WEIGHT" && norms.weightMax) {
+                  normHint = `Norma: ${norms.weightMin}-${norms.weightMax}`;
+                } else if (m.type === "HEART_RATE") {
+                  if (analysisContext.context === "podczas treningu") {
+                    normHint = `Strefa: ${norms.targetHeartRateMin}–${norms.targetHeartRateMax} bpm`;
+                  } else {
+                    normHint = `Norma spoczynkowa: ${norms.pulseMin}-${norms.pulseMax}`;
+                  }
+                }
+              }
+
+              const statusLabel =
+                STATUS_LABELS[analysis.status] || analysis.status;
+              const colorClass =
+                COLOR_STYLES[analysis.color] || COLOR_STYLES.gray;
 
               return (
                 <div
                   key={m.id}
-                  className="bg-white border border-gray-200 p-5 rounded-2xl flex flex-col justify-between"
+                  className="bg-white border border-gray-200 p-5 rounded-2xl flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow duration-300"
                 >
                   <div>
                     <div className="flex justify-between items-start mb-4">
@@ -298,7 +336,7 @@ export default function ListaPomiarow({
 
                       <button
                         onClick={() => requestDelete(String(m.id))}
-                        className="p-2 text-gray-400 hover:text-red-600 rounded-lg"
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="Usuń wpis"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -314,11 +352,29 @@ export default function ListaPomiarow({
 
                   <div className="space-y-3">
                     <div
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold ${statusClass}`}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold ${colorClass}`}
+                      title={analysis.message}
                     >
-                      {getStatusIcon(status)}
-                      {getStatusLabel(status)}
+                      {getStatusIcon(analysis.color)}
+                      {statusLabel}
                     </div>
+
+                    {(analysis.isOutOfNorm ||
+                      analysis.status === "ELEVATED" ||
+                      analysis.status?.includes("TARGET")) && (
+                      <div className="flex flex-col gap-0.5">
+                        {analysis.message && (
+                          <p className="text-[10px] leading-tight text-gray-500">
+                            {analysis.message}
+                          </p>
+                        )}
+                        {normHint && (
+                          <p className="text-[10px] font-medium text-gray-400">
+                            ({normHint})
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     <div className="pt-3 border-t border-gray-200 flex flex-col gap-1.5 text-xs text-gray-500">
                       <div className="flex items-center gap-1.5">
@@ -331,22 +387,18 @@ export default function ListaPomiarow({
                         })}
                       </div>
 
-                      {/* CONTEXT + NOTE – wyświetlamy tylko jeśli istnieje */}
-                      {(m.context || m.note) && (
-                        <div className="flex flex-col gap-1">
-                          {m.context && (
-                            <div className="text-gray-600 font-medium">
-                              {m.context}
-                            </div>
-                          )}
-                          {m.note && (
-                            <div
-                              className="text-gray-500 italic truncate max-w-full"
-                              title={m.note}
-                            >
-                              – {m.note}
-                            </div>
-                          )}
+                      {validContext && (
+                        <div className="text-gray-600 font-medium bg-gray-50 px-1.5 py-0.5 rounded w-fit">
+                          {validContext}
+                        </div>
+                      )}
+
+                      {m.note && (
+                        <div className="text-gray-500 italic flex items-start gap-1">
+                          <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                          <span className="truncate" title={m.note}>
+                            {m.note}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -363,19 +415,19 @@ export default function ListaPomiarow({
           <button
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="px-4 py-2 rounded-xl bg-gray-100 border border-gray-300 text-sm font-medium disabled:opacity-50"
+            className="px-4 py-2 rounded-xl bg-gray-100 border border-gray-300 text-sm font-medium disabled:opacity-50 hover:bg-gray-200 transition-colors"
           >
             Poprzednia
           </button>
 
-          <div className="px-4 py-2 bg-gray-200 rounded-xl text-sm font-bold text-gray-700">
+          <div className="px-4 py-2 bg-gray-800 rounded-xl text-sm font-bold text-white shadow-md">
             {currentPage} / {totalPages}
           </div>
 
           <button
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="px-4 py-2 rounded-xl bg-gray-100 border border-gray-300 text-sm font-medium disabled:opacity-50"
+            className="px-4 py-2 rounded-xl bg-gray-100 border border-gray-300 text-sm font-medium disabled:opacity-50 hover:bg-gray-200 transition-colors"
           >
             Następna
           </button>
@@ -383,8 +435,8 @@ export default function ListaPomiarow({
       )}
 
       {confirmDeleteId && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 max-w-sm w-full border border-gray-200">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 max-w-sm w-full border border-gray-200 scale-100 animate-in zoom-in-95 duration-200">
             <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center mb-4 text-red-500 mx-auto">
               <Trash2 className="w-6 h-6" />
             </div>
@@ -400,13 +452,13 @@ export default function ListaPomiarow({
             <div className="flex gap-3">
               <button
                 onClick={() => setConfirmDeleteId(null)}
-                className="flex-1 py-3 rounded-xl bg-gray-100 text-gray-700 font-medium"
+                className="flex-1 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition-colors"
               >
                 Anuluj
               </button>
               <button
                 onClick={confirmDelete}
-                className="flex-1 py-3 rounded-xl bg-red-600 text-white font-medium"
+                className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium shadow-lg shadow-red-200 transition-all"
               >
                 Usuń
               </button>
