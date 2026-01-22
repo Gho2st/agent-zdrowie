@@ -79,7 +79,7 @@ export default function Pomiary() {
   const config = MEASUREMENT_TYPES[type] || MEASUREMENT_TYPES.BLOOD_PRESSURE;
 
   useEffect(() => {
-    if (type === "HEART_RATE" && context !== "spoczynkowe") {
+    if (type === "HEART_RATE") {
       setContext("spoczynkowe");
     }
   }, [type]);
