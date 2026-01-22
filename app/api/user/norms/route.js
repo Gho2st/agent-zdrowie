@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { getHealthNorms } from "@/lib/norms";
+import { ActivityLevel } from "@prisma/client";
 
 function calculateAge(birthdate) {
   if (!birthdate) return 30;
@@ -18,8 +19,6 @@ function calculateBMI(heightCm, weightKg) {
   const heightM = heightCm / 100;
   return Number((weightKg / (heightM * heightM)).toFixed(1));
 }
-
-const VALID_ACTIVITY_LEVELS = new Set(["LOW", "MODERATE", "HIGH"]);
 
 function flattenProfileData(healthProfile) {
   if (!healthProfile) return null;
@@ -40,7 +39,7 @@ function flattenProfileData(healthProfile) {
 
   return {
     ...rest,
-    activityLevel: rest.activityLevel,
+    activityLevel: rest.activityLevel, // To już jest Enum z bazy
     conditions: conditionsString,
     ...norms,
     hasHighRisk,
@@ -87,9 +86,11 @@ export async function PATCH(req) {
 
     if (heightChanged) updateData.height = Number(height);
     if (weightChanged) updateData.weight = Number(weight);
-    if (activityLevel && VALID_ACTIVITY_LEVELS.has(activityLevel)) {
+
+    if (activityLevel && Object.values(ActivityLevel).includes(activityLevel)) {
       updateData.activityLevel = activityLevel;
     }
+
     if (medications !== undefined) {
       updateData.medications = (medications || "").trim();
     }
@@ -175,7 +176,9 @@ export async function PATCH(req) {
           height: updateData.height ?? profile.height ?? 0,
           weight: updateData.weight ?? profile.weight ?? 0,
           activityLevel:
-            updateData.activityLevel ?? profile.activityLevel ?? "MODERATE",
+            updateData.activityLevel ??
+            profile.activityLevel ??
+            ActivityLevel.MODERATE,
           hasDiabetes: updateData.hasDiabetes ?? profile.hasDiabetes ?? false,
           hasPrediabetes:
             updateData.hasPrediabetes ?? profile.hasPrediabetes ?? false,

@@ -9,9 +9,8 @@ import {
   CheckCircle,
   Settings2,
   RotateCcw,
-} from "lucide-react"; // <-- Dodałem RotateCcw
+} from "lucide-react";
 
-// ... (fieldLabels bez zmian) ...
 const fieldLabels = {
   systolicMin: "Ciśnienie skurczowe (min)",
   systolicMax: "Ciśnienie skurczowe (max)",
@@ -51,14 +50,12 @@ export default function Norms({ norms, handleChange, onUpdate }) {
     setEditingNorms(true);
   };
 
-  // --- NOWA FUNKCJA RESETU ---
   const handleReset = async () => {
     if (!confirm("Czy na pewno chcesz przywrócić domyślne normy medyczne?"))
       return;
 
     setIsSaving(true);
     try {
-      // Wysyłamy flagę reset: true
       const res = await fetch("/api/user/norms", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -69,7 +66,7 @@ export default function Norms({ norms, handleChange, onUpdate }) {
         const updatedData = await res.json();
         if (onUpdate) onUpdate(updatedData);
         toast.success("Przywrócono wartości domyślne");
-        setEditingNorms(false); // Wychodzimy z trybu edycji
+        setEditingNorms(false);
       } else {
         const err = await res.json();
         toast.error(err.error || "Błąd resetowania");
@@ -243,7 +240,7 @@ export default function Norms({ norms, handleChange, onUpdate }) {
               Anuluj
             </button>
 
-            {/* PRZYCISK RESET (NOWY) */}
+            {/* PRZYCISK RESET  */}
             <button
               onClick={handleReset}
               disabled={isSaving}

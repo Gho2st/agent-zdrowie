@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
+import { MeasurementType } from "@prisma/client"; // 👈 Import Enuma
 
 export async function POST(req) {
   const session = await auth();
@@ -14,51 +15,46 @@ export async function POST(req) {
 
   const { amount, type, unit, systolic, diastolic, context, note } = body;
 
-  const VALID_TYPES = new Set([
-    "BLOOD_PRESSURE",
-    "GLUCOSE",
-    "WEIGHT",
-    "HEART_RATE",
-  ]);
-
-  if (!VALID_TYPES.has(type)) {
+  // Walidacja typu pomiaru przy użyciu Enuma z Prismy
+  if (!Object.values(MeasurementType).includes(type)) {
     return NextResponse.json(
       { error: "Nieprawidłowy typ pomiaru" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  //  Przygotowanie danych (value / value2)
+  // Przygotowanie danych (value / value2)
   let finalValue = null;
   let finalValue2 = null;
 
-  if (type === "BLOOD_PRESSURE") {
+  if (type === MeasurementType.BLOOD_PRESSURE) {
     if (typeof systolic !== "number" || typeof diastolic !== "number") {
       return NextResponse.json(
         { error: "Wymagane wartości skurczowe i rozkurczowe" },
-        { status: 400 }
+        { status: 400 },
       );
     }
     finalValue = systolic;
     finalValue2 = diastolic;
   } else {
+    // Dla reszty typów (Waga, Glukoza, Tętno)
     if (amount === undefined || amount === null || amount === "") {
       return NextResponse.json(
         { error: "Wartość nie może być pusta" },
-        { status: 400 }
+        { status: 400 },
       );
     }
     finalValue = Number(amount);
     if (isNaN(finalValue)) {
       return NextResponse.json(
         { error: "Niepoprawna liczba" },
-        { status: 400 }
+        { status: 400 },
       );
     }
   }
 
   try {
-    //  Pobranie usera
+    // Pobranie usera
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
@@ -73,7 +69,7 @@ export async function POST(req) {
     }
 
     // Specjalna logika dla WAGI (aktualizacja profilu i BMI)
-    if (type === "WEIGHT") {
+    if (type === MeasurementType.WEIGHT) {
       const profile = user.healthProfile;
 
       // Aktualizujemy tylko, jeśli użytkownik ma utworzony profil zdrowotny
@@ -106,7 +102,7 @@ export async function POST(req) {
       }
     }
 
-    // . Zapis pomiaru w tabeli Measurement
+    // Zapis pomiaru w tabeli Measurement
     const measurement = await prisma.measurement.create({
       data: {
         userId: user.id,
@@ -146,7 +142,7 @@ export async function GET() {
     });
 
     const mappedMeasurements = rawMeasurements.map((m) => {
-      const isBP = m.type === "BLOOD_PRESSURE";
+      const isBP = m.type === MeasurementType.BLOOD_PRESSURE;
       return {
         ...m,
         amount: isBP ? null : m.value,

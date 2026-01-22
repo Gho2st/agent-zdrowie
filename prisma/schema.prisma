@@ -8,6 +8,12 @@ datasource db {
   provider = "postgresql"
 }
 
+generator erd {
+  provider      = "prisma-erd-generator"
+  output        = "./ERD.svg"
+  theme         = "forest"
+}
+
 // --- ENUMY (Słowniki) ---
 
 enum Gender {
@@ -56,18 +62,18 @@ model HealthProfile {
   weight        Float
   activityLevel ActivityLevel
 
-  hasDiabetes      Boolean     @default(false) // Cukrzyca
-  hasPrediabetes   Boolean     @default(false) // Stan przedcukrzycowy
-  hasHypertension  Boolean     @default(false) // Nadciśnienie
-  hasHeartDisease  Boolean     @default(false) // CVD (Choroby serca)
-  hasKidneyDisease Boolean     @default(false) // CKD (Choroby nerek)
-  hasHighBloodPressure Boolean @default(false) // Podwyzszone cisnienie
+  hasDiabetes          Boolean      @default(false) // Cukrzyca
+  hasPrediabetes       Boolean      @default(false) // Stan przedcukrzycowy
+  hasHypertension      Boolean      @default(false) // Nadciśnienie
+  hasHeartDisease      Boolean      @default(false) // CVD (Choroby serca)
+  hasKidneyDisease     Boolean      @default(false) // CKD (Choroby nerek)
+  hasHighBloodPressure Boolean      @default(false) // Podwyzszone cisnienie
   // Pozostałe choroby (np. astma, alergie) nadal mogą być tutaj
-  conditions       Condition[]
-  medications      String?
-  healthDataConsent Boolean @default(false)
-  healthDataConsentAt DateTime? // data i godzina udzielenia zgody RODO
-  norms HealthNorms?
+  conditions           Condition[]
+  medications          String?
+  healthDataConsent    Boolean      @default(false)
+  healthDataConsentAt  DateTime? // data i godzina udzielenia zgody RODO
+  norms                HealthNorms?
 }
 
 // 3. Słownik Chorób

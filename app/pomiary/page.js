@@ -1,180 +1,90 @@
 "use client";
 
-import Container from "@/components/UI/Container/Container";
-import Header from "@/components/UI/Headers/Header";
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import { useChat } from "@ai-sdk/react";
-import ListaPomiarow from "./ListaPomiarów";
 import { Loader2, PlusCircle, Sparkles, Bot, Save } from "lucide-react";
+
+import Container from "@/components/UI/Container/Container";
+import Header from "@/components/UI/Headers/Header";
 import TrendMini from "@/components/UI/CentrumZdrowia/TrendMini";
+import ListaPomiarow from "./ListaPomiarów";
 import { analyzeMeasurement } from "../utils/healthAnalysis";
 
-const defaults = {
-  BLOOD_PRESSURE: "mmHg",
-  GLUCOSE: "mg/dL",
-  WEIGHT: "kg",
-  HEART_RATE: "bpm",
+// KONFIGURACJA TYPÓW POMIARÓW
+
+const MEASUREMENT_TYPES = {
+  BLOOD_PRESSURE: {
+    label: "Ciśnienie",
+    icon: "💓",
+    unit: "mmHg",
+    input: "blood-pressure",
+    contextOptions: null,
+    notePlaceholder: "np. stres, po kawie, wieczorem",
+  },
+  GLUCOSE: {
+    label: "Cukier (Glukoza)",
+    icon: "🍭",
+    unit: "mg/dL",
+    input: "number",
+    contextOptions: ["przed posiłkiem", "po posiłku"],
+    notePlaceholder: "np. po dużym wysiłku...",
+  },
+  HEART_RATE: {
+    label: "Tętno",
+    icon: "❤️",
+    unit: "bpm",
+    input: "number",
+    contextOptions: ["spoczynkowe", "podczas treningu"],
+    notePlaceholder: "np. po schodach, zdenerwowany...",
+  },
+  WEIGHT: {
+    label: "Waga",
+    icon: "⚖️",
+    unit: "kg",
+    input: "number",
+    contextOptions: null,
+    notePlaceholder: "np. na czczo, z ubraniem...",
+  },
 };
 
-const typeDisplay = {
-  BLOOD_PRESSURE: { label: "Ciśnienie", icon: "💓" },
-  GLUCOSE: { label: "Cukier (Glukoza)", icon: "🍭" },
-  WEIGHT: { label: "Waga", icon: "⚖️" },
-  HEART_RATE: { label: "Tętno", icon: "❤️" },
-};
-
-function asBP(v) {
-  const cleaned = v
-    .replace(/\s+/g, "")
-    .replace(/[:;,\-–—._|]/g, "/")
-    .replace(/\\+/g, "/");
-
-  const m = cleaned.match(/^(\d{2,3})\/(\d{2,3})$/);
-
-  if (m) {
-    return { sys: Number(m[1]), dia: Number(m[2]) };
-  }
-
-  const spaceMatch = v.replace(/\s+/g, " ").match(/^(\d{2,3})\s+(\d{2,3})$/);
-  if (spaceMatch) {
-    return { sys: Number(spaceMatch[1]), dia: Number(spaceMatch[2]) };
-  }
-
-  return null;
-}
-
-function isTextPart(p) {
-  return p.type === "text" && typeof p.text === "string";
-}
+// GŁÓWNY KOMPONENT
 
 export default function Pomiary() {
   const { status } = useSession();
 
   const [type, setType] = useState("BLOOD_PRESSURE");
   const [value, setValue] = useState("");
-  const [unit, setUnit] = useState(defaults["BLOOD_PRESSURE"]);
+  const [context, setContext] = useState("");
+  const [note, setNote] = useState("");
 
   const [measurements, setMeasurements] = useState([]);
   const [filterType, setFilterType] = useState("all");
   const [refreshKey, setRefreshKey] = useState(0);
-
-  const [glucoseContext, setGlucoseContext] = useState("");
-  const [glucoseTime, setGlucoseTime] = useState("przed posiłkiem");
-  const [pressureNote, setPressureNote] = useState("");
-  const [pulseNote, setPulseNote] = useState("");
-  const [pulseContext, setPulseContext] = useState("spoczynkowe");
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const [norms, setNorms] = useState(null);
   const [hasHighRisk, setHasHighRisk] = useState(false);
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastSubmittedAt, setLastSubmittedAt] = useState(null);
 
-  const [chatId] = useState(() => `feedback-${crypto.randomUUID()}`);
-
+  const [chatId] = useState(() => `health-${crypto.randomUUID()}`);
   const { messages, append, isLoading, setMessages } = useChat({
     api: "/api/chat",
     id: chatId,
-    onError: (err) => {
-      console.error("Chat error:", err);
-      toast.error("Błąd generowania porady AI");
-    },
+    onError: () => toast.error("Błąd generowania porady AI"),
   });
 
-  // --- PORADA AI ---
-  const fetchAgentAdvice = async (currentData, analysisResult) => {
-    try {
-      setMessages([]);
+  const config = MEASUREMENT_TYPES[type] || MEASUREMENT_TYPES.BLOOD_PRESSURE;
 
-      const calculateAge = (birthdate) => {
-        if (!birthdate) return "nieznany";
-        const birthDate = new Date(birthdate);
-        const today = new Date();
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const monthDiff = today.getMonth() - birthDate.getMonth();
-        if (
-          monthDiff < 0 ||
-          (monthDiff === 0 && today.getDate() < birthDate.getDate())
-        ) {
-          age--;
-        }
-        return age;
-      };
-
-      const userAge = norms?.birthdate
-        ? calculateAge(norms.birthdate)
-        : "nieznany";
-      const userGender = norms?.gender === "MALE" ? "mężczyzna" : "kobieta";
-      const userHeight = norms?.height || "nieznany";
-      const userWeight = norms?.weight || "nieznany";
-      const userBMI = norms?.bmi || "nieznany";
-      const userActivity = norms?.activityLevel
-        ? norms.activityLevel.toLowerCase()
-        : "nieznany";
-      const userConditions = norms?.conditions || "brak";
-      const userMedications = norms?.medications || "brak";
-
-      const promptContent = `
-Użytkownik: ${userGender}, około ${userAge} lat, wzrost ${userHeight} cm, waga ~${userWeight} kg (BMI ${userBMI}), poziom aktywności fizycznej: ${userActivity}.
-Stany zdrowotne / choroby: ${userConditions || "brak podanych"}
-Leki i suplementy: ${userMedications || "brak podanych"}
-
-Ostatni pomiar:
-- Typ: ${currentDisplay.label}
-- Wartość: ${currentData.formattedValue}
-- Kontekst: ${currentData.context || "brak"}
-- Notatka: "${currentData.note || "brak"}"
-
-Wynik analizy systemu:
-- Status: ${analysisResult?.status || "UNKNOWN"}
-- Komunikat systemowy: "${analysisResult?.message || "—"}"
-- Poza normą: ${analysisResult?.isOutOfNorm ? "tak" : "nie"}
-
-Napisz po polsku krótką, ciepłą i konkretną poradę (3–5 zdań, maksymalnie 100 słów). 
-
-Zasady:
-• Zawsze bądź empatyczny i wspierający, ale nie przesadzaj z pochwałami.
-• Dostosuj radę do wieku, aktywności, chorób współistniejących i leków użytkownika.
-• Przy statusie OPTIMAL / IN_TARGET – pochwal i podaj jedną prostą sugestię, jak utrzymać dobry wynik.
-• Przy ELEVATED lub ELEVATED_HIGH_RISK – zaproponuj 1–2 realistyczne zmiany w stylu życia.
-• Przy ALARM / CRITICAL / HIGH / LOW – wyraźnie poleć pilny kontakt z lekarzem, podkreśl dlaczego (ryzyko, wiek, choroby).
-• Nigdy nie zmieniaj dawek leków, nie stawiaj diagnozy, nie bagatelizuj wyników poza normą.
-• Używaj naturalnego, przyjaznego języka – jakbyś rozmawiał z kimś bliskim, komu zależy na zdrowiu.
-
-Odpowiedz wyłącznie treścią porady – bez wstępu, bez podpisów, bez cudzysłowów. `;
-
-      console.log(promptContent);
-      await append({
-        id: `msg-${Date.now()}`,
-        role: "user",
-        content: promptContent.trim(),
-      });
-    } catch (e) {
-      console.error("AI advice error:", e);
+  useEffect(() => {
+    if (type === "HEART_RATE" && context !== "spoczynkowe") {
+      setContext("spoczynkowe");
     }
-  };
+  }, [type]);
 
-  const gptResponse = useMemo(() => {
-    const lastAssistant = [...messages]
-      .reverse()
-      .find((m) => m.role === "assistant");
-    if (!lastAssistant?.content) return null;
-
-    if (typeof lastAssistant.content === "string") return lastAssistant.content;
-
-    if (Array.isArray(lastAssistant.content)) {
-      return lastAssistant.content
-        .filter(isTextPart)
-        .map((p) => p.text)
-        .join("\n");
-    }
-    return null;
-  }, [messages]);
-
-  // --- ŁADOWANIE DANYCH ---
+  // Ładowanie pomiarów i norm
   useEffect(() => {
     if (status !== "authenticated") return;
 
@@ -185,296 +95,162 @@ Odpowiedz wyłącznie treścią porady – bez wstępu, bez podpisów, bez cudzy
           fetch("/api/user/norms", { cache: "no-store" }),
         ]);
 
-        if (!mRes.ok || !nRes.ok) throw new Error("Błąd pobierania danych");
+        if (!mRes.ok || !nRes.ok) throw new Error();
 
-        const [measurementsData, normsData] = await Promise.all([
-          mRes.json(),
-          nRes.json(),
-        ]);
+        const [mData, nData] = await Promise.all([mRes.json(), nRes.json()]);
 
-        setMeasurements(
-          Array.isArray(measurementsData) ? measurementsData : [],
-        );
-        setNorms(normsData);
-        setHasHighRisk(!!normsData?.hasHighRisk);
-      } catch (err) {
-        console.error("Błąd ładowania:", err);
-        toast.error("Nie udało się wczytać pomiarów");
+        setMeasurements(Array.isArray(mData) ? mData : []);
+        setNorms(nData);
+        setHasHighRisk(!!nData?.hasHighRisk);
+      } catch {
+        toast.error("Nie udało się wczytać danych");
       }
     })();
   }, [status, refreshKey]);
 
-  useEffect(() => {
-    setUnit(defaults[type] || "—");
-  }, [type]);
+  //  ZAPIS POMIARU
 
-  const currentDisplay = typeDisplay[type] || { label: "Pomiar", icon: "" };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (isSubmitting || status !== "authenticated") return;
 
-  // --- USUWANIE POMIARU ---
+    setIsSubmitting(true);
+
+    const data = prepareMeasurementData(
+      type,
+      value,
+      context,
+      note,
+      norms,
+      hasHighRisk,
+    );
+
+    if (!data.valid) {
+      toast.error(data.error);
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/measurement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data.body),
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+
+      // reset formularza
+      setValue("");
+      setContext("");
+      setNote("");
+      setRefreshKey((k) => k + 1);
+
+      showAnalysisToast(data.analysis);
+
+      // AI porada po 800–1200 ms
+      setTimeout(() => fetchAgentAdvice(data.aiPayload, data.analysis), 1000);
+    } catch (err) {
+      console.error(err);
+      toast.error("Błąd zapisu pomiaru");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // USUWANIE POMIARU
+
   const requestDelete = useCallback((id) => setConfirmDeleteId(id), []);
 
   const confirmDelete = useCallback(async () => {
     if (!confirmDeleteId) return;
 
-    const idToDelete = confirmDeleteId;
-    setMeasurements((prev) => prev.filter((m) => String(m.id) !== idToDelete));
+    const id = confirmDeleteId;
+    setMeasurements((prev) => prev.filter((m) => m.id !== id));
 
     try {
-      const res = await fetch(`/api/measurement/${idToDelete}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(`/api/measurement/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
       toast.success("Pomiar usunięty");
     } catch {
-      toast.error("Nie udało się usunąć pomiaru");
+      toast.error("Nie udało się usunąć");
       setRefreshKey((k) => k + 1);
     } finally {
       setConfirmDeleteId(null);
     }
   }, [confirmDeleteId]);
 
-  // --- SUBMIT ---
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (status !== "authenticated") {
-      toast.error("Musisz być zalogowany");
-      return;
-    }
-    if (isSubmitting) return;
+  // PORADA AI
 
-    const now = Date.now();
-    if (lastSubmittedAt && now - lastSubmittedAt < 1800) return;
-
-    setIsSubmitting(true);
-    setLastSubmittedAt(now);
-
-    const body = { type, unit };
-    let analysisResult = { status: "UNKNOWN", message: "", isOutOfNorm: false };
-    let aiDataPayload = {
-      type: currentDisplay.label,
-      formattedValue: "",
-      context: "",
-      note: "",
-    };
-
+  const fetchAgentAdvice = async (currentData, analysisResult) => {
     try {
-      if (type === "BLOOD_PRESSURE") {
-        const bp = asBP(value);
-        if (!bp) {
-          toast.error("Uzupełnij oba pola ciśnienia (np. 120 i 80)");
-          return;
-        }
-        body.systolic = bp.sys;
-        body.diastolic = bp.dia;
-        body.note = pressureNote?.trim() || undefined;
+      setMessages([]);
 
-        aiDataPayload.formattedValue = `${bp.sys}/${bp.dia} ${unit}`;
-        aiDataPayload.note = pressureNote;
+      const userAge = norms?.birthdate
+        ? calculateAge(norms.birthdate)
+        : "nieznany";
+      const userGender = norms?.gender === "MALE" ? "mężczyzna" : "kobieta";
+      const userHeight = norms?.height || "nieznany";
+      const userWeight = norms?.weight || "nieznany";
+      const userBMI = norms?.bmi || "nieznany";
+      const userActivity = norms?.activityLevel?.toLowerCase() || "nieznany";
+      const userConditions = norms?.conditions || "brak";
+      const userMedications = norms?.medications || "brak";
 
-        analysisResult = analyzeMeasurement(type, bp, norms, {}, hasHighRisk);
-      } else {
-        const numeric = Number(String(value).replace(",", "."));
-        if (!Number.isFinite(numeric) || numeric < 0) {
-          toast.error("Wprowadź poprawną wartość liczbową");
-          return;
-        }
-        body.amount = numeric;
-        aiDataPayload.formattedValue = `${numeric} ${unit}`;
+      const prompt = `
+Użytkownik: ${userGender}, około ${userAge} lat, wzrost ${userHeight} cm, waga ~${userWeight} kg (BMI ${userBMI}), poziom aktywności: ${userActivity}.
+Stany zdrowotne / choroby: ${userConditions || "brak podanych"}
+Leki i suplementy: ${userMedications || "brak podanych"}
 
-        if (type === "GLUCOSE") {
-          body.context = glucoseTime || undefined;
-          body.note = glucoseContext?.trim() || undefined;
-          aiDataPayload.context = glucoseTime;
-          if (glucoseContext?.trim())
-            aiDataPayload.context += `, ${glucoseContext.trim()}`;
+Ostatni pomiar:
+- Typ: ${currentData.type}
+- Wartość: ${currentData.formattedValue}
+- Kontekst: ${currentData.context || "brak"}${currentData.context ? ` (${currentData.context})` : ""}
+- Notatka: "${currentData.note || "brak"}"
 
-          analysisResult = analyzeMeasurement(
-            type,
-            numeric,
-            norms,
-            { timing: glucoseTime },
-            hasHighRisk,
-          );
-        } else if (type === "HEART_RATE") {
-          body.note = pulseNote?.trim() || undefined;
-          body.context =
-            pulseContext !== "spoczynkowe" ? pulseContext : undefined;
+Wynik analizy systemu:
+- Status: ${analysisResult?.status || "UNKNOWN"}
+- Komunikat systemowy: "${analysisResult?.message || "—"}"
+- Poza normą: ${analysisResult?.isOutOfNorm ? "tak" : "nie"}
 
-          aiDataPayload.note = pulseNote;
-          aiDataPayload.context = pulseContext;
+Napisz po polsku krótką (3–5 zdań, maksymalnie 100 słów), ciepłą, ale rzeczową poradę.
 
-          analysisResult = analyzeMeasurement(
-            type,
-            numeric,
-            norms,
-            { context: pulseContext },
-            hasHighRisk,
-          );
-        } else {
-          analysisResult = analyzeMeasurement(
-            type,
-            numeric,
-            norms,
-            {},
-            hasHighRisk,
-          );
-        }
-      }
+Ścisłe zasady w zależności od statusu:
 
-      // Zapis
-      const res = await fetch("/api/measurement", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+• CRITICAL lub ALARM → bardzo pilne, wyraźnie poleć NATYCHMIASTOWY kontakt z lekarzem / pogotowiem, podaj dlaczego (ryzyko zawału, udaru, przełomu, hipoglikemii itp.)
+• HIGH lub LOW → ostrzeżenie + zalecenie pilnej konsultacji lekarskiej w ciągu 1–2 dni + co obserwować
+• ELEVATED_HIGH_RISK → podkreśl, że przy wysokim ryzyku sercowo-naczyniowym nawet lekkie przekroczenie wymaga uwagi, zaproponuj 1–2 realne zmiany (mniej soli, więcej ruchu, kontrola wagi, sen)
+• ELEVATED → łagodniejsze ostrzeżenie, 1–2 proste sugestie stylu życia
+• OPTIMAL lub IN_TARGET → ciepłe pochwalenie + jedna mała wskazówka jak utrzymać dobry wynik
+• BELOW_TARGET lub ABOVE_TARGET (tętno treningowe)
+• IN_TARGET (trening) → motywacja i pochwała techniki
+
+Nigdy nie:
+- nie zmieniaj dawek leków
+- nie stawiaj diagnozy
+- nie bagatelizuj wyników poza normą
+
+Używaj naturalnego, wspierającego języka – jakbyś rozmawiał z bliską osobą, której zależy na zdrowiu.
+
+Odpowiedz WYŁĄCZNIE treścią porady – bez żadnego wstępu, bez podpisu, bez cudzysłowów, bez „Oto moja rada:”.
+      `.trim();
+      console.log(prompt);
+      await append({
+        role: "user",
+        content: prompt,
       });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Nie udało się zapisać pomiaru");
-        return;
-      }
-
-      // Reset
-      setValue("");
-      setGlucoseContext("");
-      setPressureNote("");
-      setPulseNote("");
-      setRefreshKey((k) => k + 1);
-
-      // TOASTY
-      const { status: stat, message } = analysisResult;
-
-      if (stat === "CRITICAL" || stat === "ALARM") {
-        toast.error(message, {
-          duration: 9000,
-          icon: "🚨",
-          style: {
-            border: "2px solid #dc2626",
-            background: "#fef2f2",
-            color: "#991b1b",
-          },
-        });
-      } else if (stat === "ELEVATED_HIGH_RISK") {
-        toast(message, {
-          duration: 7500,
-          icon: "⚠️🔴",
-          style: {
-            borderRadius: "12px",
-            background: "#fffbeb",
-            color: "#92400e",
-            border: "2px solid #f59e0b",
-            boxShadow: "0 4px 12px rgba(245,158,11,0.2)",
-          },
-        });
-      } else if (stat === "ELEVATED") {
-        toast(message, {
-          duration: 6000,
-          icon: "⚠️",
-          style: {
-            borderRadius: "10px",
-            background: "#fff7ed",
-            color: "#c2410c",
-            border: "1px solid #fdba74",
-          },
-        });
-      } else if (stat === "HIGH") {
-        toast(message || "Wartość wyraźnie powyżej normy", {
-          duration: 7000,
-          icon: "🚨",
-          style: {
-            borderRadius: "12px",
-            background: "#fef2f2",
-            color: "#991b1b",
-            border: "2px solid #dc2626",
-            boxShadow: "0 4px 12px rgba(220,38,38,0.15)",
-          },
-        });
-      } else if (stat === "LOW") {
-        toast(message, {
-          duration: 6000,
-          icon: "🔵",
-          style: {
-            background: "#eff6ff",
-            color: "#1e40af",
-            border: "1px solid #93c5fd",
-          },
-        });
-      } else if (stat === "IN_TARGET") {
-        toast.success(message, { duration: 5000, icon: "🏃‍♂️💚" });
-      } else if (stat === "BELOW_TARGET") {
-        toast(message, {
-          duration: 6000,
-          icon: "⚡",
-          style: {
-            background: "#fffbeb",
-            color: "#92400e",
-            border: "1px solid #f59e0b",
-          },
-        });
-      } else if (stat === "ABOVE_TARGET") {
-        toast(message, {
-          duration: 7000,
-          icon: "🔥",
-          style: {
-            background: "#fef2f2",
-            color: "#991b1b",
-            border: "1px solid #f87171",
-          },
-        });
-      } else {
-        toast.success(
-          hasHighRisk ? "Wynik w docelowym zakresie ✓" : "Świetny wynik! 👏",
-          { duration: 4500 },
-        );
-      }
-
-      setTimeout(() => {
-        toast.success("Pomiar zapisany", {
-          duration: 3000,
-          style: { background: "#ecfdf5", border: "1px solid #6ee7b7" },
-        });
-      }, 800);
-
-      setTimeout(() => {
-        fetchAgentAdvice(aiDataPayload, analysisResult);
-      }, 1200);
     } catch (err) {
-      console.error(err);
-      toast.error("Wystąpił nieoczekiwany błąd");
-    } finally {
-      setIsSubmitting(false);
+      console.error("AI advice error", err);
     }
   };
 
-  const TrendSection = useMemo(
-    () => (
-      <TrendMini data={measurements} type={type} title={currentDisplay.label} />
-    ),
-    [measurements, type, currentDisplay.label],
-  );
+  const gptResponse = messages
+    .filter((m) => m.role === "assistant")
+    .pop()?.content;
 
-  const ListSection = useMemo(
-    () => (
-      <ListaPomiarow
-        measurements={measurements}
-        filterType={filterType}
-        setFilterType={setFilterType}
-        requestDelete={requestDelete}
-        confirmDeleteId={confirmDeleteId}
-        setConfirmDeleteId={setConfirmDeleteId}
-        confirmDelete={confirmDelete}
-        norms={norms}
-      />
-    ),
-    [
-      measurements,
-      filterType,
-      confirmDeleteId,
-      norms,
-      requestDelete,
-      confirmDelete,
-    ],
-  );
+  // ────────────────────────────────────────────────
+  // RENDER
+  // ────────────────────────────────────────────────
 
   if (status === "loading") {
     return (
@@ -492,17 +268,14 @@ Odpowiedz wyłącznie treścią porady – bez wstępu, bez podpisów, bez cudzy
       </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        {/* FORUMULARZ */}
         <form
           onSubmit={handleSubmit}
-          className={`
-            h-full relative bg-white/80 backdrop-blur-xl border border-white/40 
-            p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 
-            flex flex-col gap-5 transition-all duration-300
-            ${isSubmitting ? "opacity-75 pointer-events-none" : ""}
-          `}
+          className={`bg-white/80 backdrop-blur-xl border border-white/40 p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 flex flex-col gap-5 transition-all ${
+            isSubmitting ? "opacity-75 pointer-events-none" : ""
+          }`}
         >
-          {/* Header formularza */}
-          <div className="flex items-center gap-3 mb-2 border-b border-gray-100 pb-4">
+          <div className="flex items-center gap-3 mb-4 border-b border-gray-100 pb-4">
             <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
               <PlusCircle className="w-6 h-6" />
             </div>
@@ -512,7 +285,7 @@ Odpowiedz wyłącznie treścią porady – bez wstępu, bez podpisów, bez cudzy
             </div>
           </div>
 
-          {/* Wybór typu */}
+          {/* Typ pomiaru */}
           <div>
             <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
               Typ pomiaru
@@ -522,209 +295,136 @@ Odpowiedz wyłącznie treścią porady – bez wstępu, bez podpisów, bez cudzy
               onChange={(e) => {
                 setType(e.target.value);
                 setValue("");
+                setContext("");
+                setNote("");
               }}
               className="w-full p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 text-gray-700 font-medium"
             >
-              <option value="BLOOD_PRESSURE">💓 Ciśnienie</option>
-              <option value="GLUCOSE">🍭 Cukier (Glukoza)</option>
-              <option value="WEIGHT">⚖️ Waga</option>
-              <option value="HEART_RATE">❤️ Tętno</option>
+              {Object.entries(MEASUREMENT_TYPES).map(
+                ([key, { label, icon }]) => (
+                  <option key={key} value={key}>
+                    {icon} {label}
+                  </option>
+                ),
+              )}
             </select>
           </div>
 
+          {/* Wartość */}
           <div>
             <label className="text-xs font-bold text-gray-600 block mb-1.5 ml-1">
               {type === "BLOOD_PRESSURE"
-                ? "Wynik (skurczowe / rozkurczowe) mm/Hg"
-                : "Wartość wyniku"}
+                ? "Ciśnienie (skurczowe / rozkurczowe)"
+                : "Wartość"}
             </label>
-            <div className="relative">
-              {type === "BLOOD_PRESSURE" ? (
-                <div className="flex items-center gap-3">
-                  {/* Pole Skurczowe */}
-                  <div className="relative flex-1">
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      placeholder="120"
-                      className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold text-center focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 outline-none transition-all"
-                      // Bierzemy część przed slashem
-                      value={value.includes("/") ? value.split("/")[0] : value}
-                      onChange={(e) => {
-                        const newSys = e.target.value;
-                        const currentDia = value.includes("/")
-                          ? value.split("/")[1]
-                          : "";
-                        setValue(`${newSys}/${currentDia}`);
-                      }}
-                      required
-                    />
-                  </div>
 
-                  <span className="text-2xl text-gray-300 font-light relative -top-1">
-                    /
-                  </span>
-
-                  {/* Pole Rozkurczowe */}
-                  <div className="relative flex-1">
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      placeholder="80"
-                      className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold text-center focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 outline-none transition-all"
-                      value={
-                        value.includes("/") ? value.split("/")[1] || "" : ""
-                      }
-                      onChange={(e) => {
-                        const currentSys = value.includes("/")
-                          ? value.split("/")[0]
-                          : value;
-                        const newDia = e.target.value;
-                        setValue(`${currentSys}/${newDia}`);
-                      }}
-                      required
-                    />
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step="any"
-                    value={value}
-                    onChange={(e) => setValue(e.target.value)}
-                    required
-                    placeholder="np. 70.5"
-                    className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-gray-800 font-semibold"
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-md">
-                    {unit}
-                  </span>
-                </>
-              )}
-            </div>
+            {type === "BLOOD_PRESSURE" ? (
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  placeholder="120"
+                  value={value.split("/")[0] || ""}
+                  onChange={(e) =>
+                    setValue(
+                      `${e.target.value}/${value.split("/")[1] || ""}`.replace(
+                        /\/$/,
+                        "",
+                      ),
+                    )
+                  }
+                  className="flex-1 p-3.5 rounded-xl border border-gray-200 text-center font-semibold focus:ring-2 focus:ring-emerald-200"
+                  required
+                />
+                <span className="text-2xl text-gray-300">/</span>
+                <input
+                  type="number"
+                  placeholder="80"
+                  value={value.split("/")[1] || ""}
+                  onChange={(e) =>
+                    setValue(`${value.split("/")[0] || ""}/${e.target.value}`)
+                  }
+                  className="flex-1 p-3.5 rounded-xl border border-gray-200 text-center font-semibold focus:ring-2 focus:ring-emerald-200"
+                  required
+                />
+              </div>
+            ) : (
+              <div className="relative">
+                <input
+                  type="number"
+                  step="any"
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  placeholder="np. 75"
+                  className="w-full p-3.5 rounded-xl border border-gray-200 font-semibold focus:ring-2 focus:ring-emerald-200"
+                  required
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded">
+                  {config.unit}
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* Dodatkowe pola zależne od typu */}
-          {type === "GLUCOSE" && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-              <div>
-                <span className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
-                  Pora pomiaru
-                </span>
-                <div className="grid grid-cols-2 gap-2">
-                  {["przed posiłkiem", "po posiłku"].map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setGlucoseTime(t)}
-                      className={`p-2.5 rounded-xl text-sm font-medium border transition-all ${
-                        glucoseTime === t
-                          ? "bg-amber-100 border-amber-300 text-amber-800"
-                          : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
-                  Dodatkowa notatka (opcjonalnie)
-                </label>
-                <textarea
-                  value={glucoseContext}
-                  onChange={(e) => setGlucoseContext(e.target.value)}
-                  rows={1}
-                  className="w-full p-3 rounded-xl border border-gray-200 bg-white"
-                />
+          {/* Kontekst */}
+          {config.contextOptions && (
+            <div>
+              <span className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
+                Kiedy zmierzono?
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {config.contextOptions.map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setContext(opt)}
+                    className={`p-2.5 rounded-xl text-sm font-medium border transition-all ${
+                      context === opt
+                        ? "bg-emerald-100 border-emerald-300 text-emerald-800 shadow-sm"
+                        : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
               </div>
             </div>
           )}
 
-          {type === "HEART_RATE" && (
-            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-              <div>
-                <span className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
-                  Kiedy zmierzono tętno?
-                </span>
-                <div className="grid grid-cols-2 gap-3">
-                  {["spoczynkowe", "podczas treningu"].map((ctx) => (
-                    <button
-                      key={ctx}
-                      type="button"
-                      onClick={() => setPulseContext(ctx)}
-                      className={`
-              py-3 px-4 rounded-xl text-sm font-medium border transition-all
-              flex items-center justify-center gap-2
-              ${
-                pulseContext === ctx
-                  ? "bg-emerald-600 text-white border-emerald-600 shadow-md"
-                  : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
-              }
-            `}
-                    >
-                      {ctx === "spoczynkowe"
-                        ? "🪑 Spoczynkowe"
-                        : "🏃 Podczas treningu"}
-                    </button>
-                  ))}
-                </div>
-              </div>
+          {/* Notatka */}
+          <div>
+            <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
+              Notatka (opcjonalnie)
+            </label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={config.notePlaceholder}
+              rows={2}
+              className="w-full p-3 rounded-xl border border-gray-200 bg-white resize-none focus:ring-2 focus:ring-emerald-200"
+            />
+          </div>
 
-              <div>
-                <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
-                  Notatka / dodatkowe informacje (opcjonalnie)
-                </label>
-                <textarea
-                  value={pulseNote}
-                  onChange={(e) => setPulseNote(e.target.value)}
-                  rows={2}
-                  placeholder="np. stres..."
-                  className="w-full p-3 rounded-xl border border-gray-200 bg-white resize-none"
-                />
-              </div>
-            </div>
-          )}
-
-          {type === "BLOOD_PRESSURE" && (
-            <div className="animate-in fade-in slide-in-from-top-2">
-              <label className="text-sm font-bold text-gray-600 block mb-1.5 ml-1">
-                Notatka
-              </label>
-              <textarea
-                value={pressureNote}
-                onChange={(e) => setPressureNote(e.target.value)}
-                rows={1}
-                placeholder="np. stres, po kawie, wieczorem"
-                className="w-full p-3 rounded-xl border border-gray-200 bg-white"
-              />
-            </div>
-          )}
-
-          {/* Przycisk Zapisz */}
           <div className="mt-auto">
             <button
               type="submit"
-              disabled={status !== "authenticated" || isSubmitting}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting}
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
             >
               {isSubmitting ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                <>
-                  <Save className="w-5 h-5" /> Zapisz wynik
-                </>
+                <Save className="w-5 h-5" />
               )}
+              {isSubmitting ? "Zapisywanie..." : "Zapisz wynik"}
             </button>
           </div>
         </form>
 
         {/* Prawy panel – Trend + AI */}
-        <div className="flex flex-col gap-6 h-full">
-          <div className="shrink-0 h-[300px] xl:h-[320px]">{TrendSection}</div>
+        <div className="flex flex-col gap-6">
+          <div className="h-[300px] xl:h-[320px] bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl overflow-hidden">
+            <TrendMini data={measurements} type={type} title={config.label} />
+          </div>
 
           <section className="flex-1 bg-white/80 backdrop-blur-xl border border-white/40 p-6 rounded-3xl shadow-xl shadow-slate-200/50 flex flex-col min-h-0">
             <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100 shrink-0">
@@ -732,55 +432,49 @@ Odpowiedz wyłącznie treścią porady – bez wstępu, bez podpisów, bez cudzy
                 <Bot className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-800 leading-none">
-                  Feedback AI
-                </h3>
+                <h3 className="text-lg font-bold text-gray-800">Feedback AI</h3>
                 <p className="text-xs text-gray-400 mt-1">
                   Analiza ostatniego pomiaru
                 </p>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+            <div className="flex-1 overflow-y-auto relative">
               {isLoading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center space-y-3 bg-white/60 backdrop-blur-sm z-10">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm z-10">
                   <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
-                  <span className="text-sm font-medium text-violet-600 animate-pulse">
+                  <span className="mt-3 text-sm text-violet-600 animate-pulse">
                     Analizuję wynik...
                   </span>
                 </div>
               )}
 
               {gptResponse ? (
-                <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 pb-4">
-                  <div className="bg-violet-50/60 p-4 rounded-2xl border border-violet-100 text-sm text-gray-800 leading-relaxed whitespace-pre-line">
+                <div className="animate-in fade-in duration-500">
+                  <div className="bg-violet-50/70 p-5 rounded-2xl border border-violet-100 text-sm text-gray-800 leading-relaxed whitespace-pre-line">
                     {gptResponse}
                   </div>
 
-                  {!isLoading && (
-                    <div className="mt-4 flex justify-end">
-                      <button
-                        type="button"
-                        className="text-xs flex items-center gap-1.5 text-violet-700 hover:text-violet-900 font-medium bg-white px-3 py-1.5 rounded-lg border border-violet-200 shadow-sm hover:shadow transition-all"
-                        onClick={() =>
-                          append({
-                            role: "user",
-                            content: "Daj wskazówkę co teraz zrobić.",
-                          })
-                        }
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        Dopytaj AI
-                      </button>
-                    </div>
-                  )}
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      className="text-xs flex items-center gap-1.5 text-violet-700 hover:text-violet-900 font-medium bg-white px-3 py-1.5 rounded-lg border border-violet-200 shadow-sm hover:shadow"
+                      onClick={() =>
+                        append({
+                          role: "user",
+                          content: "Daj jeszcze jedną konkretną wskazówkę.",
+                        })
+                      }
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Dopytaj AI
+                    </button>
+                  </div>
                 </div>
               ) : (
                 !isLoading && (
-                  <div className="h-full flex flex-col items-center justify-center text-center py-8">
-                    <p className="text-gray-400 text-sm italic">
-                      Dodaj pomiar, aby otrzymać analizę i poradę AI
-                    </p>
+                  <div className="h-full flex items-center justify-center text-center py-8 text-gray-400 text-sm italic">
+                    Dodaj pomiar, aby zobaczyć analizę i poradę AI
                   </div>
                 )
               )}
@@ -789,7 +483,154 @@ Odpowiedz wyłącznie treścią porady – bez wstępu, bez podpisów, bez cudzy
         </div>
       </div>
 
-      {ListSection}
+      <ListaPomiarow
+        measurements={measurements}
+        filterType={filterType}
+        setFilterType={setFilterType}
+        requestDelete={requestDelete}
+        confirmDeleteId={confirmDeleteId}
+        setConfirmDeleteId={setConfirmDeleteId}
+        confirmDelete={confirmDelete}
+        norms={norms}
+      />
     </Container>
   );
+}
+
+// POMOCNICZE FUNKCJE
+
+function calculateAge(birthdate) {
+  if (!birthdate) return 0;
+  const birth = new Date(birthdate);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
+
+function parseBloodPressure(input) {
+  if (!input || typeof input !== "string") return null;
+
+  const cleaned = input
+    .replace(/[^0-9/ ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const slashMatch = cleaned.match(/^(\d{2,3})\s*\/\s*(\d{2,3})$/);
+  if (slashMatch) {
+    const sys = Number(slashMatch[1]);
+    const dia = Number(slashMatch[2]);
+    if (sys >= 70 && dia >= 40 && sys > dia) return { sys, dia };
+  }
+
+  const spaceMatch = cleaned.match(/^(\d{2,3})\s+(\d{2,3})$/);
+  if (spaceMatch) {
+    const sys = Number(spaceMatch[1]);
+    const dia = Number(spaceMatch[2]);
+    if (sys >= 70 && dia >= 40 && sys > dia) return { sys, dia };
+  }
+
+  if (/^\d{4}$/.test(cleaned)) {
+    const sys = Number(cleaned.slice(0, 3));
+    const dia = Number(cleaned.slice(-2));
+    if (sys >= 70 && dia >= 40 && sys > dia) return { sys, dia };
+  }
+
+  return null;
+}
+function prepareMeasurementData(
+  type,
+  rawValue,
+  context,
+  note,
+  norms,
+  hasHighRisk,
+) {
+  const cfg = MEASUREMENT_TYPES[type] || MEASUREMENT_TYPES.BLOOD_PRESSURE;
+  const trimmedNote = note.trim() || undefined;
+
+  if (type === "BLOOD_PRESSURE") {
+    const bp = parseBloodPressure(rawValue);
+    if (!bp) return { valid: false, error: "Format: 120/80 lub 120 80" };
+
+    const formatted = `${bp.sys}/${bp.dia} ${cfg.unit}`;
+    const analysis = analyzeMeasurement(type, bp, norms, {}, hasHighRisk);
+
+    return {
+      valid: true,
+      body: {
+        type,
+        unit: cfg.unit,
+        systolic: bp.sys,
+        diastolic: bp.dia,
+        note: trimmedNote,
+      },
+      aiPayload: {
+        type: cfg.label,
+        formattedValue: formatted,
+        context: "",
+        note: trimmedNote,
+      },
+      analysis,
+    };
+  }
+
+  // typy numeryczne
+  const num = Number(rawValue.replace(",", "."));
+  if (!Number.isFinite(num) || num <= 0) {
+    return { valid: false, error: "Wprowadź poprawną liczbę" };
+  }
+
+  const formatted = `${num} ${cfg.unit}`;
+  let extraContext = {};
+  let aiContext = context;
+
+  if (type === "GLUCOSE" && context) {
+    extraContext = { context };
+  } else if (type === "HEART_RATE" && context && context !== "spoczynkowe") {
+    extraContext = { context };
+  }
+
+  const analysis = analyzeMeasurement(
+    type,
+    num,
+    norms,
+    extraContext,
+    hasHighRisk,
+  );
+
+  return {
+    valid: true,
+    body: {
+      type,
+      unit: cfg.unit,
+      amount: num,
+      ...extraContext,
+      note: trimmedNote,
+    },
+    aiPayload: {
+      type: cfg.label,
+      formattedValue: formatted,
+      context: aiContext,
+      note: trimmedNote,
+    },
+    analysis,
+  };
+}
+
+function showAnalysisToast(analysis) {
+  const { status, message } = analysis || {};
+
+  if (["CRITICAL", "ALARM"].includes(status)) {
+    toast.error(message || "Pilnie skontaktuj się z lekarzem!", {
+      duration: 8000,
+    });
+  } else if (status === "ELEVATED_HIGH_RISK") {
+    toast(message || "Wynik podwyższony – zwróć uwagę", { duration: 7000 });
+  } else if (["OPTIMAL", "IN_TARGET"].includes(status)) {
+    toast.success(message || "Świetny wynik! 👏", { duration: 5000 });
+  } else {
+    toast(message || "Pomiar zapisany", { duration: 4000 });
+  }
 }

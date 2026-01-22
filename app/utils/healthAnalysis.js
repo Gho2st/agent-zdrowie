@@ -39,7 +39,6 @@ export function analyzeMeasurement(
     }
 
     // 3. Najpierw zawsze sprawdzamy, czy przekroczono indywidualny cel
-    //    (to jest najważniejsze dla high-risk)
     const exceededTarget =
       (typeof norms?.systolicMax === "number" && sys > norms.systolicMax) ||
       (typeof norms?.diastolicMax === "number" && dia > norms.diastolicMax);

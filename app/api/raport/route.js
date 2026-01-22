@@ -7,7 +7,6 @@ import fs from "fs/promises";
 import path from "path";
 import fontkit from "@pdf-lib/fontkit";
 
-// Importujemy zaktualizowaną funkcję buildPersonalizedContext
 import { calculateStats, buildPersonalizedContext } from "@/lib/ai-context";
 
 export const runtime = "nodejs";
