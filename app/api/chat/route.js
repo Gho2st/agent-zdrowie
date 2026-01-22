@@ -89,6 +89,8 @@ AKTUALNY KONTEKST PACJENTA:
 ${context}
 `.trim();
 
+    console.log(systemPrompt);
+
     //  Strumieniowanie odpowiedzi
     const result = await streamText({
       model: openai("gpt-4o"),

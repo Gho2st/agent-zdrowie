@@ -6,6 +6,7 @@ import { openai } from "@ai-sdk/openai";
 import fs from "fs/promises";
 import path from "path";
 import fontkit from "@pdf-lib/fontkit";
+import { MeasurementType } from "@prisma/client";
 
 import { calculateStats, buildPersonalizedContext } from "@/lib/ai-context";
 
@@ -169,13 +170,14 @@ export async function POST(request) {
     );
 
     const contextForAI = buildPersonalizedContext(
-      user,
       profile,
       norms,
       statsText,
       aiMeasurements, // Tylko ostatnie ~30 dni
       aiCheckins, // Tylko ostatnie ~30 dni
     );
+
+    console.log(contextForAI);
 
     // Dynamiczne pytanie nr 2
     let question2 = "Czy w analizowanym okresie parametry są stabilne?";
@@ -344,7 +346,7 @@ ${contextForAI}
         let isAlarm = false;
 
         switch (m.type) {
-          case "BLOOD_PRESSURE":
+          case MeasurementType.BLOOD_PRESSURE:
             const s = Number(m.value);
             const dia = Number(m.value2 || 0);
             valueText = `Ciśnienie: ${s}/${dia} mmHg`;
@@ -354,16 +356,16 @@ ${contextForAI}
             )
               isAlarm = true;
             break;
-          case "GLUCOSE":
+          case MeasurementType.GLUCOSE:
             const g = Number(m.value);
             valueText = `Glukoza: ${g} mg/dL`;
             if (norms.glucoseFastingMax && g > norms.glucoseFastingMax)
               isAlarm = true;
             break;
-          case "WEIGHT":
+          case MeasurementType.WEIGHT:
             valueText = `Waga: ${m.value} kg`;
             break;
-          case "HEART_RATE":
+          case MeasurementType.HEART_RATE:
             valueText = `Tętno: ${m.value} bpm`;
             if (norms.pulseMax && Number(m.value) > norms.pulseMax)
               isAlarm = true;
