@@ -2,11 +2,9 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 export async function GET() {
-  const USER_EMAIL = "biosite.praca@gmail.com";
+  const USER_EMAIL = "dominik.jojczyk@gmail.com";
 
-  // ────────────────────────────────────────
   //    KONFIGURACJA – mały seed (~10%)
-  // ────────────────────────────────────────
   const DAYS_BACK = 37; // ~10% z 365 dni
   const BATCH_SIZE = 200;
 

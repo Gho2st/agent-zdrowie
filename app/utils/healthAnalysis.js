@@ -23,7 +23,7 @@ export function analyzeMeasurement(
     if (sys >= 180 || dia >= 120) {
       return {
         status: "CRITICAL",
-        message: "⚠️ Przełom nadciśnieniowy! Natychmiastowa pomoc.",
+        message: "⚠️ Bardzo wysokie ciśnienie – przełom nadciśnieniowy.",
         isOutOfNorm: true,
         color: "red",
       };
@@ -33,7 +33,7 @@ export function analyzeMeasurement(
     if (sys < norms.systolicMin || dia < norms.diastolicMin) {
       return {
         status: "LOW",
-        message: "Zbyt niskie ciśnienie – obserwuj objawy.",
+        message: "Ciśnienie wyraźnie za niskie.",
         isOutOfNorm: true,
         color: "blue",
       };
@@ -43,7 +43,8 @@ export function analyzeMeasurement(
     if (sys <= norms.optimalSystolicMax && dia <= norms.optimalDiastolicMax) {
       return {
         status: "OPTIMAL",
-        message: "Ciśnienie w zakresie optymalnym 🎯",
+        message:
+          "Świetnie! Ciśnienie w najlepszym możliwym zakresie 🎯 Idealnie!",
         isOutOfNorm: false,
         color: "green",
       };
@@ -53,8 +54,8 @@ export function analyzeMeasurement(
       return {
         status: "ALARM",
         message: hasHighRisk
-          ? `Przekroczony cel terapeutyczny (< ${norms.optimalSystolicMax}/${norms.optimalDiastolicMax} mmHg)`
-          : "Pomiar sugerujący nadciśnienie. Zalecana wizyta u lekarza.",
+          ? `Twoje dzisiejsze ciśnienie niestety przekracza cel terapeutyczny (< ${norms.optimalSystolicMax}/${norms.optimalDiastolicMax}).`
+          : "Pomiar sugerujący nadciśnienie.",
         isOutOfNorm: true,
         color: "red",
       };
@@ -64,8 +65,8 @@ export function analyzeMeasurement(
     return {
       status: hasHighRisk ? "THERAPY_TARGET_EXCEEDED" : "ELEVATED",
       message: hasHighRisk
-        ? `Przekroczony cel terapeutyczny (< ${norms.optimalSystolicMax}/${norms.optimalDiastolicMax} mmHg)`
-        : "Podwyższone ciśnienie – zdrowie.",
+        ? `Twoje dzisiejsze ciśnienie niestety przekracza cel terapeutyczny (< ${norms.optimalSystolicMax}/${norms.optimalDiastolicMax}).`
+        : "Ciśnienie w strefie podwyższonej",
       isOutOfNorm: true,
       color: "orange",
     };
@@ -135,8 +136,7 @@ export function analyzeMeasurement(
     if (value < norms.pulseMin) {
       return {
         status: "LOW",
-        message:
-          "Bradykardia – puls za niski. Jeśli masz zawroty głowy, osłabienie lub inne niepokojące objawy – skontaktuj się z lekarzem.",
+        message: "Bradykardia – puls za niski",
         isOutOfNorm: true,
         color: "blue",
       };
@@ -149,7 +149,7 @@ export function analyzeMeasurement(
       if (value > norms.maxHeartRate) {
         return {
           status: "CRITICAL",
-          message: `Tętno przekracza Twoje maksymalne (${norms.maxHeartRate} bpm)! Natychmiast przerwij wysiłek i odpocznij!`,
+          message: `Tętno przekracza Twoje maksymalne (${norms.maxHeartRate} bpm)!`,
           isOutOfNorm: true,
           color: "red",
         };
@@ -159,7 +159,7 @@ export function analyzeMeasurement(
       if (value < norms.targetHeartRateMin) {
         return {
           status: "BELOW_TARGET",
-          message: `Tętno poniżej Twojej docelowej strefy (${norms.targetHeartRateMin}–${norms.targetHeartRateMax} bpm). Możesz trochę przyspieszyć.`,
+          message: `Tętno poniżej Twojej docelowej strefy (${norms.targetHeartRateMin}–${norms.targetHeartRateMax} bpm).`,
           isOutOfNorm: true,
           color: "yellow",
         };
@@ -168,7 +168,7 @@ export function analyzeMeasurement(
       if (value > norms.targetHeartRateMax) {
         return {
           status: "ABOVE_TARGET",
-          message: `Tętno powyżej Twojej docelowej strefy (${norms.targetHeartRateMin}–${norms.targetHeartRateMax} bpm). Zwolnij lub zrób krótką przerwę.`,
+          message: `Tętno powyżej Twojej docelowej strefy (${norms.targetHeartRateMin}–${norms.targetHeartRateMax} bpm).`,
           isOutOfNorm: true,
           color: "orange",
         };
@@ -177,7 +177,7 @@ export function analyzeMeasurement(
       // w zakresie treningu super wynik
       return {
         status: "IN_TARGET",
-        message: `Tętno idealnie w docelowej strefie treningowej (${norms.targetHeartRateMin}–${norms.targetHeartRateMax} bpm) – kontynuuj! 💪`,
+        message: `Tętno idealnie w docelowej strefie treningowej (${norms.targetHeartRateMin}–${norms.targetHeartRateMax} bpm)`,
         isOutOfNorm: false,
         color: "green",
       };
@@ -188,7 +188,7 @@ export function analyzeMeasurement(
     if (value > norms.pulseMax) {
       return {
         status: "HIGH",
-        message: `Tachykardia – puls za wysoki w spoczynku (${value} bpm, norma do ${norms.pulseMax}). Odpocznij, zmierz ponownie za kilka minut i obserwuj.`,
+        message: `Tachykardia – puls za wysoki w spoczynku (${value} bpm, norma do ${norms.pulseMax}).`,
         isOutOfNorm: true,
         color: "orange",
       };
@@ -197,7 +197,7 @@ export function analyzeMeasurement(
     // wszystko w normie
     return {
       status: "OPTIMAL",
-      message: `Tętno spoczynkowe w normie (${value} bpm) – bardzo dobrze!`,
+      message: `Tętno spoczynkowe w normie (${value} bpm)`,
       isOutOfNorm: false,
       color: "green",
     };

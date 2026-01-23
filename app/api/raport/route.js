@@ -7,7 +7,7 @@ import fs from "fs/promises";
 import path from "path";
 import fontkit from "@pdf-lib/fontkit";
 import { MeasurementType } from "@prisma/client";
-
+import { analyzeMeasurement } from "@/app/utils/healthAnalysis";
 import { calculateStats, buildPersonalizedContext } from "@/lib/ai-context";
 
 export const runtime = "nodejs";
@@ -67,12 +67,12 @@ function calculateAgeSimple(birthdate) {
 function formatNormsForPDF(norms) {
   const list = [];
   if (!norms) return ["Brak zdefiniowanych celów (normy standardowe)."];
-  if (norms.systolicMax || norms.diastolicMax) {
-    const sys = norms.systolicMax
-      ? `${norms.systolicMin || 90}-${norms.systolicMax}`
+  if (norms.optimalSystolicMax || norms.optimalDiastolicMax) {
+    const sys = norms.optimalSystolicMax
+      ? `${norms.systolicMin || 90}-${norms.optimalSystolicMax}`
       : "<?>";
-    const dia = norms.diastolicMax
-      ? `${norms.diastolicMin || 60}-${norms.diastolicMax}`
+    const dia = norms.optimalDiastolicMax
+      ? `${norms.diastolicMin || 60}-${norms.optimalDiastolicMax}`
       : "<?>";
     list.push(`• Ciśnienie docelowe: ${sys} / ${dia} mmHg`);
   }
@@ -114,7 +114,7 @@ export async function POST(request) {
     if (d2 > maxDate)
       return new Response("Zakres raportu max 1 rok.", { status: 400 });
 
-    // 1. pobieranie danych
+    // 1. Pobieranie danych
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
@@ -149,13 +149,11 @@ export async function POST(request) {
     const profile = user.healthProfile || {};
     const norms = profile.norms || {};
 
-    // 2. statystyki z całego zakresu
+    // 2. Statystyki
     const statsLines = calculateStats(measurements, norms, allCheckins);
     const statsText = statsLines.join("\n") || "Brak danych do statystyk.";
 
-    // 3. przygotowanie danych do AI filtracja
-
-    // Obliczamy różnicę dni, żeby dostosować pytanie
+    // 3. Przygotowanie danych do AI
     const diffTime = Math.abs(d2.getTime() - d1.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -173,11 +171,9 @@ export async function POST(request) {
       profile,
       norms,
       statsText,
-      aiMeasurements, // Tylko ostatnie ~30 dni
-      aiCheckins, // Tylko ostatnie ~30 dni
+      aiMeasurements,
+      aiCheckins,
     );
-
-    console.log(contextForAI);
 
     // Dynamiczne pytanie nr 2
     let question2 = "Czy w analizowanym okresie parametry są stabilne?";
@@ -189,7 +185,7 @@ export async function POST(request) {
         "2. Czy analizowany okres wskazuje na stabilizację parametrów, czy widać tendencję pogarszania?";
     }
 
-    // 4. generowanie AI
+    // 4. Generowanie AI
     const { text: aiComment } = await generateText({
       model: openai("gpt-4o"),
       temperature: 0.3,
@@ -207,7 +203,7 @@ ${contextForAI}
       `.trim(),
     });
 
-    // 5. generowanie PDF
+    // 5. Generowanie PDF
     const pdfDoc = await PDFDocument.create();
     pdfDoc.registerFontkit(fontkit);
 
@@ -327,14 +323,19 @@ ${contextForAI}
       14,
       rgb(0.02, 0.62, 0.42),
     );
-    y -= 10;
+    y -= 12;
 
     if (measurements.length === 0) {
       drawLine("Brak pomiarów w wybranym okresie.", 11, rgb(0.6, 0.6, 0.6));
     } else {
-      const dateColumnWidth = 95;
+      const dateColumnWidth = 105;
+      const valueColumnStart = margin + dateColumnWidth;
+
+      const textPadding = 15;
+      const textColumnStart = valueColumnStart + textPadding;
+
       for (const m of measurements) {
-        if (y < 60) {
+        if (y < 80) {
           page = pdfDoc.addPage([595.28, 841.89]);
           y = height - 60;
         }
@@ -342,68 +343,113 @@ ${contextForAI}
         const d = new Date(m.createdAt);
         const dateStr = `${d.getDate().toString().padStart(2, "0")}.${(d.getMonth() + 1).toString().padStart(2, "0")}.${d.getFullYear()} ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 
-        let valueText = "";
-        let isAlarm = false;
+        let valueForAnalysis =
+          m.type === MeasurementType.BLOOD_PRESSURE
+            ? { sys: Number(m.value), dia: Number(m.value2 || 0) }
+            : Number(m.value);
 
+        const analysis = analyzeMeasurement(
+          m.type,
+          valueForAnalysis,
+          norms,
+          { context: m.context || "spoczynkowe", timing: m.context || "" },
+          profile.highRisk || false,
+        );
+
+        // Wybór typu i wartości tekstowej
+        let typeLabel = "";
         switch (m.type) {
           case MeasurementType.BLOOD_PRESSURE:
-            const s = Number(m.value);
-            const dia = Number(m.value2 || 0);
-            valueText = `Ciśnienie: ${s}/${dia} mmHg`;
-            if (
-              (norms.systolicMax && s > norms.systolicMax) ||
-              (norms.diastolicMax && dia > norms.diastolicMax)
-            )
-              isAlarm = true;
+            typeLabel = "Ciśnienie";
             break;
           case MeasurementType.GLUCOSE:
-            const g = Number(m.value);
-            valueText = `Glukoza: ${g} mg/dL`;
-            if (norms.glucoseFastingMax && g > norms.glucoseFastingMax)
-              isAlarm = true;
+            typeLabel = "Glukoza";
             break;
           case MeasurementType.WEIGHT:
-            valueText = `Waga: ${m.value} kg`;
+            typeLabel = "Waga";
             break;
           case MeasurementType.HEART_RATE:
-            valueText = `Tętno: ${m.value} bpm`;
-            if (norms.pulseMax && Number(m.value) > norms.pulseMax)
-              isAlarm = true;
+            typeLabel = "Tętno";
             break;
           default:
-            valueText = `${m.type}: ${m.value}`;
+            typeLabel =
+              m.type.charAt(0).toUpperCase() + m.type.slice(1).toLowerCase();
         }
 
-        if (m.context) valueText += ` (${m.context})`;
-        if (isAlarm) valueText += " (!)";
+        let valueText = "";
+        if (m.type === MeasurementType.BLOOD_PRESSURE) {
+          valueText = `${valueForAnalysis.sys}/${valueForAnalysis.dia} mmHg`;
+        } else if (m.type === MeasurementType.GLUCOSE) {
+          valueText = `${valueForAnalysis} mg/dL`;
+        } else if (m.type === MeasurementType.WEIGHT) {
+          valueText = `${valueForAnalysis} kg`;
+        } else if (m.type === MeasurementType.HEART_RATE) {
+          valueText = `${valueForAnalysis} bpm`;
+        } else {
+          valueText = m.value;
+        }
 
-        const textColor = isAlarm ? rgb(0.85, 0.1, 0.1) : rgb(0, 0, 0);
+        const fullDisplayText = `${typeLabel}: ${valueText}`;
 
+        // 1. Dobór koloru  (statusu)
+        let statusColor;
+        switch (analysis.color) {
+          case "red":
+            statusColor = rgb(0.88, 0.12, 0.12); // Czerwony - krytyczne
+            break;
+          case "orange":
+          case "yellow":
+            statusColor = rgb(0.92, 0.52, 0.08); // Pomarańczowy - ostrzeżenie
+            break;
+          case "blue":
+            statusColor = rgb(0.0, 0.4, 0.8); // Niebieski - za niskie
+            break;
+          case "green":
+          default:
+            statusColor = rgb(0.05, 0.6, 0.12); // Zielony - norma
+            break;
+        }
+
+        // 2. Rysowanie
+
+        // Data (szary)
         page.drawText(dateStr, {
           x: margin,
           y,
           size: 10,
           font,
-          color: rgb(0.45, 0.45, 0.45),
+          color: rgb(0.42, 0.42, 0.46),
         });
-        const valLines = breakTextIntoLines(
-          valueText,
+
+        //  (status)
+        page.drawCircle({
+          x: valueColumnStart + 3,
+          y: y + 3.5,
+          size: 4, // średnica kropki
+          color: statusColor,
+          opacity: 1,
+        });
+
+        // Łamanie tekstu
+        const valueLines = breakTextIntoLines(
+          fullDisplayText,
           font,
           11,
-          width - margin - dateColumnWidth - margin,
+          width - textColumnStart - margin - 10,
         );
 
-        valLines.forEach((vl, idx) => {
-          page.drawText(vl, {
-            x: margin + dateColumnWidth,
-            y: y - idx * 14,
+        valueLines.forEach((line, i) => {
+          page.drawText(line, {
+            x: textColumnStart, // przesunięty w prawo za kropkę
+            y: y - i * 13.5,
             size: 11,
             font,
-            color: textColor,
+            color: rgb(0.1, 0.1, 0.1),
           });
         });
-        const rowsUsed = valLines.length > 0 ? valLines.length : 1;
-        y -= rowsUsed * 14 + 4;
+
+        const linesUsed = valueLines.length || 1;
+        y -= linesUsed * 13.5 + 12; // odstęp
       }
     }
 

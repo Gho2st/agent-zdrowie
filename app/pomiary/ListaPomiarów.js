@@ -363,11 +363,11 @@ export default function ListaPomiarow({
                       analysis.status === "ELEVATED" ||
                       analysis.status?.includes("TARGET")) && (
                       <div className="flex flex-col gap-0.5">
-                        {analysis.message && (
+                        {/* {analysis.message && (
                           <p className="text-[10px] leading-tight text-gray-500">
                             {analysis.message}
                           </p>
-                        )}
+                        )} */}
                         {normHint && (
                           <p className="text-[10px] font-medium text-gray-400">
                             ({normHint})

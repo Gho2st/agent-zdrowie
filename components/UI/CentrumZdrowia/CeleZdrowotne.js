@@ -183,7 +183,7 @@ export default function CeleZdrowotne() {
               : null
           }
           min={{ sys: user.systolicMin, dia: user.diastolicMin }}
-          max={{ sys: user.systolicMax, dia: user.diastolicMax }}
+          max={{ sys: user.optimalSystolicMax, dia: user.optimalDiastolicMax }}
           unit="mmHg"
           colorTheme="indigo"
         />
