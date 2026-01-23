@@ -226,7 +226,6 @@ Używaj naturalnego, wspierającego języka – jakbyś rozmawiał z bliską oso
 
 Odpowiedz WYŁĄCZNIE treścią porady – bez żadnego wstępu, bez podpisu, bez cudzysłowów”.
       `.trim();
-      console.log(prompt);
       await append({
         role: "user",
         content: prompt,

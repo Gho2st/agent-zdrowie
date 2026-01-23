@@ -74,7 +74,28 @@ export function analyzeMeasurement(
 
   //   GLUKOZA
   if (type === MeasurementType.GLUCOSE) {
-    const timing = context.timing; // "przed posiłkiem" lub "po posiłku"
+    const timing = context.timing || "przed posiłkiem";
+
+    // Poziom 2 Hipoglikemii (< 54 mg/dL) - Stan KRYTYCZNY
+    if (value < 54) {
+      return {
+        status: "CRITICAL",
+        message: "⚠️ KRYTYCZNIE NISKI CUKIER (<54 mg/dL).",
+        isOutOfNorm: true,
+        color: "red",
+      };
+    }
+
+    //  Hiperglikemia  (>= 250 mg/dL)
+    if (value >= 250) {
+      return {
+        status: "CRITICAL",
+        message:
+          "⚠️ Bardzo wysoki poziom cukru (≥250 mg/dL).",
+        isOutOfNorm: true,
+        color: "red",
+      };
+    }
 
     if (
       timing === "przed posiłkiem" &&

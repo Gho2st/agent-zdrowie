@@ -27,8 +27,9 @@ import {
   CalendarRange,
 } from "lucide-react";
 
-// Import funkcji analyzeMeasurement – zmień ścieżkę jeśli jest inna
+// Import Twojej funkcji analitycznej
 import { analyzeMeasurement } from "../utils/healthAnalysis";
+
 ChartJS.register(
   LineElement,
   PointElement,
@@ -40,6 +41,22 @@ ChartJS.register(
   CategoryScale,
   annotationPlugin,
 );
+
+// Mapowanie statusów z analyzeMeasurement na kolory
+const STATUS_TO_HEX = {
+  CRITICAL: "#ef4444", // Czerwony (red-500)
+  ALARM: "#ef4444", // Czerwony (red-500)
+  HIGH: "#f97316", // Pomarańczowy (orange-500)
+  ELEVATED: "#f97316", // Pomarańczowy
+  THERAPY_TARGET_EXCEEDED: "#f97316",
+  ABOVE_TARGET: "#f97316",
+  LOW: "#3b82f6", // Niebieski (blue-500)
+  BELOW_TARGET: "#eab308", // Żółty (yellow-500)
+  OPTIMAL: "#10b981", // Zielony (emerald-500)
+  IN_TARGET: "#10b981",
+  OK: "#10b981",
+  default: "#10b981",
+};
 
 const CONFIG = {
   ciśnienie: {
@@ -80,13 +97,17 @@ const CONFIG = {
   },
 };
 
+// Pomocnicza funkcja do prostego zliczania % w normie (dla kafelka statystyk)
 const checkIsNormal = (val, val2, type, norms) => {
   if (!norms) return null;
   if (type === "ciśnienie") {
+    // Używamy optimalSystolicMax jako górnej granicy "zielonej strefy"
     const sOk =
-      val >= (norms.systolicMin || 0) && val <= (norms.systolicMax || 999);
+      val >= (norms.systolicMin || 0) &&
+      val <= (norms.optimalSystolicMax || 999);
     const dOk =
-      val2 >= (norms.diastolicMin || 0) && val2 <= (norms.diastolicMax || 999);
+      val2 >= (norms.diastolicMin || 0) &&
+      val2 <= (norms.optimalDiastolicMax || 999);
     return sOk && dOk;
   }
   if (type === "cukier") {
@@ -206,150 +227,175 @@ export default function Statistics() {
     let annotations = {};
     const config = CONFIG[category];
 
-    if (category === "ciśnienie") {
-      // Oblicz status i kolory dla każdego punktu
-      const pointColors = data.map((m) => {
-        const result = analyzeMeasurement(
-          "BLOOD_PRESSURE",
-          { sys: m.value, dia: m.value2 },
-          norms,
-        );
-        switch (result.status) {
-          case "CRITICAL":
-            return "#ef4444"; // red-500
-          case "ALARM":
-            return "#f97316"; // orange-500
-          case "ELEVATED":
-            return "#eab308"; // yellow-500
-          default:
-            return "#4f46e5"; // indigo-600 dla optimal
-        }
-      });
+    const NORM_BG = "rgba(16, 185, 129, 0.15)";
+    const LIMIT_LINE_COLOR = "rgba(239, 68, 68, 0.6)";
 
+    // --- 1. GENEROWANIE KOLORÓW PUNKTÓW Z analyzeMeasurement ---
+    const pointColors = data.map((m) => {
+      let valueForAnalysis;
+      let context = { context: m.context }; // np. "po posiłku"
+
+      if (category === "ciśnienie") {
+        valueForAnalysis = { sys: m.value, dia: m.value2 };
+      } else {
+        valueForAnalysis = m.value;
+        // Specjalna obsługa glukozy (timing zapisany w context)
+        if (config.dbType === "GLUCOSE") {
+          context = { timing: m.context };
+        }
+      }
+
+      // Wywołanie Twojej funkcji logiki
+      const analysis = analyzeMeasurement(
+        config.dbType,
+        valueForAnalysis,
+        norms,
+        context,
+      );
+
+      // Pobranie koloru z mapy na górze pliku
+      return STATUS_TO_HEX[analysis.status] || STATUS_TO_HEX.default;
+    });
+
+    // --- 2. KONFIGURACJA DATASETÓW ---
+    if (category === "ciśnienie") {
       datasets = [
         {
-          label: "Skurczowe",
+          label: "Skurczowe (SYS)",
           data: data.map((m) => ({ x: new Date(m.createdAt), y: m.value })),
           borderColor: "#4f46e5",
           backgroundColor: "rgba(79, 70, 229, 0.1)",
-          pointBackgroundColor: pointColors,
+          pointBackgroundColor: pointColors, // Dynamiczne kolory
           pointBorderColor: pointColors,
           pointRadius: 4,
           pointHoverRadius: 7,
           tension: 0.3,
-          fill: true,
+          fill: false,
         },
         {
-          label: "Rozkurczowe",
+          label: "Rozkurczowe (DIA)",
           data: data.map((m) => ({ x: new Date(m.createdAt), y: m.value2 })),
           borderColor: "#ec4899",
           backgroundColor: "rgba(236, 72, 153, 0.1)",
-          pointBackgroundColor: pointColors, // ten sam kolor co skurczowe
+          pointBackgroundColor: pointColors, // Te same kolory dla pary
           pointBorderColor: pointColors,
           pointRadius: 4,
           pointHoverRadius: 7,
           tension: 0.3,
-          fill: true,
+          fill: false,
         },
       ];
+
+      // --- 3. ANNOTATIONS DLA CIŚNIENIA ---
+      if (norms && norms.systolicMin) {
+        // Zielona strefa (SYS)
+        annotations.systolicNorm = {
+          type: "box",
+          yMin: norms.systolicMin,
+          yMax: norms.optimalSystolicMax,
+          backgroundColor: NORM_BG,
+          borderWidth: 0,
+          label: {
+            enabled: true,
+            content: "Cel SYS",
+            position: "start",
+            color: "rgba(16, 185, 129, 0.8)",
+            font: { size: 9 },
+          },
+        };
+
+        // Zielona strefa (DIA)
+        if (norms.diastolicMin) {
+          annotations.diastolicNorm = {
+            type: "box",
+            yMin: norms.diastolicMin,
+            yMax: norms.optimalDiastolicMax,
+            backgroundColor: NORM_BG,
+            borderWidth: 0,
+            label: {
+              enabled: true,
+              content: "Cel DIA",
+              position: "start",
+              yAdjust: 15,
+              color: "rgba(16, 185, 129, 0.8)",
+              font: { size: 9 },
+            },
+          };
+        }
+
+        // Czerwona linia ostrzegawcza (SYS) - Próg ALARMU
+        const sysLimit = norms.elevatedSystolicMax;
+        annotations.sysLimitLine = {
+          type: "line",
+          yMin: sysLimit,
+          yMax: sysLimit,
+          borderColor: LIMIT_LINE_COLOR,
+          borderWidth: 1.5,
+          borderDash: [5, 5],
+          label: {
+            enabled: true,
+            content: `Limit SYS (${sysLimit})`,
+            position: "end",
+            backgroundColor: "transparent",
+            color: "#ef4444",
+            font: { size: 10, weight: "bold" },
+          },
+        };
+
+        // Czerwona linia ostrzegawcza (DIA) - Próg ALARMU
+        const diaLimit = norms.elevatedDiastolicMax;
+        annotations.diaLimitLine = {
+          type: "line",
+          yMin: diaLimit,
+          yMax: diaLimit,
+          borderColor: LIMIT_LINE_COLOR,
+          borderWidth: 1.5,
+          borderDash: [5, 5],
+          label: {
+            enabled: true,
+            content: `Limit DIA (${diaLimit})`,
+            position: "end",
+            yAdjust: 10,
+            backgroundColor: "transparent",
+            color: "#ef4444",
+            font: { size: 10, weight: "bold" },
+          },
+        };
+
+        // Strefa Krytyczna (>140)
+        annotations.criticalZone = {
+          type: "box",
+          yMin: norms.elevatedSystolicMax,
+          backgroundColor: "rgba(220, 38, 38, 0.1)",
+          borderWidth: 0,
+          label: {
+            enabled: true,
+            content: "KRYTYCZNE",
+            position: "center",
+            color: "rgba(220, 38, 38, 0.8)",
+            font: { size: 10 },
+          },
+        };
+      }
     } else {
+      // --- KONFIGURACJA DLA POZOSTAŁYCH WYKRESÓW ---
       datasets = [
         {
           label: config.label,
           data: data.map((m) => ({ x: new Date(m.createdAt), y: m.value })),
           borderColor: config.color,
-          backgroundColor: (context) => {
-            const ctx = context.chart.ctx;
-            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-            gradient.addColorStop(0, config.color + "40");
-            gradient.addColorStop(1, config.color + "00");
-            return gradient;
-          },
           fill: true,
           tension: 0.4,
           pointRadius: 4,
           pointHoverRadius: 6,
-          pointBackgroundColor: "#fff",
-          pointBorderColor: config.color,
+          pointBackgroundColor: pointColors, // Dynamiczne kolory
+          pointBorderColor: pointColors,
           borderWidth: 2,
         },
       ];
-    }
 
-    const NORM_BG = "rgba(16, 185, 129, 0.22)";
-    const NORM_BORDER = "#10b981";
-    const NORM_BORDER_WIDTH = 2.5;
-    const NORM_SHADOW = "0 4px 12px rgba(16, 185, 129, 0.25)";
-
-    if (norms) {
-      if (category === "ciśnienie" && norms.systolicMin) {
-        annotations.systolicNorm = {
-          type: "box",
-          yMin: norms.systolicMin,
-          yMax: norms.systolicMax,
-          backgroundColor: NORM_BG,
-          borderColor: NORM_BORDER,
-          borderWidth: NORM_BORDER_WIDTH,
-          borderDash: [0, 0],
-          shadowOffsetX: 0,
-          shadowOffsetY: 4,
-          shadowBlur: 12,
-          shadowColor: NORM_SHADOW,
-        };
-
-        if (norms.diastolicMin) {
-          annotations.diastolicNorm = {
-            type: "box",
-            yMin: norms.diastolicMin,
-            yMax: norms.diastolicMax,
-            backgroundColor: NORM_BG,
-            borderColor: NORM_BORDER,
-            borderWidth: NORM_BORDER_WIDTH,
-            borderDash: [0, 0],
-            shadowOffsetX: 0,
-            shadowOffsetY: 4,
-            shadowBlur: 12,
-            shadowColor: NORM_SHADOW,
-          };
-        }
-
-        // Dodatkowe strefy alarmowe i krytyczne
-        const alarmMin =
-          Math.max(norms.systolicMax || 130, norms.diastolicMax || 80) + 1;
-        annotations.alarmZone = {
-          type: "box",
-          yMin: alarmMin,
-          yMax: 179,
-          backgroundColor: "rgba(245, 158, 11, 0.12)", // pomarańczowe
-          borderColor: "transparent",
-          label: {
-            enabled: true,
-            content: "↑ Podwyższone / Alarm",
-            position: "center",
-            backgroundColor: "rgba(245, 158, 11, 0.7)",
-            color: "white",
-            font: { size: 11 },
-          },
-        };
-
-        annotations.criticalZone = {
-          type: "box",
-          yMin: 180,
-          backgroundColor: "rgba(239, 68, 68, 0.15)", // czerwone
-          borderColor: "transparent",
-          label: {
-            enabled: true,
-            content: "!!! Krytyczne",
-            position: "start",
-            yAdjust: -20,
-            backgroundColor: "rgba(239, 68, 68, 0.85)",
-            color: "white",
-            font: { size: 11 },
-          },
-        };
-      } else {
+      if (norms) {
         let yMin, yMax;
-
         if (category === "cukier" && norms.glucoseFastingMin) {
           yMin = norms.glucoseFastingMin;
           yMax = norms.glucosePostMealMax || 180;
@@ -367,13 +413,14 @@ export default function Statistics() {
             yMin,
             yMax,
             backgroundColor: NORM_BG,
-            borderColor: NORM_BORDER,
-            borderWidth: NORM_BORDER_WIDTH,
-            borderDash: [0, 0],
-            shadowOffsetX: 0,
-            shadowOffsetY: 4,
-            shadowBlur: 12,
-            shadowColor: NORM_SHADOW,
+            borderWidth: 0,
+            label: {
+              enabled: true,
+              content: "Norma",
+              position: "start",
+              color: "rgba(16, 185, 129, 0.8)",
+              font: { size: 10 },
+            },
           };
         }
       }
@@ -444,7 +491,6 @@ export default function Statistics() {
             <div className="h-6 w-48 bg-gray-200 rounded animate-pulse" />
           </div>
         </div>
-
         <div className="flex justify-center gap-3 mb-8">
           {[1, 2, 3, 4].map((i) => (
             <div
@@ -453,7 +499,6 @@ export default function Statistics() {
             />
           ))}
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {[1, 2, 3, 4].map((i) => (
             <div
