@@ -89,7 +89,7 @@ export function analyzeMeasurement(
     return {
       status: "OPTIMAL",
       message: hasHighRisk
-        ? "Bardzo dobre – poniżej celu leczenia"
+        ? "Bardzo dobre"
         : "W normie – super!",
       isOutOfNorm: false,
       color: "green",
