@@ -12,8 +12,6 @@ import TrendMini from "@/components/UI/CentrumZdrowia/TrendMini";
 import ListaPomiarow from "./ListaPomiarów";
 import { analyzeMeasurement } from "../utils/healthAnalysis";
 
-// KONFIGURACJA TYPÓW POMIARÓW
-
 const MEASUREMENT_TYPES = {
   BLOOD_PRESSURE: {
     label: "Ciśnienie",
@@ -239,9 +237,7 @@ Odpowiedz WYŁĄCZNIE treścią porady – bez żadnego wstępu, bez podpisu, be
     .filter((m) => m.role === "assistant")
     .pop()?.content;
 
-  // ────────────────────────────────────────────────
   // RENDER
-  // ────────────────────────────────────────────────
 
   if (status === "loading") {
     return (
@@ -262,7 +258,7 @@ Odpowiedz WYŁĄCZNIE treścią porady – bez żadnego wstępu, bez podpisu, be
         {/* FORUMULARZ */}
         <form
           onSubmit={handleSubmit}
-          className={`bg-white/80 backdrop-blur-xl border border-white/40 p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 flex flex-col gap-5 transition-all ${
+          className={`bg-white/80 backdrop-blur-xl border border-white/40 p-4 sm:p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 flex flex-col gap-5 transition-all ${
             isSubmitting ? "opacity-75 pointer-events-none" : ""
           }`}
         >
@@ -305,12 +301,12 @@ Odpowiedz WYŁĄCZNIE treścią porady – bez żadnego wstępu, bez podpisu, be
           <div>
             <label className="text-xs font-bold text-gray-600 block mb-1.5 ml-1">
               {type === "BLOOD_PRESSURE"
-                ? "Ciśnienie (skurczowe / rozkurczowe)"
+                ? "Ciśnienie (skurczowe / rozkurczowe) mm/hg"
                 : "Wartość"}
             </label>
 
             {type === "BLOOD_PRESSURE" ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 md:gap-3">
                 <input
                   type="number"
                   placeholder="120"
@@ -323,10 +319,12 @@ Odpowiedz WYŁĄCZNIE treścią porady – bez żadnego wstępu, bez podpisu, be
                       ),
                     )
                   }
-                  className="flex-1 p-3.5 rounded-xl border border-gray-200 text-center font-semibold focus:ring-2 focus:ring-emerald-200"
+                  className="flex-1 min-w-0 p-3 md:p-3.5 rounded-xl border border-gray-200 text-center font-semibold focus:ring-2 focus:ring-emerald-200 text-lg md:text-xl"
                   required
                 />
-                <span className="text-2xl text-gray-300">/</span>
+                <span className="text-xl md:text-2xl text-gray-300 shrink-0">
+                  /
+                </span>
                 <input
                   type="number"
                   placeholder="80"
@@ -334,7 +332,7 @@ Odpowiedz WYŁĄCZNIE treścią porady – bez żadnego wstępu, bez podpisu, be
                   onChange={(e) =>
                     setValue(`${value.split("/")[0] || ""}/${e.target.value}`)
                   }
-                  className="flex-1 p-3.5 rounded-xl border border-gray-200 text-center font-semibold focus:ring-2 focus:ring-emerald-200"
+                  className="flex-1 min-w-0 p-3 md:p-3.5 rounded-xl border border-gray-200 text-center font-semibold focus:ring-2 focus:ring-emerald-200 text-lg md:text-xl"
                   required
                 />
               </div>
@@ -530,6 +528,7 @@ function parseBloodPressure(input) {
 
   return null;
 }
+
 function prepareMeasurementData(
   type,
   rawValue,
@@ -567,7 +566,6 @@ function prepareMeasurementData(
     };
   }
 
-  // typy numeryczne
   const num = Number(rawValue.replace(",", "."));
   if (!Number.isFinite(num) || num <= 0) {
     return { valid: false, error: "Wprowadź poprawną liczbę" };
@@ -613,15 +611,17 @@ function prepareMeasurementData(
 function showAnalysisToast(analysis) {
   const { status, message } = analysis || {};
 
+  const displayMessage = message || "Pomiar zapisany";
+
   if (["CRITICAL", "ALARM"].includes(status)) {
-    toast.error(message || "Pilnie skontaktuj się z lekarzem!", {
+    toast.error(displayMessage, {
       duration: 8000,
     });
   } else if (status === "ELEVATED_HIGH_RISK") {
-    toast(message || "Wynik podwyższony – zwróć uwagę", { duration: 7000 });
+    toast(displayMessage, { icon: "⚠️", duration: 7000 });
   } else if (["OPTIMAL", "IN_TARGET"].includes(status)) {
-    toast.success(message || "Świetny wynik! 👏", { duration: 5000 });
+    toast.success(displayMessage, { duration: 5000 });
   } else {
-    toast(message || "Pomiar zapisany", { duration: 4000 });
+    toast.success(displayMessage, { duration: 4000 });
   }
 }
