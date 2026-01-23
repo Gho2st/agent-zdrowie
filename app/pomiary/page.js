@@ -217,14 +217,6 @@ Napisz po polsku krótką (3–5 zdań, maksymalnie 100 słów), ciepłą, ale r
 
 Ścisłe zasady w zależności od statusu:
 
-• CRITICAL lub ALARM → bardzo pilne, wyraźnie poleć NATYCHMIASTOWY kontakt z lekarzem / pogotowiem, podaj dlaczego (ryzyko zawału, udaru, przełomu, hipoglikemii itp.)
-• HIGH lub LOW → ostrzeżenie + zalecenie pilnej konsultacji lekarskiej w ciągu 1–2 dni + co obserwować
-• ELEVATED_HIGH_RISK → podkreśl, że przy wysokim ryzyku sercowo-naczyniowym nawet lekkie przekroczenie wymaga uwagi, zaproponuj 1–2 realne zmiany (mniej soli, więcej ruchu, kontrola wagi, sen)
-• ELEVATED → łagodniejsze ostrzeżenie, 1–2 proste sugestie stylu życia
-• OPTIMAL lub IN_TARGET → ciepłe pochwalenie + jedna mała wskazówka jak utrzymać dobry wynik
-• BELOW_TARGET lub ABOVE_TARGET (tętno treningowe)
-• IN_TARGET (trening) → motywacja i pochwała techniki
-
 Nigdy nie:
 - nie zmieniaj dawek leków
 - nie stawiaj diagnozy
@@ -232,7 +224,7 @@ Nigdy nie:
 
 Używaj naturalnego, wspierającego języka – jakbyś rozmawiał z bliską osobą, której zależy na zdrowiu.
 
-Odpowiedz WYŁĄCZNIE treścią porady – bez żadnego wstępu, bez podpisu, bez cudzysłowów, bez „Oto moja rada:”.
+Odpowiedz WYŁĄCZNIE treścią porady – bez żadnego wstępu, bez podpisu, bez cudzysłowów”.
       `.trim();
       console.log(prompt);
       await append({

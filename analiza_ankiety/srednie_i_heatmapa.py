@@ -6,7 +6,6 @@ sns.set(style="whitegrid", rc={"axes.labelsize": 14, "axes.titlesize": 18})
 
 plik_excel = 'ankieta.xlsx'
 
-# Wczytaj tylko potrzebne kolumny
 df = pd.read_excel(plik_excel, sheet_name='Liczba odpowiedzi 1', usecols=[1, 11, 12, 13, 14, 15])
 
 df.columns = ['Wiek', 'Dodawanie pomiarów', 'Porównanie do norm', 'Chatbot AI', 'Analiza nastroju', 'Motywacja']

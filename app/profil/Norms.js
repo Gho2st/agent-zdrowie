@@ -13,9 +13,11 @@ import {
 
 const fieldLabels = {
   systolicMin: "Ciśnienie skurczowe (min)",
-  systolicMax: "Ciśnienie skurczowe (max)",
+  optimalSystolicMax: "Ciśnienie skurczowe optymalne (max)",
+  elevatedSystolicMax: "Podwyzszone ciśnienie (max)",
   diastolicMin: "Ciśnienie rozkurczowe (min)",
-  diastolicMax: "Ciśnienie rozkurczowe (max)",
+  optimalDiastolicMax: "Ciśnienie rozkurczowe optymalne (max)",
+  elevatedDiastolicMax: "Ciśnienie rozkurczowe podwyzszone (max)",
   glucoseFastingMin: "Glukoza na czczo (min)",
   glucoseFastingMax: "Glukoza na czczo (max)",
   glucosePostMealMax: "Glukoza po posiłku (max)",

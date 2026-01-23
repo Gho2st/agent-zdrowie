@@ -1,3 +1,5 @@
+import { MeasurementType } from "@prisma/client";
+
 export function analyzeMeasurement(
   type,
   value,
@@ -14,7 +16,7 @@ export function analyzeMeasurement(
     };
   }
 
-  if (type === "BLOOD_PRESSURE") {
+  if (type === MeasurementType.BLOOD_PRESSURE) {
     const { sys, dia } = value;
 
     // 1. Krytyczne – zawsze pierwsze
@@ -28,76 +30,49 @@ export function analyzeMeasurement(
     }
 
     // 2. Hipotensja
-    if (sys < 90 || dia < 60) {
+    if (sys < norms.systolicMin || dia < norms.diastolicMin) {
       return {
         status: "LOW",
         message: "Zbyt niskie ciśnienie – obserwuj objawy.",
         isOutOfNorm: true,
         color: "blue",
-        severity: "low",
       };
     }
 
-    // 3. Najpierw zawsze sprawdzamy, czy przekroczono indywidualny cel
-    const exceededTarget =
-      (typeof norms?.systolicMax === "number" && sys > norms.systolicMax) ||
-      (typeof norms?.diastolicMax === "number" && dia > norms.diastolicMax);
-
-    if (exceededTarget) {
-      return {
-        status: "ALARM",
-        message: `Powyżej celu leczenia (<${norms.systolicMax}/${norms.diastolicMax}). Skonsultuj lekarza.`,
-        isOutOfNorm: true,
-        color: "orange",
-      };
-    }
-
-    // 4. Docelowy zakres leczenia (tylko jeśli nie przekroczono celu)
-    if (sys <= 129 && dia <= 79) {
+    // 3. Normy i przekroczenia
+    if (sys <= norms.optimalSystolicMax && dia <= norms.optimalDiastolicMax) {
       return {
         status: "OPTIMAL",
-        message: hasHighRisk
-          ? "W docelowym zakresie leczenia (120–129/<80 mmHg)"
-          : "Bardzo dobry wynik!",
+        message: "Ciśnienie w zakresie optymalnym 🎯",
         isOutOfNorm: false,
         color: "green",
       };
     }
-
-    // 5. Elevated – tylko jeśli nie jest ani optimum, ani powyżej celu
-    if (sys >= 120 || dia >= 70) {
-      if (hasHighRisk) {
-        return {
-          status: "ELEVATED_HIGH_RISK",
-          message:
-            "Lekko powyżej optimum – rozważ korektę leczenia / stylu życia.",
-          isOutOfNorm: false,
-          color: "yellow",
-        };
-      } else {
-        return {
-          status: "ELEVATED",
-          message:
-            "Podwyższone ciśnienie – zadbaj o dietę, sól <5 g/dzień, ruch, wagę.",
-          isOutOfNorm: false,
-          color: "yellow",
-        };
-      }
+    // przekroczone optimum → sprawdzamy czy to już elevated czy alarm
+    if (sys > norms.elevatedSystolicMax || dia > norms.elevatedDiastolicMax) {
+      return {
+        status: "ALARM",
+        message: hasHighRisk
+          ? `Przekroczony cel terapeutyczny (< ${norms.optimalSystolicMax}/${norms.optimalDiastolicMax} mmHg)`
+          : "Pomiar sugerujący nadciśnienie. Zalecana wizyta u lekarza.",
+        isOutOfNorm: true,
+        color: "red",
+      };
     }
 
-    // 6. Dobre, poniżej 120/70
+    // pozostaje zakres elevated
     return {
-      status: "OPTIMAL",
+      status: hasHighRisk ? "THERAPY_TARGET_EXCEEDED" : "ELEVATED",
       message: hasHighRisk
-        ? "Bardzo dobre"
-        : "W normie – super!",
-      isOutOfNorm: false,
-      color: "green",
+        ? `Przekroczony cel terapeutyczny (< ${norms.optimalSystolicMax}/${norms.optimalDiastolicMax} mmHg)`
+        : "Podwyższone ciśnienie – zdrowie.",
+      isOutOfNorm: true,
+      color: "orange",
     };
   }
 
   //   GLUKOZA
-  if (type === "GLUCOSE") {
+  if (type === MeasurementType.GLUCOSE) {
     const timing = context.timing; // "przed posiłkiem" lub "po posiłku"
 
     if (
@@ -134,7 +109,7 @@ export function analyzeMeasurement(
   }
 
   // WAGA
-  if (type === "WEIGHT" && norms.weightMin && norms.weightMax) {
+  if (type === MeasurementType.WEIGHT && norms.weightMin && norms.weightMax) {
     if (value < norms.weightMin)
       return {
         status: "LOW",
@@ -153,7 +128,7 @@ export function analyzeMeasurement(
 
   // TĘTNO
 
-  if (type === "HEART_RATE") {
+  if (type === MeasurementType.HEART_RATE) {
     const ctx = context?.context || "spoczynkowe";
 
     // 1. Zbyt niskie tętno

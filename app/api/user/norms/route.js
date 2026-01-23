@@ -39,7 +39,7 @@ function flattenProfileData(healthProfile) {
 
   return {
     ...rest,
-    activityLevel: rest.activityLevel, // To już jest Enum z bazy
+    activityLevel: rest.activityLevel,
     conditions: conditionsString,
     ...norms,
     hasHighRisk,
@@ -112,9 +112,11 @@ export async function PATCH(req) {
 
     const MANUAL_NORM_FIELDS = [
       "systolicMin",
-      "systolicMax",
+      "optimalSystolicMax",
+      "elevatedSystolicMax",
       "diastolicMin",
-      "diastolicMax",
+      "optimalDiastolicMax",
+      "elevatedDiastolicMax",
       "glucoseFastingMin",
       "glucoseFastingMax",
       "glucosePostMealMax",

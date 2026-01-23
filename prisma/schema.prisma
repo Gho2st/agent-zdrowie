@@ -83,9 +83,12 @@ model HealthNorms {
   profileId String        @unique
   profile   HealthProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
-  systolicMax  Int
+  optimalSystolicMax  Int
+  elevatedSystolicMax  Int
   systolicMin  Int
-  diastolicMax Int
+  
+  optimalDiastolicMax Int
+  elevatedDiastolicMax Int
   diastolicMin Int
 
   glucoseFastingMax  Int

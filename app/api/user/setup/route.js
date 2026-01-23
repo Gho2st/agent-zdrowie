@@ -32,7 +32,7 @@ export async function POST(req) {
     if (!session?.user?.email) {
       return NextResponse.json(
         { error: "Nieautoryzowany dostęp" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -54,7 +54,7 @@ export async function POST(req) {
     if (!birthdate || isNaN(new Date(birthdate).getTime())) {
       return NextResponse.json(
         { error: "Nieprawidłowa data urodzenia" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -65,7 +65,7 @@ export async function POST(req) {
           error: "Musisz mieć ukończone 18 lat, aby korzystać z tej aplikacji.",
           details: `Podana data urodzenia wskazuje na wiek ${age} lat.`,
         },
-        { status: 403 } // Forbidden
+        { status: 403 }, // Forbidden
       );
     }
 
@@ -73,21 +73,21 @@ export async function POST(req) {
     if (!dbGender) {
       return NextResponse.json(
         { error: "Nieprawidłowa płeć" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (height < 50 || height > 250) {
       return NextResponse.json(
         { error: "Wzrost musi być między 50 a 250 cm" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (weight < 20 || weight > 300) {
       return NextResponse.json(
         { error: "Waga musi być między 20 a 300 kg" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -95,14 +95,13 @@ export async function POST(req) {
     if (!dbActivity) {
       return NextResponse.json(
         { error: "Nieprawidłowy poziom aktywności" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Obliczamy normy na podstawie danych użytkownika
     const normsData = getHealthNorms(
       age,
-      dbGender,
       height,
       weight,
       dbActivity,
@@ -110,8 +109,9 @@ export async function POST(req) {
       hasHypertension,
       hasHeartDisease,
       hasKidneyDisease,
-      hasPrediabetes
+      hasPrediabetes,
     );
+    console.log(normsData);
 
     if (normsData.error) {
       return NextResponse.json({ error: normsData.error }, { status: 400 });
@@ -126,7 +126,7 @@ export async function POST(req) {
     if (!user) {
       return NextResponse.json(
         { error: "Użytkownik nie istnieje w bazie danych" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -158,21 +158,21 @@ export async function POST(req) {
 
     return NextResponse.json(
       { success: true, message: "Profil stworzony pomyślnie" },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     // Obsługa błędu unikalności (jeśli profil już istnieje)
     if (error.code === "P2002") {
       return NextResponse.json(
         { error: "Profil zdrowia dla tego konta już istnieje." },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
     console.error("Błąd podczas tworzenia profilu:", error);
     return NextResponse.json(
       { error: "Wewnętrzny błąd serwera" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
