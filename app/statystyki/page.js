@@ -27,9 +27,9 @@ import {
   CalendarRange,
 } from "lucide-react";
 
-// Import Twojej funkcji analitycznej
 import { analyzeMeasurement } from "../utils/healthAnalysis";
 
+// Rejestracja modułów Chart.js
 ChartJS.register(
   LineElement,
   PointElement,
@@ -45,9 +45,9 @@ ChartJS.register(
 // Mapowanie statusów z analyzeMeasurement na kolory
 const STATUS_TO_HEX = {
   CRITICAL: "#ef4444", // Czerwony (red-500)
-  ALARM: "#ef4444", // Czerwony (red-500)
+  ALARM: "#ef4444", // Czerwony
   HIGH: "#f97316", // Pomarańczowy (orange-500)
-  ELEVATED: "#f97316", // Pomarańczowy
+  ELEVATED: "#f97316",
   THERAPY_TARGET_EXCEEDED: "#f97316",
   ABOVE_TARGET: "#f97316",
   LOW: "#3b82f6", // Niebieski (blue-500)
@@ -58,6 +58,7 @@ const STATUS_TO_HEX = {
   default: "#10b981",
 };
 
+// Konfiguracja metadanych dla typów pomiarów
 const CONFIG = {
   ciśnienie: {
     dbType: "BLOOD_PRESSURE",
@@ -101,7 +102,6 @@ const CONFIG = {
 const checkIsNormal = (val, val2, type, norms) => {
   if (!norms) return null;
   if (type === "ciśnienie") {
-    // Używamy optimalSystolicMax jako górnej granicy "zielonej strefy"
     const sOk =
       val >= (norms.systolicMin || 0) &&
       val <= (norms.optimalSystolicMax || 999);
@@ -111,6 +111,7 @@ const checkIsNormal = (val, val2, type, norms) => {
     return sOk && dOk;
   }
   if (type === "cukier") {
+    // Tutaj prosta weryfikacja do statystyki % (można dostosować)
     return (
       val <= (norms.glucosePostMealMax || 180) &&
       val >= (norms.glucoseFastingMin || 60)
@@ -228,24 +229,23 @@ export default function Statistics() {
     const config = CONFIG[category];
 
     const NORM_BG = "rgba(16, 185, 129, 0.15)";
+    const CRITICAL_BG = "rgba(239, 68, 68, 0.1)"; // Czerwone tło dla stref krytycznych
     const LIMIT_LINE_COLOR = "rgba(239, 68, 68, 0.6)";
 
-    // --- 1. GENEROWANIE KOLORÓW PUNKTÓW Z analyzeMeasurement ---
+    // --- 1. KOLORY PUNKTÓW (zależne od statusu analyzeMeasurement) ---
     const pointColors = data.map((m) => {
       let valueForAnalysis;
-      let context = { context: m.context }; // np. "po posiłku"
+      let context = { context: m.context };
 
       if (category === "ciśnienie") {
         valueForAnalysis = { sys: m.value, dia: m.value2 };
       } else {
         valueForAnalysis = m.value;
-        // Specjalna obsługa glukozy (timing zapisany w context)
         if (config.dbType === "GLUCOSE") {
           context = { timing: m.context };
         }
       }
 
-      // Wywołanie Twojej funkcji logiki
       const analysis = analyzeMeasurement(
         config.dbType,
         valueForAnalysis,
@@ -253,11 +253,12 @@ export default function Statistics() {
         context,
       );
 
-      // Pobranie koloru z mapy na górze pliku
       return STATUS_TO_HEX[analysis.status] || STATUS_TO_HEX.default;
     });
 
-    // --- 2. KONFIGURACJA DATASETÓW ---
+    // --- 2. KONFIGURACJA DATASETÓW I ANNOTATIONS ---
+
+    // A. CIŚNIENIE
     if (category === "ciśnienie") {
       datasets = [
         {
@@ -265,7 +266,7 @@ export default function Statistics() {
           data: data.map((m) => ({ x: new Date(m.createdAt), y: m.value })),
           borderColor: "#4f46e5",
           backgroundColor: "rgba(79, 70, 229, 0.1)",
-          pointBackgroundColor: pointColors, // Dynamiczne kolory
+          pointBackgroundColor: pointColors,
           pointBorderColor: pointColors,
           pointRadius: 4,
           pointHoverRadius: 7,
@@ -277,7 +278,7 @@ export default function Statistics() {
           data: data.map((m) => ({ x: new Date(m.createdAt), y: m.value2 })),
           borderColor: "#ec4899",
           backgroundColor: "rgba(236, 72, 153, 0.1)",
-          pointBackgroundColor: pointColors, // Te same kolory dla pary
+          pointBackgroundColor: pointColors,
           pointBorderColor: pointColors,
           pointRadius: 4,
           pointHoverRadius: 7,
@@ -286,9 +287,8 @@ export default function Statistics() {
         },
       ];
 
-      // --- 3. ANNOTATIONS DLA CIŚNIENIA ---
+      // Annotations dla ciśnienia
       if (norms && norms.systolicMin) {
-        // Zielona strefa (SYS)
         annotations.systolicNorm = {
           type: "box",
           yMin: norms.systolicMin,
@@ -304,7 +304,6 @@ export default function Statistics() {
           },
         };
 
-        // Zielona strefa (DIA)
         if (norms.diastolicMin) {
           annotations.diastolicNorm = {
             type: "box",
@@ -323,7 +322,6 @@ export default function Statistics() {
           };
         }
 
-        // Czerwona linia ostrzegawcza (SYS) - Próg ALARMU
         const sysLimit = norms.elevatedSystolicMax;
         annotations.sysLimitLine = {
           type: "line",
@@ -342,7 +340,6 @@ export default function Statistics() {
           },
         };
 
-        // Czerwona linia ostrzegawcza (DIA) - Próg ALARMU
         const diaLimit = norms.elevatedDiastolicMax;
         annotations.diaLimitLine = {
           type: "line",
@@ -362,11 +359,11 @@ export default function Statistics() {
           },
         };
 
-        // Strefa Krytyczna (>140)
         annotations.criticalZone = {
           type: "box",
-          yMin: norms.elevatedSystolicMax,
-          backgroundColor: "rgba(220, 38, 38, 0.1)",
+          yMin: 180,
+          yMax: 240, // Zakres wizualny wykresu
+          backgroundColor: CRITICAL_BG,
           borderWidth: 0,
           label: {
             enabled: true,
@@ -377,8 +374,9 @@ export default function Statistics() {
           },
         };
       }
-    } else {
-      // --- KONFIGURACJA DLA POZOSTAŁYCH WYKRESÓW ---
+    }
+    // B. GLUKOZA
+    else if (category === "cukier") {
       datasets = [
         {
           label: config.label,
@@ -388,7 +386,76 @@ export default function Statistics() {
           tension: 0.4,
           pointRadius: 4,
           pointHoverRadius: 6,
-          pointBackgroundColor: pointColors, // Dynamiczne kolory
+          pointBackgroundColor: pointColors,
+          pointBorderColor: pointColors,
+          borderWidth: 2,
+        },
+      ];
+
+      // 1. Czerwona strefa - Hipoglikemia poz. 2 (< 54)
+      annotations.criticalLow = {
+        type: "box",
+        yMin: 0,
+        yMax: 54,
+        backgroundColor: CRITICAL_BG,
+        borderWidth: 0,
+        label: {
+          enabled: true,
+          content: "KRYTYCZNE (<54)",
+          position: "start",
+          yAdjust: -10,
+          color: "#ef4444",
+          font: { size: 10, weight: "bold" },
+        },
+      };
+
+      // 2. Czerwona strefa - Hiperglikemia (> 250)
+      annotations.criticalHigh = {
+        type: "box",
+        yMin: 250,
+        yMax: 400, // Wysoka wartość by zakryć górę wykresu
+        backgroundColor: CRITICAL_BG,
+        borderWidth: 0,
+        label: {
+          enabled: true,
+          content: "KRYTYCZNE (>250)",
+          position: "start",
+          yAdjust: 10,
+          color: "#ef4444",
+          font: { size: 10, weight: "bold" },
+        },
+      };
+
+      // 3. Zielona strefa (Indywidualny cel pacjenta)
+      if (norms && norms.glucoseFastingMin) {
+        annotations.targetZone = {
+          type: "box",
+          yMin: norms.glucoseFastingMin,
+          yMax: norms.glucosePostMealMax,
+          backgroundColor: NORM_BG,
+          borderWidth: 0,
+          label: {
+            enabled: true,
+            content: "Twój Cel",
+            position: "center",
+            color: "rgba(16, 185, 129, 0.9)",
+            font: { size: 10, weight: "bold" },
+          },
+        };
+      }
+    }
+    // C. POZOSTAŁE
+    else {
+      datasets = [
+        {
+          label: config.label,
+          data: data.map((m) => ({ x: new Date(m.createdAt), y: m.value })),
+          borderColor: config.color,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: pointColors,
           pointBorderColor: pointColors,
           borderWidth: 2,
         },
@@ -396,10 +463,7 @@ export default function Statistics() {
 
       if (norms) {
         let yMin, yMax;
-        if (category === "cukier" && norms.glucoseFastingMin) {
-          yMin = norms.glucoseFastingMin;
-          yMax = norms.glucosePostMealMax || 180;
-        } else if (category === "waga" && norms.weightMin) {
+        if (category === "waga" && norms.weightMin) {
           yMin = norms.weightMin;
           yMax = norms.weightMax;
         } else if (category === "tętno" && norms.pulseMin) {
