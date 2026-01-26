@@ -12,6 +12,7 @@ import { calculateStats, buildPersonalizedContext } from "@/lib/ai-context";
 
 export const runtime = "nodejs";
 
+// Funkcja łamiąca tekst na linie
 function breakTextIntoLines(text, font, size, maxWidth) {
   if (!text) return [];
   const words = text.split(/\s+/);
@@ -49,7 +50,8 @@ function breakTextIntoLines(text, font, size, maxWidth) {
 function cleanAiText(text) {
   return (text || "")
     .replace(/[\u200B-\u200D\uFEFF]/g, "")
-    .replace(/\*{2,}/g, "")
+    .replace(/[#*`]/g, "")
+    .replace(/\n\s*\n/g, "\n")
     .replace(/\s{2,}/g, " ")
     .trim();
 }
@@ -178,25 +180,29 @@ export async function POST(request) {
     // Dynamiczne pytanie nr 2
     let question2 = "Czy w analizowanym okresie parametry są stabilne?";
     if (diffDays < 30) {
-      question2 =
-        "2. Czy w tym wycinku czasu widać nagłe anomalie lub niebezpieczne odchylenia?";
+      question2 = "2. Czy widać nagłe anomalie (skrótowo)?";
     } else {
-      question2 =
-        "2. Czy analizowany okres wskazuje na stabilizację parametrów, czy widać tendencję pogarszania?";
+      question2 = "2. Czy widać stabilizację czy pogorszenie (skrótowo)?";
     }
 
     // 4. Generowanie AI
     const { text: aiComment } = await generateText({
       model: openai("gpt-4o"),
       temperature: 0.3,
-      maxTokens: 750,
-      system:
-        "Jesteś asystentem medycznym. Analizujesz trendy i obecną sytuację pacjenta.",
+      maxTokens: 1500,
+      system: `
+        Jesteś asystentem medycznym. Analizujesz dane pacjenta.
+        INSTRUKCJE FORMATOWANIA:
+        1. NIE używaj formatowania Markdown (żadnych pogrubień **, żadnych nagłówków #).
+        2. Używaj tylko czystego tekstu.
+        3. Pisz ZWIĘŹLE i w punktach (używaj myślników "-").
+        4. Nie pisz długich wstępów, przejdź do rzeczy.
+      `.trim(),
       prompt: `
-Na podstawie danych przygotuj podsumowanie dla lekarza.
-1. Czy cele terapeutyczne są spełniane (patrz sekcja statystyk z całego okresu)?
+Na podstawie danych przygotuj KRÓTKIE podsumowanie dla lekarza.
+1. Realizacja celów terapeutycznych (Tak/Nie/Częściowo - krótki komentarz).
 ${question2}
-3. Wnioski ogólne.
+3. Wnioski ogólne (max 3 konkretne zdania).
 
 DANE:
 ${contextForAI}
@@ -308,10 +314,11 @@ ${contextForAI}
     drawLine("Analiza asystenta (AI)", 14, rgb(0.02, 0.62, 0.42));
     y -= 8;
     if (aiComment) {
+      // Dzielimy na akapity, żeby zachować strukturę
       aiComment.split(/\n\s*\n/).forEach((p) => {
         if (p.trim()) {
           drawLine(p.trim(), 11, rgb(0.1, 0.1, 0.1));
-          y -= 4;
+          y -= 4; // mały odstęp między akapitami
         }
       });
     }
