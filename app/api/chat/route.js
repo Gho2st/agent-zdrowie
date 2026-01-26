@@ -4,10 +4,9 @@ import prisma from "@/lib/prisma";
 import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
-// Importujemy wspólne funkcje z Twojej biblioteki
 import { buildPersonalizedContext, calculateStats } from "@/lib/ai-context";
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function POST(req) {
   try {
@@ -50,7 +49,6 @@ export async function POST(req) {
     const checkins = user.dailyCheckins || [];
 
     // Obliczenie statystyk z CAŁEJ historii
-    // AI dostanie informację np. "Średnia roczna: 120/80", co daje świetny punkt odniesienia.
     const statsLines = calculateStats(measurements, norms, checkins);
     const statsText =
       statsLines.join("\n") || "Brak wystarczających danych do statystyk.";
@@ -127,8 +125,6 @@ ${context}
 
 Odpowiedz po polsku, bądź zwięzły i miły.
 `.trim();
-
-    console.log(systemPrompt);
 
     //  Strumieniowanie odpowiedzi
     const result = await streamText({
