@@ -68,6 +68,7 @@ const STATUS_LABELS = {
   IN_TARGET: "W strefie",
   BELOW_TARGET: "Poniżej strefy",
   ABOVE_TARGET: "Powyżej strefy",
+  THERAPY_TARGET_EXCEEDED: "Powyżej celu terapeutycznego",
 };
 
 const COLOR_STYLES = {
