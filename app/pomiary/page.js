@@ -609,19 +609,84 @@ function prepareMeasurementData(
 }
 
 function showAnalysisToast(analysis) {
-  const { status, message } = analysis || {};
-
-  const displayMessage = message || "Pomiar zapisany";
-
-  if (["CRITICAL", "ALARM"].includes(status)) {
-    toast.error(displayMessage, {
-      duration: 8000,
-    });
-  } else if (status === "ELEVATED_HIGH_RISK") {
-    toast(displayMessage, { icon: "⚠️", duration: 7000 });
-  } else if (["OPTIMAL", "IN_TARGET"].includes(status)) {
-    toast.success(displayMessage, { duration: 5000 });
-  } else {
-    toast.success(displayMessage, { duration: 4000 });
+  if (!analysis) {
+    toast.success("Pomiar zapisany");
+    return;
   }
+
+  const { status, message } = analysis;
+
+  const defaultOptions = {
+    duration: 5500,
+    position: "top-right",
+  };
+
+  //  KRYTYCZNE – zawsze czerwone + dłuższy czas
+  if (["CRITICAL", "ALARM"].includes(status)) {
+    return toast.error(
+      message || "Krytyczny wynik – skonsultuj się z lekarzem!",
+      {
+        ...defaultOptions,
+        duration: 12000,
+        icon: "🚨",
+      },
+    );
+  }
+
+  //  NISKIE wartości – powinny być ostrzeżeniem
+  if (["LOW"].includes(status)) {
+    return toast(message || "Wartość wyraźnie poniżej normy", {
+      ...defaultOptions,
+      icon: "⚠️",
+      style: {
+        background: "#fef3c7", // żółty/amber-100
+        color: "#92400e", // amber-800
+        border: "1px solid #f59e0b",
+      },
+    });
+  }
+
+  //  Wysokie / przekroczone – pomarańczowe ostrzeżenie
+  if (
+    ["HIGH", "ELEVATED", "THERAPY_TARGET_EXCEEDED", "ABOVE_TARGET"].includes(
+      status,
+    )
+  ) {
+    return toast(message || "Wartość powyżej zalecanego zakresu", {
+      ...defaultOptions,
+      icon: "⚠️",
+      style: {
+        background: "#ffedd5", // orange-100
+        color: "#9a3412", // orange-800
+        border: "1px solid #f97316",
+      },
+    });
+  }
+
+  //  Lekko poniżej / powyżej celu treningowego
+  if (["BELOW_TARGET"].includes(status)) {
+    return toast(message || "Tętno poniżej strefy docelowej", {
+      ...defaultOptions,
+      icon: "⚠️",
+      style: {
+        background: "#fef3c7", // amber
+        color: "#92400e",
+        border: "1px solid #f59e0b",
+      },
+    });
+  }
+
+  //  Wszystko w normie / optymalne
+  if (["OPTIMAL", "IN_TARGET", "OK"].includes(status)) {
+    return toast.success(message || "Wynik w normie ✓", {
+      ...defaultOptions,
+      duration: 4000,
+    });
+  }
+
+  // fallback
+  toast(message || "Pomiar zapisany", {
+    ...defaultOptions,
+    icon: "✓",
+  });
 }

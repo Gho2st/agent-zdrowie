@@ -56,15 +56,14 @@ const MEASUREMENT_STYLES = {
 };
 
 const STATUS_LABELS = {
-  CRITICAL: "Krytyczny",
-  ALARM: "Powyżej normy",
+  CRITICAL: "Krytyczny wynik",
+  ALARM: "Krytycznie wysoki",
   ELEVATED: "Podwyższony",
   HIGH: "Za wysoki",
   LOW: "Za niski",
   OPTIMAL: "Optymalny",
   IN_RANGE: "W normie",
-  OK: "OK",
-  UNKNOWN: "Brak norm",
+  OK: "W normie",
   IN_TARGET: "W strefie",
   BELOW_TARGET: "Poniżej strefy",
   ABOVE_TARGET: "Powyżej strefy",
