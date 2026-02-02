@@ -87,6 +87,7 @@ WBUDOWANE ZASADY OCENY (priorytetowe – używaj ich zawsze):
 1. Tętno (AHA 2024)
    - Spoczynkowe: 60–100 bpm (norma dla dorosłych)
    - U osób z wysoką aktywnością fizyczną (activityLevel = "HIGH"): dolna granica obniżona do 40 bpm (fizjologiczna bradykardia sportowa)
+   - tętno treningowe: obliczane jako 50-85% maksymalnego tętna według wzoru: 𝑀𝑎𝑥𝐻𝑅 = 220 − 𝑤𝑖𝑒𝑘. Pozwala to użytkownikowi otrzymać poglądową zieloną strefę
    - Trendy ważniejsze niż pojedyncza wartość; stale >90–100 lub <50 (bez treningu) → zasugeruj konsultację
 
 2. Masa ciała i BMI (WHO 2025 – bez zmian)
@@ -133,7 +134,6 @@ Odpowiedz po polsku, bądź zwięzły i miły.
       system: systemPrompt,
       messages,
     });
-
     return result.toDataStreamResponse();
   } catch (error) {
     console.error("Chat error:", error);
