@@ -24,9 +24,8 @@ const CATEGORIES = {
       activeText: "text-indigo-700",
     },
     options: [
-      { value: 4, label: "😄 Świetne" },
       { value: 3, label: "🙂 Dobre" },
-      { value: 2, label: "😐 Przeciętne" },
+      { value: 2, label: "😐 Średnie" },
       { value: 1, label: "😞 Złe" },
     ],
   },

@@ -15,7 +15,7 @@ export async function GET(req) {
   const days = parseInt(searchParams.get("days") || "7");
 
   try {
-    // 3. Pobranie ID użytkownika (String CUID)
+    // 3. Pobranie ID użytkownika
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: { id: true },
@@ -33,7 +33,7 @@ export async function GET(req) {
     // 5. Pobranie danych
     const checkins = await prisma.dailyCheckin.findMany({
       where: {
-        userId: user.id, // String
+        userId: user.id,
         date: {
           gte: fromDate,
         },
@@ -43,7 +43,7 @@ export async function GET(req) {
       },
       select: {
         date: true,
-        mood: true, // Dodałem mood, bo jest w schemie i warto go pokazać
+        mood: true,
         sleep: true,
         stress: true,
         energy: true,

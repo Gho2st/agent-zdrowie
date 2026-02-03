@@ -22,6 +22,8 @@ import {
   CalendarDays,
 } from "lucide-react";
 
+import { MeasurementType } from "@prisma/client";
+
 ChartJS.register(
   LineElement,
   PointElement,
@@ -30,7 +32,7 @@ ChartJS.register(
   Tooltip,
   Filler,
   Legend,
-  annotationPlugin
+  annotationPlugin,
 );
 
 const hexToRgba = (hex, alpha) => {
@@ -82,7 +84,7 @@ const STYLE_CONFIG = {
 
 export default function TrendMini({ data = [], type, title }) {
   const isCheckin = type === "CHECKIN";
-  const isPressure = type === "BLOOD_PRESSURE" || type === "ciśnienie";
+  const isPressure = type === MeasurementType.BLOOD_PRESSURE;
 
   const configType =
     Object.keys(STYLE_CONFIG).find((key) => key === type) || "DEFAULT";
@@ -114,6 +116,7 @@ export default function TrendMini({ data = [], type, title }) {
         value: Number(m.value ?? m.amount ?? m.systolic ?? 0),
         value2: m.value2 ?? m.diastolic ?? null,
         sleep: m.sleep,
+        mood: m.mood,
         stress: m.stress,
         energy: m.energy,
       }));
@@ -140,6 +143,14 @@ export default function TrendMini({ data = [], type, title }) {
 
   if (isCheckin) {
     datasets = [
+      {
+        label: "😊 Samopoczucie",
+        data: chartData.map((d) => d.mood),
+        borderColor: "#8b5cf6",
+        borderWidth: 3,
+        pointRadius: 4,
+        tension: 0.4,
+      },
       {
         label: "🌙 Sen",
         data: chartData.map((d) => d.sleep),
@@ -173,7 +184,7 @@ export default function TrendMini({ data = [], type, title }) {
     ];
     optionsScalesY = {
       min: 0,
-      max: 4,
+      max: 3.5,
       grid: { color: "#f3f4f6", borderDash: [5, 5] },
       border: { display: false },
       ticks: {
@@ -263,7 +274,7 @@ export default function TrendMini({ data = [], type, title }) {
               ? title
                   .replace(
                     /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu,
-                    ""
+                    "",
                   )
                   .trim()
               : style.label}
