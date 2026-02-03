@@ -4,7 +4,6 @@ import prisma from "@/lib/prisma";
 export async function GET() {
   const USER_EMAIL = "domiweb.biuro@gmail.com";
 
-  //    KONFIGURACJA – mały seed (~10%)
   const DAYS_BACK = 37; // ~10% z 365 dni
   const BATCH_SIZE = 200;
 
@@ -27,7 +26,6 @@ export async function GET() {
       const baseDate = new Date(today);
       baseDate.setDate(baseDate.getDate() - i);
 
-      // ─── WAGA (1× dziennie) ───────────────────────────────
       const weightTrend = 90 - (10 * (DAYS_BACK - i)) / DAYS_BACK;
       const weightFluctuation = (Math.random() - 0.5) * 1.2;
 
@@ -42,7 +40,6 @@ export async function GET() {
         createdAt: weightDate,
       });
 
-      // ─── Jeden pomiar ciśnienia + tętna dziennie ──────────
       const sampleDate = new Date(baseDate);
       sampleDate.setHours(
         8 + Math.floor(Math.random() * 8),
@@ -71,7 +68,6 @@ export async function GET() {
         createdAt: sampleDate,
       });
 
-      // ─── Cukier (1× dziennie) ─────────────────────────────
       const glucoseDate = new Date(baseDate);
       glucoseDate.setHours(8, 15);
 
@@ -85,7 +81,6 @@ export async function GET() {
       });
     }
 
-    // ─── Zapis paczkami ────────────────────────────────────
     let totalInserted = 0;
 
     for (let i = 0; i < measurements.length; i += BATCH_SIZE) {
