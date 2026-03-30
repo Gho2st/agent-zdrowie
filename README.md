@@ -3,7 +3,7 @@
 **Agent Zdrowie** is a modern web application that helps users monitor their health by logging measurements (such as blood sugar, pressure, weight, and pulse), analyzing data, and providing motivation through artificial intelligence (AI).  
 It features an AI chatbot with access to user data, a daily check-in system, and a streak mechanism to encourage healthy habits.
 
-> 🌐 Live app: https://agent-zdrowie.vercel.app
+
 
 ---
 
